@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  /* Verde tomado del logo de BANEX S.A. */
+  --color-banex-50: #eaf7ee;
+  --color-banex-100: #cfeed9;
+  --color-banex-200: #9fddb3;
+  --color-banex-300: #6fcb8e;
+  --color-banex-400: #3fb968;
+  --color-banex-500: #1e9f4c;
+  --color-banex-600: #0f7a34;
+  --color-banex-700: #0b5f29;
+  --color-banex-800: #07451e;
+  --color-banex-900: #042b13;
+
+  /* Acento cálido (banano maduro), uso puntual */
+  --color-banana-400: #f4c430;
+  --color-banana-500: #edb70f;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: #f7faf8;
+}

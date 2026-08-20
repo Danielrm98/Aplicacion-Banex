@@ -1,0 +1,90 @@
+import { useState } from 'react'
+import type { FilaCompleta } from '../lib/aggregations'
+import { exportFilaCompletaToExcel } from '../lib/exportUtils'
+
+export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) {
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      await exportFilaCompletaToExcel(filas)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm text-gray-500">{filas.length} fila(s)</p>
+        <button
+          onClick={handleExport}
+          disabled={exporting || filas.length === 0}
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
+        >
+          {exporting ? 'Exportando...' : 'Exportar Excel'}
+        </button>
+      </div>
+
+      {filas.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">No hay datos para los filtros seleccionados.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1800px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="py-1.5 pr-3 font-medium">Fecha</th>
+                <th className="py-1.5 pr-3 font-medium">Semana</th>
+                <th className="py-1.5 pr-3 font-medium">Finca</th>
+                <th className="py-1.5 pr-3 font-medium">Hora fin.</th>
+                <th className="py-1.5 pr-3 font-medium">Referencia</th>
+                <th className="py-1.5 pr-3 font-medium">Cajas</th>
+                <th className="py-1.5 pr-3 font-medium">Peso (kg)</th>
+                <th className="py-1.5 pr-3 font-medium">Cajas 20kg</th>
+                <th className="py-1.5 pr-3 font-medium">Rechazadas</th>
+                <th className="py-1.5 pr-3 font-medium">Motivo</th>
+                <th className="py-1.5 pr-3 font-medium">Racimos cos.</th>
+                <th className="py-1.5 pr-3 font-medium">Racimos rec.</th>
+                <th className="py-1.5 pr-3 font-medium">Racimos proc.</th>
+                <th className="py-1.5 pr-3 font-medium">Canastillas</th>
+                <th className="py-1.5 pr-3 font-medium">Kilos canast.</th>
+                <th className="py-1.5 pr-3 font-medium">Peso neto racimo</th>
+                <th className="py-1.5 pr-3 font-medium">Ratio</th>
+                <th className="py-1.5 pr-3 font-medium">Merma</th>
+                <th className="py-1.5 pr-3 font-medium">Transporte</th>
+                <th className="py-1.5 pr-3 font-medium">Notas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((f, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.fecha}</td>
+                  <td className="py-1.5 pr-3">{f.semana}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.finca}</td>
+                  <td className="py-1.5 pr-3">{f.horaFinalizacion || '—'}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap font-medium text-gray-900">{f.referencia || '—'}</td>
+                  <td className="py-1.5 pr-3">{f.cantidadCajas}</td>
+                  <td className="py-1.5 pr-3">{f.pesoNetoKg || '—'}</td>
+                  <td className="py-1.5 pr-3">{f.cajas20kg.toFixed(2)}</td>
+                  <td className="py-1.5 pr-3">{f.cajasRechazadas}</td>
+                  <td className="py-1.5 pr-3">{f.motivoRechazo || '—'}</td>
+                  <td className="py-1.5 pr-3">{f.racimosCosechados}</td>
+                  <td className="py-1.5 pr-3">{f.racimosRecusados}</td>
+                  <td className="py-1.5 pr-3">{f.racimosProcesados}</td>
+                  <td className="py-1.5 pr-3">{f.canastillas}</td>
+                  <td className="py-1.5 pr-3">{f.kilosCanastillas.toFixed(2)}</td>
+                  <td className="py-1.5 pr-3">{f.pesoNetoRacimo !== null ? f.pesoNetoRacimo.toFixed(2) : '—'}</td>
+                  <td className="py-1.5 pr-3">{f.ratio !== null ? f.ratio.toFixed(2) : '—'}</td>
+                  <td className="py-1.5 pr-3">{f.merma !== null ? `${f.merma.toFixed(1)}%` : '—'}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.transporte || '—'}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.notas || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
