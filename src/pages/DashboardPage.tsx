@@ -1,6 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import FiltersBar from '../components/FiltersBar'
-import ExportButtons from '../components/ExportButtons'
 import StatTile from '../components/StatTile'
 import ProductionOverTimeChart from '../components/charts/ProductionOverTimeChart'
 import ProductionByFarmChart from '../components/charts/ProductionByFarmChart'
@@ -55,9 +54,8 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-4">
         <h1 className="text-lg font-semibold text-gray-900">Reportes</h1>
-        {vista === 'resumen' && <ExportButtons filas={filas} />}
       </div>
 
       <div className="mb-4 flex gap-1 border-b border-gray-200">

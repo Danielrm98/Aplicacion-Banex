@@ -1,15 +1,19 @@
-import { useState } from 'react'
-import { exportToExcel, exportToPdf } from '../lib/exportUtils'
-import type { FilaProduccion } from '../lib/aggregations'
+import { useMemo, useState } from 'react'
+import { exportFilaCompletaToExcel, exportToPdf } from '../lib/exportUtils'
+import { filaCompleta, flattenItems } from '../lib/aggregations'
+import type { Produccion } from '../types/produccion'
 
-export default function ExportButtons({ filas }: { filas: FilaProduccion[] }) {
+export default function ExportButtons({ registros }: { registros: Produccion[] }) {
   const [exporting, setExporting] = useState(false)
-  const disabled = exporting || filas.length === 0
+  const disabled = exporting || registros.length === 0
+
+  const filasCompletas = useMemo(() => filaCompleta(registros), [registros])
+  const filas = useMemo(() => flattenItems(registros), [registros])
 
   async function handleExcel() {
     setExporting(true)
     try {
-      await exportToExcel(filas)
+      await exportFilaCompletaToExcel(filasCompletas)
     } finally {
       setExporting(false)
     }

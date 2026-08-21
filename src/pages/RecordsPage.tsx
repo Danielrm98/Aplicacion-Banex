@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import FiltersBar from '../components/FiltersBar'
 import ProductionList from '../components/ProductionList'
-import ExportButtons from '../components/ExportButtons'
 import { useProducciones, type Filtros } from '../lib/useProducciones'
 import { useReferencias } from '../lib/useReferencias'
 import { flattenItems } from '../lib/aggregations'
@@ -14,12 +13,9 @@ export default function RecordsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Historial de registros</h1>
-          <p className="text-sm text-gray-500">{registros.length} registro(s) · {filas.length} línea(s)</p>
-        </div>
-        <ExportButtons filas={filas} />
+      <div className="mb-4">
+        <h1 className="text-lg font-semibold text-gray-900">Historial de registros</h1>
+        <p className="text-sm text-gray-500">{registros.length} registro(s) · {filas.length} línea(s)</p>
       </div>
 
       <FiltersBar filtros={filtros} onChange={setFiltros} />

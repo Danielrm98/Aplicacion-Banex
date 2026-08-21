@@ -1,31 +1,9 @@
-import { useState } from 'react'
 import type { FilaCompleta } from '../lib/aggregations'
-import { exportFilaCompletaToExcel } from '../lib/exportUtils'
 
 export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) {
-  const [exporting, setExporting] = useState(false)
-
-  async function handleExport() {
-    setExporting(true)
-    try {
-      await exportFilaCompletaToExcel(filas)
-    } finally {
-      setExporting(false)
-    }
-  }
-
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm text-gray-500">{filas.length} fila(s)</p>
-        <button
-          onClick={handleExport}
-          disabled={exporting || filas.length === 0}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-50"
-        >
-          {exporting ? 'Exportando...' : 'Exportar Excel'}
-        </button>
-      </div>
+      <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
 
       {filas.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay datos para los filtros seleccionados.</p>

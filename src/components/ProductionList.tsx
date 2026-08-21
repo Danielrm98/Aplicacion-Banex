@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { FINCAS } from '../lib/fincas'
 import {
   CAJA_20KG_KG,
   CANASTILLA_KG,
@@ -10,6 +11,44 @@ import {
   type Referencia,
   type Transporte,
 } from '../types/produccion'
+
+function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
+  return `racimos_semana_${semana}` as const
+}
+
+interface HeaderDraft {
+  fecha: string
+  hora_finalizacion: string
+  semana: number
+  finca: string
+  racimos_semana_7: number
+  racimos_semana_8: number
+  racimos_semana_9: number
+  racimos_semana_10: number
+  racimos_semana_11: number
+  racimos_semana_12: number
+  racimos_recusados: number
+  canastillas: number
+  notas: string
+}
+
+function headerDraftDe(registro: Produccion): HeaderDraft {
+  return {
+    fecha: registro.fecha,
+    hora_finalizacion: registro.hora_finalizacion ?? '',
+    semana: registro.semana,
+    finca: registro.finca,
+    racimos_semana_7: registro.racimos_semana_7,
+    racimos_semana_8: registro.racimos_semana_8,
+    racimos_semana_9: registro.racimos_semana_9,
+    racimos_semana_10: registro.racimos_semana_10,
+    racimos_semana_11: registro.racimos_semana_11,
+    racimos_semana_12: registro.racimos_semana_12,
+    racimos_recusados: registro.racimos_recusados,
+    canastillas: registro.canastillas,
+    notas: registro.notas ?? '',
+  }
+}
 
 interface Props {
   registros: Produccion[]
@@ -48,16 +87,17 @@ function RegistroCard({
 }) {
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [editingHeader, setEditingHeader] = useState(false)
+  const [headerDraft, setHeaderDraft] = useState<HeaderDraft>(() => headerDraftDe(registro))
+  const [headerError, setHeaderError] = useState<string | null>(null)
+  const racimosSource = editingHeader ? headerDraft : registro
   const totalCajas = registro.items.reduce((sum, it) => sum + it.cantidad_cajas, 0)
   const totalCajas20kg = registro.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
   const totalRechazadas = registro.items.reduce((sum, it) => sum + it.cajas_rechazadas, 0)
-  const totalRacimos = SEMANAS_RACIMO.reduce(
-    (sum, semana) => sum + registro[`racimos_semana_${semana}` as const],
-    0,
-  )
-  const totalRacimosProcesados = totalRacimos - registro.racimos_recusados
+  const totalRacimos = SEMANAS_RACIMO.reduce((sum, semana) => sum + racimosSource[campoRacimo(semana)], 0)
+  const totalRacimosProcesados = totalRacimos - racimosSource.racimos_recusados
   const kilosCajas20kg = totalCajas20kg * CAJA_20KG_KG
-  const kilosCanastillas = registro.canastillas * CANASTILLA_KG
+  const kilosCanastillas = racimosSource.canastillas * CANASTILLA_KG
   const pesoNetoRacimo = totalRacimos > 0 ? (kilosCajas20kg + kilosCanastillas) / totalRacimos : null
   const ratio = totalRacimos > 0 ? totalCajas20kg / totalRacimos : null
   const pesoTotalRacimos = pesoNetoRacimo !== null ? totalRacimos * pesoNetoRacimo : null
@@ -72,6 +112,50 @@ function RegistroCard({
       alert(`No se pudo eliminar: ${error.message}`)
       return
     }
+    onChanged()
+  }
+
+  function startEditHeader() {
+    setHeaderDraft(headerDraftDe(registro))
+    setHeaderError(null)
+    setEditingHeader(true)
+    setExpanded(true)
+  }
+
+  async function saveHeader() {
+    setHeaderError(null)
+
+    if (!headerDraft.finca) {
+      setHeaderError('Selecciona una finca.')
+      return
+    }
+
+    setBusy(true)
+    const { error } = await supabase
+      .from('producciones')
+      .update({
+        fecha: headerDraft.fecha,
+        hora_finalizacion: headerDraft.hora_finalizacion || null,
+        semana: headerDraft.semana,
+        finca: headerDraft.finca,
+        racimos_semana_7: headerDraft.racimos_semana_7,
+        racimos_semana_8: headerDraft.racimos_semana_8,
+        racimos_semana_9: headerDraft.racimos_semana_9,
+        racimos_semana_10: headerDraft.racimos_semana_10,
+        racimos_semana_11: headerDraft.racimos_semana_11,
+        racimos_semana_12: headerDraft.racimos_semana_12,
+        racimos_recusados: headerDraft.racimos_recusados,
+        canastillas: headerDraft.canastillas,
+        notas: headerDraft.notas || null,
+      })
+      .eq('id', registro.id)
+
+    setBusy(false)
+    if (error) {
+      setHeaderError(error.message)
+      return
+    }
+    setEditingHeader(false)
     onChanged()
   }
 
@@ -93,6 +177,14 @@ function RegistroCard({
           >
             {expanded ? 'Colapsar ▲' : 'Expandir ▼'}
           </button>
+          {!editingHeader && (
+            <button
+              onClick={startEditHeader}
+              className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+            >
+              Editar información
+            </button>
+          )}
           <button
             onClick={removeRegistro}
             disabled={busy}
@@ -105,68 +197,219 @@ function RegistroCard({
 
       {expanded && (
         <div className="mt-4 flex flex-col gap-5 border-t border-gray-100 pt-4">
-          <Seccion titulo="Detalles generales">
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
-              <span>
-                <span className="text-gray-400">Hora de finalización: </span>
-                {registro.hora_finalizacion ?? '—'}
-              </span>
-              <span>
-                <span className="text-gray-400">Notas: </span>
-                {registro.notas ?? '—'}
-              </span>
-            </div>
-          </Seccion>
+          {editingHeader ? (
+            <>
+              <Seccion titulo="Detalles generales">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <MiniField label="Fecha">
+                    <input
+                      type="date"
+                      value={headerDraft.fecha}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, fecha: e.target.value }))}
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="Hora de finalización">
+                    <input
+                      type="time"
+                      value={headerDraft.hora_finalizacion}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, hora_finalizacion: e.target.value }))}
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="Semana">
+                    <input
+                      type="number"
+                      min={1}
+                      max={53}
+                      value={headerDraft.semana}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, semana: Number(e.target.value) }))}
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="Finca">
+                    <select
+                      value={headerDraft.finca}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, finca: e.target.value }))}
+                      className={smallInput}
+                    >
+                      {FINCAS.map((finca) => (
+                        <option key={finca} value={finca}>
+                          {finca}
+                        </option>
+                      ))}
+                    </select>
+                  </MiniField>
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <MiniField label="Notas">
+                      <input
+                        type="text"
+                        value={headerDraft.notas}
+                        onChange={(e) => setHeaderDraft((d) => ({ ...d, notas: e.target.value }))}
+                        className={smallInput}
+                      />
+                    </MiniField>
+                  </div>
+                </div>
+              </Seccion>
 
-          <Seccion titulo="Racimos">
-            <div className="mb-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
-              <span>
-                <span className="text-gray-400">Cosechados: </span>
-                {totalRacimos.toLocaleString('es')}
-              </span>
-              <span className={registro.racimos_recusados > 0 ? 'text-red-600' : ''}>
-                <span className="text-gray-400">Recusados: </span>
-                {registro.racimos_recusados.toLocaleString('es')}
-              </span>
-              <span>
-                <span className="text-gray-400">Procesados: </span>
-                {totalRacimosProcesados.toLocaleString('es')}
-              </span>
-              <span>
-                <span className="text-gray-400">Peso neto de racimo: </span>
-                {pesoNetoRacimo !== null ? `${pesoNetoRacimo.toFixed(2)} kg` : '—'}
-              </span>
-              <span>
-                <span className="text-gray-400">Ratio: </span>
-                {ratio !== null ? ratio.toFixed(2) : '—'}
-              </span>
-              <span>
-                <span className="text-gray-400">Merma: </span>
-                {merma !== null ? `${merma.toFixed(1)}%` : '—'}
-              </span>
-            </div>
-            {totalRacimos > 0 && (
-              <p className="text-xs text-gray-500">
-                Por edad (semanas):{' '}
-                {SEMANAS_RACIMO.map((semana) => `S${semana}: ${registro[`racimos_semana_${semana}` as const]}`).join(
-                  ' · ',
+              <Seccion titulo="Racimos">
+                <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+                  {SEMANAS_RACIMO.map((semana) => (
+                    <MiniField key={semana} label={`Semana ${semana}`}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={headerDraft[campoRacimo(semana)] || ''}
+                        onChange={(e) =>
+                          setHeaderDraft((d) => ({ ...d, [campoRacimo(semana)]: Number(e.target.value) }))
+                        }
+                        className={smallInput}
+                      />
+                    </MiniField>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <MiniField label="Racimos recusados">
+                    <input
+                      type="number"
+                      min={0}
+                      value={headerDraft.racimos_recusados || ''}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, racimos_recusados: Number(e.target.value) }))}
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="Cosechados (calc.)">
+                    <input type="text" disabled value={totalRacimos} className={`${smallInput} bg-gray-50`} />
+                  </MiniField>
+                  <MiniField label="Procesados (calc.)">
+                    <input
+                      type="text"
+                      disabled
+                      value={totalRacimosProcesados}
+                      className={`${smallInput} bg-gray-50`}
+                    />
+                  </MiniField>
+                  <MiniField label="Peso neto racimo (calc.)">
+                    <input
+                      type="text"
+                      disabled
+                      value={pesoNetoRacimo !== null ? pesoNetoRacimo.toFixed(2) : '—'}
+                      className={`${smallInput} bg-gray-50`}
+                    />
+                  </MiniField>
+                </div>
+              </Seccion>
+
+              <Seccion titulo="Canastillas">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <MiniField label="Cantidad">
+                    <input
+                      type="number"
+                      min={0}
+                      value={headerDraft.canastillas || ''}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, canastillas: Number(e.target.value) }))}
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="Kilos (calc.)">
+                    <input
+                      type="text"
+                      disabled
+                      value={kilosCanastillas.toFixed(2)}
+                      className={`${smallInput} bg-gray-50`}
+                    />
+                  </MiniField>
+                </div>
+              </Seccion>
+
+              {headerError && <p className="text-sm text-red-600">{headerError}</p>}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={saveHeader}
+                  disabled={busy}
+                  className="rounded-md bg-banex-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+                >
+                  Guardar información
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingHeader(false)
+                    setHeaderError(null)
+                  }}
+                  className="rounded-md border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Seccion titulo="Detalles generales">
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
+                  <span>
+                    <span className="text-gray-400">Hora de finalización: </span>
+                    {registro.hora_finalizacion ?? '—'}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Notas: </span>
+                    {registro.notas ?? '—'}
+                  </span>
+                </div>
+              </Seccion>
+
+              <Seccion titulo="Racimos">
+                <div className="mb-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
+                  <span>
+                    <span className="text-gray-400">Cosechados: </span>
+                    {totalRacimos.toLocaleString('es')}
+                  </span>
+                  <span className={registro.racimos_recusados > 0 ? 'text-red-600' : ''}>
+                    <span className="text-gray-400">Recusados: </span>
+                    {registro.racimos_recusados.toLocaleString('es')}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Procesados: </span>
+                    {totalRacimosProcesados.toLocaleString('es')}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Peso neto de racimo: </span>
+                    {pesoNetoRacimo !== null ? `${pesoNetoRacimo.toFixed(2)} kg` : '—'}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Ratio: </span>
+                    {ratio !== null ? ratio.toFixed(2) : '—'}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Merma: </span>
+                    {merma !== null ? `${merma.toFixed(1)}%` : '—'}
+                  </span>
+                </div>
+                {totalRacimos > 0 && (
+                  <p className="text-xs text-gray-500">
+                    Por edad (semanas):{' '}
+                    {SEMANAS_RACIMO.map(
+                      (semana) => `S${semana}: ${registro[`racimos_semana_${semana}` as const]}`,
+                    ).join(' · ')}
+                  </p>
                 )}
-              </p>
-            )}
-          </Seccion>
+              </Seccion>
 
-          <Seccion titulo="Canastillas">
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
-              <span>
-                <span className="text-gray-400">Cantidad: </span>
-                {registro.canastillas.toLocaleString('es')}
-              </span>
-              <span>
-                <span className="text-gray-400">Kilos: </span>
-                {kilosCanastillas.toLocaleString('es', { maximumFractionDigits: 2 })} kg
-              </span>
-            </div>
-          </Seccion>
+              <Seccion titulo="Canastillas">
+                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600">
+                  <span>
+                    <span className="text-gray-400">Cantidad: </span>
+                    {registro.canastillas.toLocaleString('es')}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Kilos: </span>
+                    {kilosCanastillas.toLocaleString('es', { maximumFractionDigits: 2 })} kg
+                  </span>
+                </div>
+              </Seccion>
+            </>
+          )}
 
           <Seccion titulo="Referencias producidas">
             <div className="overflow-x-auto">
@@ -228,6 +471,18 @@ function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) 
     </div>
   )
 }
+
+function MiniField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-gray-500">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+const smallInput =
+  'w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-banex-600 focus:outline-none'
 
 function ItemRow({
   item,
