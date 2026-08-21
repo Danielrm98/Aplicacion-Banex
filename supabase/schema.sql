@@ -107,6 +107,46 @@ insert into public.referencias (marca, cajas_pallet, factor_conversion, tipo_caj
   ('EDKORG-ENSAYO', 54, 1.0000, 'Orgánica', 'Larga', 18.50);
 
 -- ============================================================
+-- Catálogo de fincas (gestionable desde la app): hectareaje total
+-- ============================================================
+create table public.fincas (
+  nombre text primary key,
+  hectareas numeric check (hectareas >= 0)
+);
+
+alter table public.fincas enable row level security;
+
+create policy "Usuarios autenticados leen el catálogo de fincas"
+  on public.fincas for select
+  using (auth.role() = 'authenticated');
+
+create policy "Usuarios autenticados agregan fincas"
+  on public.fincas for insert
+  with check (auth.role() = 'authenticated');
+
+create policy "Usuarios autenticados actualizan el hectareaje"
+  on public.fincas for update
+  using (auth.role() = 'authenticated')
+  with check (auth.role() = 'authenticated');
+
+insert into public.fincas (nombre) values
+  ('TAMACARA'),
+  ('FLORIDA'),
+  ('LAS DELICIAS'),
+  ('DILIA ESTHER'),
+  ('GOLONDRINA NUEVA'),
+  ('GOLONDRINA VIEJA'),
+  ('GLORIA MERCEDES'),
+  ('LUCILA MARINA'),
+  ('ESMERALDA'),
+  ('LA MARIA'),
+  ('TROPICANA'),
+  ('COSTANERA'),
+  ('RAQUELITA'),
+  ('MILADY'),
+  ('MACONDO');
+
+-- ============================================================
 -- Cabecera de producción: un registro por día + finca
 -- ============================================================
 create table public.producciones (
@@ -116,6 +156,7 @@ create table public.producciones (
   hora_finalizacion time,
   semana integer check (semana between 1 and 53),
   finca text not null,
+  area_recorrida numeric check (area_recorrida >= 0),
   racimos_semana_7 integer not null default 0 check (racimos_semana_7 >= 0),
   racimos_semana_8 integer not null default 0 check (racimos_semana_8 >= 0),
   racimos_semana_9 integer not null default 0 check (racimos_semana_9 >= 0),

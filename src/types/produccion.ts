@@ -44,6 +44,7 @@ export interface Produccion {
   hora_finalizacion: string | null
   semana: number
   finca: string
+  area_recorrida: number | null
   racimos_semana_7: number
   racimos_semana_8: number
   racimos_semana_9: number
@@ -72,6 +73,7 @@ export type ProduccionHeaderInput = Pick<
   | 'hora_finalizacion'
   | 'semana'
   | 'finca'
+  | 'area_recorrida'
   | 'racimos_semana_7'
   | 'racimos_semana_8'
   | 'racimos_semana_9'

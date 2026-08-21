@@ -1,9 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
+import { useFincas } from '../lib/useFincas'
+import { FINCAS } from '../lib/fincas'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
+import TabButton from '../components/TabButton'
 
 const emptyForm = {
   marca: '',
@@ -14,6 +17,30 @@ const emptyForm = {
 }
 
 export default function CatalogPage() {
+  const [vista, setVista] = useState<'referencias' | 'fincas'>('referencias')
+
+  return (
+    <div>
+      <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Catálogo</h1>
+      <p className="mb-4 text-sm text-gray-500">
+        Gestiona las marcas/referencias de cajas y el hectareaje de cada finca.
+      </p>
+
+      <div className="mb-6 flex gap-1 border-b border-gray-200">
+        <TabButton active={vista === 'referencias'} onClick={() => setVista('referencias')}>
+          Referencias
+        </TabButton>
+        <TabButton active={vista === 'fincas'} onClick={() => setVista('fincas')}>
+          Fincas
+        </TabButton>
+      </div>
+
+      {vista === 'referencias' ? <ReferenciasTab /> : <FincasTab />}
+    </div>
+  )
+}
+
+function ReferenciasTab() {
   const { referencias, loading, error, refetch } = useReferencias()
   const [form, setForm] = useState(emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
@@ -83,12 +110,7 @@ export default function CatalogPage() {
   }
 
   return (
-    <div>
-      <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Catálogo de referencias</h1>
-      <p className="mb-6 text-sm text-gray-500">
-        Crea nuevas marcas/referencias cuando asignen una que no esté en la lista, o elimina las que ya no uses.
-      </p>
-
+    <>
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <SectionHeading>Agregar referencia</SectionHeading>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -214,7 +236,102 @@ export default function CatalogPage() {
           </div>
         )}
       </div>
+    </>
+  )
+}
+
+function FincasTab() {
+  const { fincas, loading, error, refetch } = useFincas()
+  const hectareasMap = new Map(fincas.map((f) => [f.nombre, f.hectareas]))
+  const totalHectareas = fincas.reduce((sum, f) => sum + (f.hectareas ?? 0), 0)
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <SectionHeading>Hectareaje por finca</SectionHeading>
+        {totalHectareas > 0 && (
+          <span className="text-sm text-gray-500">
+            Total: <span className="font-medium text-banex-800">{totalHectareas.toLocaleString('es')} ha</span>
+          </span>
+        )}
+      </div>
+      {loading ? (
+        <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+      ) : error ? (
+        <p className="py-8 text-center text-sm text-red-600">{error}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="py-2 pr-3 font-medium">Finca</th>
+                <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
+                <th className="py-2 pr-3 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {FINCAS.map((nombre) => (
+                <FincaRow key={nombre} nombre={nombre} hectareas={hectareasMap.get(nombre) ?? null} onSaved={refetch} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
+  )
+}
+
+function FincaRow({
+  nombre,
+  hectareas,
+  onSaved,
+}: {
+  nombre: string
+  hectareas: number | null
+  onSaved: () => void
+}) {
+  const [draft, setDraft] = useState<string>(hectareas !== null ? String(hectareas) : '')
+  const [busy, setBusy] = useState(false)
+  const draftValue = draft === '' ? null : Number(draft)
+  const dirty = draftValue !== hectareas
+
+  async function guardar() {
+    setBusy(true)
+    const { error } = await supabase.from('fincas').upsert({ nombre, hectareas: draftValue })
+    setBusy(false)
+    if (error) {
+      alert(`No se pudo guardar: ${error.message}`)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <tr className="border-b border-gray-100">
+      <td className="py-1.5 pr-3 font-medium text-gray-900">{nombre}</td>
+      <td className="py-1.5 pr-3">
+        <div className="w-32">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className={inputClass}
+            placeholder="—"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">
+        <button
+          onClick={guardar}
+          disabled={!dirty || busy}
+          className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Guardar
+        </button>
+      </td>
+    </tr>
   )
 }
 

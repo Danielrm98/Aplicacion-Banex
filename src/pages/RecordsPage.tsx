@@ -3,12 +3,14 @@ import FiltersBar from '../components/FiltersBar'
 import ProductionList from '../components/ProductionList'
 import { useProducciones, type Filtros } from '../lib/useProducciones'
 import { useReferencias } from '../lib/useReferencias'
+import { useFincas } from '../lib/useFincas'
 import { flattenItems } from '../lib/aggregations'
 
 export default function RecordsPage() {
   const [filtros, setFiltros] = useState<Filtros>({})
   const { registros, loading, error, refetch } = useProducciones(filtros)
   const { referencias } = useReferencias()
+  const { fincas } = useFincas()
   const filas = useMemo(() => flattenItems(registros), [registros])
 
   return (
@@ -25,7 +27,7 @@ export default function RecordsPage() {
       ) : error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
       ) : (
-        <ProductionList registros={registros} referencias={referencias} onChanged={refetch} />
+        <ProductionList registros={registros} referencias={referencias} fincas={fincas} onChanged={refetch} />
       )}
     </div>
   )

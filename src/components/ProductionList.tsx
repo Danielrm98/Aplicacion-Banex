@@ -11,6 +11,7 @@ import {
   type Referencia,
   type Transporte,
 } from '../types/produccion'
+import type { Finca } from '../types/finca'
 
 function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
@@ -25,6 +26,7 @@ interface HeaderDraft {
   hora_finalizacion: string
   semana: number
   finca: string
+  area_recorrida: number | null
   racimos_semana_7: number
   racimos_semana_8: number
   racimos_semana_9: number
@@ -48,6 +50,7 @@ function headerDraftDe(registro: Produccion): HeaderDraft {
     hora_finalizacion: registro.hora_finalizacion ?? '',
     semana: registro.semana,
     finca: registro.finca,
+    area_recorrida: registro.area_recorrida,
     racimos_semana_7: registro.racimos_semana_7,
     racimos_semana_8: registro.racimos_semana_8,
     racimos_semana_9: registro.racimos_semana_9,
@@ -69,17 +72,24 @@ function headerDraftDe(registro: Produccion): HeaderDraft {
 interface Props {
   registros: Produccion[]
   referencias: Referencia[]
+  fincas: Finca[]
   onChanged: () => void
 }
 
-export default function ProductionList({ registros, referencias, onChanged }: Props) {
+export default function ProductionList({ registros, referencias, fincas, onChanged }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {registros.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay registros para los filtros seleccionados.</p>
       ) : (
         registros.map((registro) => (
-          <RegistroCard key={registro.id} registro={registro} referencias={referencias} onChanged={onChanged} />
+          <RegistroCard
+            key={registro.id}
+            registro={registro}
+            referencias={referencias}
+            fincas={fincas}
+            onChanged={onChanged}
+          />
         ))
       )}
 
@@ -95,10 +105,12 @@ export default function ProductionList({ registros, referencias, onChanged }: Pr
 function RegistroCard({
   registro,
   referencias,
+  fincas,
   onChanged,
 }: {
   registro: Produccion
   referencias: Referencia[]
+  fincas: Finca[]
   onChanged: () => void
 }) {
   const [busy, setBusy] = useState(false)
@@ -107,6 +119,9 @@ function RegistroCard({
   const [headerDraft, setHeaderDraft] = useState<HeaderDraft>(() => headerDraftDe(registro))
   const [headerError, setHeaderError] = useState<string | null>(null)
   const racimosSource = editingHeader ? headerDraft : registro
+  const areaTotal = fincas.find((f) => f.nombre === racimosSource.finca)?.hectareas ?? null
+  const areaRecorrida = racimosSource.area_recorrida
+  const porcentajeDia = areaTotal && areaRecorrida !== null ? (areaRecorrida / areaTotal) * 100 : null
   const totalCajas = registro.items.reduce((sum, it) => sum + it.cantidad_cajas, 0)
   const totalCajas20kg = registro.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
   const totalRechazadas = registro.items.reduce((sum, it) => sum + it.cajas_rechazadas, 0)
@@ -154,6 +169,7 @@ function RegistroCard({
         hora_finalizacion: headerDraft.hora_finalizacion || null,
         semana: headerDraft.semana,
         finca: headerDraft.finca,
+        area_recorrida: headerDraft.area_recorrida,
         racimos_semana_7: headerDraft.racimos_semana_7,
         racimos_semana_8: headerDraft.racimos_semana_8,
         racimos_semana_9: headerDraft.racimos_semana_9,
@@ -272,6 +288,39 @@ function RegistroCard({
                       />
                     </MiniField>
                   </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <MiniField label="Área total (calc.)">
+                    <input
+                      type="text"
+                      disabled
+                      value={areaTotal !== null ? areaTotal.toLocaleString('es') : '—'}
+                      className={`${smallInput} bg-gray-50`}
+                    />
+                  </MiniField>
+                  <MiniField label="Área recorrida (ha)">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={headerDraft.area_recorrida ?? ''}
+                      onChange={(e) =>
+                        setHeaderDraft((d) => ({
+                          ...d,
+                          area_recorrida: e.target.value === '' ? null : Number(e.target.value),
+                        }))
+                      }
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="% del día (calc.)">
+                    <input
+                      type="text"
+                      disabled
+                      value={porcentajeDia !== null ? `${porcentajeDia.toFixed(1)}%` : '—'}
+                      className={`${smallInput} bg-gray-50`}
+                    />
+                  </MiniField>
                 </div>
               </Seccion>
 
@@ -393,6 +442,11 @@ function RegistroCard({
                   <span>
                     <span className="text-gray-400">Hora de finalización: </span>
                     {registro.hora_finalizacion ?? '—'}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Área recorrida: </span>
+                    {registro.area_recorrida !== null ? `${registro.area_recorrida.toLocaleString('es')} ha` : '—'}
+                    {porcentajeDia !== null ? ` (${porcentajeDia.toFixed(1)}% de ${areaTotal?.toLocaleString('es')} ha)` : ''}
                   </span>
                   <span>
                     <span className="text-gray-400">Notas: </span>

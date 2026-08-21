@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient'
 import { FINCAS } from '../lib/fincas'
 import { getIsoWeek } from '../lib/isoWeek'
 import { useReferencias } from '../lib/useReferencias'
+import { useFincas } from '../lib/useFincas'
+import { useProducciones } from '../lib/useProducciones'
 import SectionHeading from './SectionHeading'
 import {
   CAJA_20KG_KG,
@@ -43,6 +45,7 @@ const emptyHeader: ProduccionHeaderInput = {
   hora_finalizacion: null,
   semana: getIsoWeek(initialFecha),
   finca: '',
+  area_recorrida: null,
   racimos_semana_7: 0,
   racimos_semana_8: 0,
   racimos_semana_9: 0,
@@ -84,11 +87,14 @@ function emptyTransporte(): TransporteDraft {
 
 export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
+  const { fincas } = useFincas()
   const [header, setHeader] = useState<ProduccionHeaderInput>(emptyHeader)
   const [items, setItems] = useState<ItemDraft[]>([emptyItem()])
   const [transportes, setTransportes] = useState<TransporteDraft[]>([])
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const { registros: registrosSemana } = useProducciones({ semana: header.semana, finca: header.finca })
 
   function updateHeader<K extends keyof ProduccionHeaderInput>(field: K, value: ProduccionHeaderInput[K]) {
     setHeader((prev) => ({ ...prev, [field]: value }))
@@ -96,6 +102,16 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
 
   const totalRacimos = SEMANAS_RACIMO.reduce((sum, semana) => sum + (header[campoRacimo(semana)] || 0), 0)
   const totalRacimosProcesados = totalRacimos - (header.racimos_recusados || 0)
+
+  const areaTotal = fincas.find((f) => f.nombre === header.finca)?.hectareas ?? null
+  const areaHoy = header.area_recorrida ?? 0
+  const anioActual = header.fecha.slice(0, 4)
+  const areaSemanaPrevia = registrosSemana
+    .filter((r) => r.fecha.slice(0, 4) === anioActual && r.fecha !== header.fecha)
+    .reduce((sum, r) => sum + (r.area_recorrida ?? 0), 0)
+  const areaSemanaAcumulada = areaSemanaPrevia + areaHoy
+  const porcentajeDia = areaTotal ? (areaHoy / areaTotal) * 100 : null
+  const porcentajeSemana = areaTotal ? (areaSemanaAcumulada / areaTotal) * 100 : null
 
   function updateItem<K extends keyof ItemDraft>(key: number, field: K, value: ItemDraft[K]) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)))
@@ -311,6 +327,53 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
             className={inputClass}
           />
         </Field>
+      </div>
+
+      <div>
+        <SectionHeading>Área recorrida</SectionHeading>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label="Área total (ha)">
+            <input type="text" disabled value={areaTotal !== null ? areaTotal.toLocaleString('es') : '—'} className={`${inputClass} disabled:bg-gray-100`} />
+          </Field>
+          <Field label="Área recorrida hoy (ha)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={header.area_recorrida ?? ''}
+              onChange={(e) => updateHeader('area_recorrida', e.target.value === '' ? null : Number(e.target.value))}
+              className={`${inputClass} disabled:bg-gray-100`}
+              disabled={!header.finca}
+            />
+          </Field>
+          <Field label="% recorrido del día">
+            <input
+              type="text"
+              disabled
+              value={porcentajeDia !== null ? `${porcentajeDia.toFixed(1)}%` : '—'}
+              className={`${inputClass} disabled:bg-gray-100`}
+            />
+          </Field>
+          <Field label="% acumulado de la semana">
+            <input
+              type="text"
+              disabled
+              value={porcentajeSemana !== null ? `${porcentajeSemana.toFixed(1)}%` : '—'}
+              className={`${inputClass} disabled:bg-gray-100`}
+            />
+          </Field>
+        </div>
+        {header.finca && areaTotal === null && (
+          <p className="mt-2 text-xs text-gray-500">
+            Esta finca todavía no tiene hectareaje registrado. Agrégalo en Catálogo → Fincas.
+          </p>
+        )}
+        {areaSemanaAcumulada > 0 && (
+          <p className="mt-2 text-xs text-gray-500">
+            Acumulado semana {header.semana}: {areaSemanaAcumulada.toLocaleString('es', { maximumFractionDigits: 2 })} ha
+            recorridas{areaTotal !== null ? ` de ${areaTotal.toLocaleString('es')} ha` : ''}.
+          </p>
+        )}
       </div>
 
       <div>
