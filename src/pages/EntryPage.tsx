@@ -1,13 +1,21 @@
 import { useState } from 'react'
 import ProductionForm from '../components/ProductionForm'
+import ExportButtons from '../components/ExportButtons'
+import { useProducciones } from '../lib/useProducciones'
 
 export default function EntryPage() {
   const [savedCount, setSavedCount] = useState(0)
+  const { registros } = useProducciones({})
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold text-gray-900">Registrar producción</h1>
-      <p className="mb-6 text-sm text-gray-500">Captura los datos de un lote de cajas de banano.</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="mb-1 text-lg font-semibold text-gray-900">Registrar producción</h1>
+          <p className="text-sm text-gray-500">Captura los datos de un lote de cajas de banano.</p>
+        </div>
+        <ExportButtons registros={registros} />
+      </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <ProductionForm onSaved={() => setSavedCount((c) => c + 1)} />
