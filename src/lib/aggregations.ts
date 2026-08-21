@@ -216,6 +216,12 @@ export interface ResumenDiaFinca {
   semana: number
   finca: string
   horaFinalizacion: string
+  racimosSemana7: number
+  racimosSemana8: number
+  racimosSemana9: number
+  racimosSemana10: number
+  racimosSemana11: number
+  racimosSemana12: number
   racimosCosechados: number
   racimosRecusados: number
   racimosProcesados: number
@@ -255,6 +261,12 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
       semana: r.semana,
       finca: r.finca,
       horaFinalizacion: r.hora_finalizacion ?? '',
+      racimosSemana7: r.racimos_semana_7,
+      racimosSemana8: r.racimos_semana_8,
+      racimosSemana9: r.racimos_semana_9,
+      racimosSemana10: r.racimos_semana_10,
+      racimosSemana11: r.racimos_semana_11,
+      racimosSemana12: r.racimos_semana_12,
       racimosCosechados,
       racimosRecusados: r.racimos_recusados,
       racimosProcesados,
