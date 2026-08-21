@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import type { FilaCompleta, FilaProduccion } from './aggregations'
+import type { FilaCompleta, FilaProduccion, ResumenDiaFinca } from './aggregations'
 
 const columns: { header: string; key: keyof FilaProduccion; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
@@ -62,10 +62,43 @@ const columnasCompletas: { header: string; key: keyof FilaCompleta; width?: numb
   { header: 'Notas', key: 'notas', width: 24 },
 ]
 
-export async function exportFilaCompletaToExcel(filas: FilaCompleta[], filename = 'reportes_banano.xlsx') {
-  const workbook = new ExcelJS.Workbook()
-  const sheet = workbook.addWorksheet('Reportes')
+const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: number }[] = [
+  { header: 'Fecha', key: 'fecha', width: 14 },
+  { header: 'Semana', key: 'semana', width: 10 },
+  { header: 'Finca', key: 'finca', width: 22 },
+  { header: 'Hora finalización', key: 'horaFinalizacion', width: 14 },
+  { header: 'Racimos cosechados', key: 'racimosCosechados', width: 16 },
+  { header: 'Racimos recusados', key: 'racimosRecusados', width: 16 },
+  { header: 'Racimos procesados', key: 'racimosProcesados', width: 16 },
+  { header: 'Canastillas', key: 'canastillas', width: 12 },
+  { header: 'Kilos canastillas', key: 'kilosCanastillas', width: 16 },
+  { header: 'Peso neto racimo (kg)', key: 'pesoNetoRacimo', width: 18 },
+  { header: 'Ratio', key: 'ratio', width: 10 },
+  { header: 'Merma (%)', key: 'merma', width: 12 },
+  { header: 'Transporte', key: 'transporte', width: 30 },
+  { header: 'Notas', key: 'notas', width: 24 },
+]
 
+export async function exportFilaCompletaToExcel(
+  filas: FilaCompleta[],
+  resumenes: ResumenDiaFinca[],
+  filename = 'reportes_banano.xlsx',
+) {
+  const workbook = new ExcelJS.Workbook()
+
+  const sheetResumen = workbook.addWorksheet('Resumen por día y finca')
+  sheetResumen.columns = columnasResumen.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
+  sheetResumen.getRow(1).font = { bold: true }
+  for (const r of resumenes) {
+    sheetResumen.addRow({
+      ...r,
+      ratio: r.ratio !== null ? Number(r.ratio.toFixed(2)) : '',
+      merma: r.merma !== null ? Number(r.merma.toFixed(1)) : '',
+      pesoNetoRacimo: r.pesoNetoRacimo !== null ? Number(r.pesoNetoRacimo.toFixed(2)) : '',
+    })
+  }
+
+  const sheet = workbook.addWorksheet('Reportes')
   sheet.columns = columnasCompletas.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheet.getRow(1).font = { bold: true }
 

@@ -211,17 +211,11 @@ export function ratioMermaPorSemana(resumenes: ResumenRegistro[]): PuntoRatioMer
     .sort((a, b) => a.semana - b.semana)
 }
 
-export interface FilaCompleta {
+export interface ResumenDiaFinca {
   fecha: string
   semana: number
   finca: string
   horaFinalizacion: string
-  referencia: string
-  cantidadCajas: number
-  pesoNetoKg: number
-  cajas20kg: number
-  cajasRechazadas: number
-  motivoRechazo: string
   racimosCosechados: number
   racimosRecusados: number
   racimosProcesados: number
@@ -234,8 +228,12 @@ export interface FilaCompleta {
   notas: string
 }
 
-export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
-  return registros.flatMap((r) => {
+/**
+ * Un registro (producciones) ya es un único día + finca, así que esto
+ * produce una fila por registro sin repetir por cada referencia/línea.
+ */
+export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
+  return registros.map((r) => {
     const cajas20kgTotal = r.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
     const kilosCajas20kg = cajas20kgTotal * CAJA_20KG_KG
     const kilosCanastillas = r.canastillas * CANASTILLA_KG
@@ -252,7 +250,7 @@ export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
       })
       .join('; ')
 
-    const base = {
+    return {
       fecha: r.fecha,
       semana: r.semana,
       finca: r.finca,
@@ -268,6 +266,23 @@ export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
       transporte,
       notas: r.notas ?? '',
     }
+  })
+}
+
+export interface FilaCompleta extends ResumenDiaFinca {
+  referencia: string
+  cantidadCajas: number
+  pesoNetoKg: number
+  cajas20kg: number
+  cajasRechazadas: number
+  motivoRechazo: string
+}
+
+export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
+  const resumenes = resumenPorDiaFinca(registros)
+
+  return registros.flatMap((r, i) => {
+    const base = resumenes[i]
 
     if (r.items.length === 0) {
       return [
