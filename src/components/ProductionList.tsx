@@ -74,9 +74,10 @@ interface Props {
   referencias: Referencia[]
   fincas: Finca[]
   onChanged: () => void
+  showDatalist?: boolean
 }
 
-export default function ProductionList({ registros, referencias, fincas, onChanged }: Props) {
+export default function ProductionList({ registros, referencias, fincas, onChanged, showDatalist = true }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {registros.length === 0 ? (
@@ -93,11 +94,13 @@ export default function ProductionList({ registros, referencias, fincas, onChang
         ))
       )}
 
-      <datalist id="referencias-catalogo">
-        {referencias.map((r) => (
-          <option key={r.marca} value={r.marca} />
-        ))}
-      </datalist>
+      {showDatalist && (
+        <datalist id="referencias-catalogo">
+          {referencias.map((r) => (
+            <option key={r.marca} value={r.marca} />
+          ))}
+        </datalist>
+      )}
     </div>
   )
 }
