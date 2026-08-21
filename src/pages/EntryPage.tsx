@@ -11,7 +11,7 @@ export default function EntryPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-lg font-semibold text-gray-900">Registrar producción</h1>
+          <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Registrar producción</h1>
           <p className="text-sm text-gray-500">Captura los datos de un lote de cajas de banano.</p>
         </div>
         <ExportButtons registros={registros} />

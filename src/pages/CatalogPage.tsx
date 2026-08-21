@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
+import SectionHeading from '../components/SectionHeading'
 
 const emptyForm = {
   marca: '',
@@ -83,13 +84,13 @@ export default function CatalogPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold text-gray-900">Catálogo de referencias</h1>
+      <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Catálogo de referencias</h1>
       <p className="mb-6 text-sm text-gray-500">
         Crea nuevas marcas/referencias cuando asignen una que no esté en la lista, o elimina las que ya no uses.
       </p>
 
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
-        <h2 className="mb-3 text-sm font-medium text-gray-700">Agregar referencia</h2>
+        <SectionHeading>Agregar referencia</SectionHeading>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
             <Field label="Marca / referencia">
@@ -160,7 +161,7 @@ export default function CatalogPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-md bg-banex-600 px-5 py-2 text-sm font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+              className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
             >
               {saving ? 'Guardando...' : 'Agregar referencia'}
             </button>
@@ -169,7 +170,7 @@ export default function CatalogPage() {
       </div>
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-        <h2 className="mb-3 text-sm font-medium text-gray-700">Referencias existentes ({referencias.length})</h2>
+        <SectionHeading>Referencias existentes ({referencias.length})</SectionHeading>
         {loading ? (
           <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
         ) : error ? (
@@ -201,7 +202,7 @@ export default function CatalogPage() {
                       <button
                         onClick={() => handleDelete(r.marca)}
                         disabled={deletingMarca === r.marca}
-                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                       >
                         Eliminar
                       </button>
@@ -218,7 +219,7 @@ export default function CatalogPage() {
 }
 
 const inputClass =
-  'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-banex-600 focus:outline-none'
+  'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

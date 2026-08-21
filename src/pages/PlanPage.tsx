@@ -7,6 +7,7 @@ import { useProducciones } from '../lib/useProducciones'
 import { usePlan } from '../lib/usePlan'
 import { flattenItems } from '../lib/aggregations'
 import type { PlanItem } from '../types/plan'
+import SectionHeading from '../components/SectionHeading'
 
 const hoy = new Date().toISOString().slice(0, 10)
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
@@ -67,7 +68,7 @@ export default function PlanPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-lg font-semibold text-gray-900">Plan semanal</h1>
+      <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Plan semanal</h1>
       <p className="mb-6 text-sm text-gray-500">
         Meta de pallets por referencia para una finca en una semana (las cajas se calculan solas), y su
         cumplimiento frente a la producción real.
@@ -79,7 +80,7 @@ export default function PlanPage() {
           <select
             value={finca}
             onChange={(e) => setFinca(e.target.value)}
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
           >
             {FINCAS.map((f) => (
               <option key={f} value={f}>
@@ -94,7 +95,7 @@ export default function PlanPage() {
           <select
             value={semana}
             onChange={(e) => setSemana(Number(e.target.value))}
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
           >
             {SEMANAS.map((s) => (
               <option key={s} value={s}>
@@ -110,7 +111,7 @@ export default function PlanPage() {
             type="number"
             value={anio}
             onChange={(e) => setAnio(Number(e.target.value))}
-            className="w-24 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
           />
         </label>
       </div>
@@ -126,7 +127,7 @@ export default function PlanPage() {
           </p>
           <button
             onClick={crearPlan}
-            className="rounded-md bg-banex-600 px-5 py-2 text-sm font-medium text-white hover:bg-banex-700"
+            className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md"
           >
             Crear plan
           </button>
@@ -134,12 +135,12 @@ export default function PlanPage() {
       ) : (
         <>
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-gray-700">
+            <h2 className="text-sm font-semibold text-banex-800">
               {finca} · Semana {semana}/{anio}
             </h2>
             <button
               onClick={eliminarPlan}
-              className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
             >
               Eliminar plan
             </button>
@@ -183,8 +184,8 @@ export default function PlanPage() {
           <AddPlanItemForm planId={plan.id} existentes={planReferencias} onAdded={refetch} />
 
           {adicionales.length > 0 && (
-            <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <h3 className="mb-2 text-sm font-medium text-amber-900">Producido sin plan asignado</h3>
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+              <h3 className="mb-2 text-sm font-semibold text-amber-900">Producido sin plan asignado</h3>
               <div className="flex flex-col gap-2">
                 {adicionales.map(([referencia, cajas]) => (
                   <AdicionalRow
@@ -262,7 +263,7 @@ function PlanItemRow({
             step="0.1"
             value={draftPallets}
             onChange={(e) => setDraftPallets(Number(e.target.value))}
-            className="w-24 rounded border border-gray-300 px-2 py-1 text-xs"
+            className="w-24 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15"
           />
         ) : (
           item.pallets_plan
@@ -289,11 +290,14 @@ function PlanItemRow({
             <button
               onClick={save}
               disabled={busy}
-              className="rounded bg-banex-600 px-2 py-1 text-xs font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+              className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
             >
               Guardar
             </button>
-            <button onClick={() => setEditing(false)} className="rounded border border-gray-300 px-2 py-1 text-xs">
+            <button
+              onClick={() => setEditing(false)}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+            >
               Cancelar
             </button>
           </>
@@ -304,14 +308,14 @@ function PlanItemRow({
                 setDraftPallets(item.pallets_plan)
                 setEditing(true)
               }}
-              className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
             >
               Editar
             </button>
             <button
               onClick={remove}
               disabled={busy}
-              className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
             >
               Eliminar
             </button>
@@ -375,7 +379,7 @@ function AddPlanItemForm({
 
   return (
     <form onSubmit={handleSubmit} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-      <h3 className="mb-3 text-sm font-medium text-gray-700">Agregar referencia al plan</h3>
+      <SectionHeading>Agregar referencia al plan</SectionHeading>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Referencia">
           <input
@@ -385,7 +389,7 @@ function AddPlanItemForm({
             autoComplete="off"
             value={referencia}
             onChange={(e) => setReferencia(e.target.value)}
-            className="w-56 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-banex-600 focus:outline-none"
+            className="w-56 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
             placeholder="Escribe o elige una referencia"
           />
         </Field>
@@ -397,7 +401,7 @@ function AddPlanItemForm({
             step="0.1"
             value={palletsPlan || ''}
             onChange={(e) => setPalletsPlan(Number(e.target.value))}
-            className="w-28 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-banex-600 focus:outline-none"
+            className="w-28 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
           />
         </Field>
         <Field label="Cajas meta (calculado)">
@@ -405,13 +409,13 @@ function AddPlanItemForm({
             type="text"
             disabled
             value={cajasCalculadas ?? '—'}
-            className="w-28 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm"
+            className="w-28 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2.5 text-sm text-gray-500"
           />
         </Field>
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-banex-600 px-4 py-2 text-sm font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+          className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
         >
           Agregar
         </button>
@@ -454,7 +458,7 @@ function AdicionalRow({
   }
 
   return (
-    <div className="flex items-center justify-between rounded-md bg-white px-3 py-2 text-sm">
+    <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
       <span>
         <strong className="text-gray-900">{referencia}</strong>
         <span className="text-gray-500"> — {cajas} cajas producidas, no estaba en el plan</span>
@@ -462,7 +466,7 @@ function AdicionalRow({
       <button
         onClick={agregar}
         disabled={busy}
-        className="rounded border border-amber-300 px-2 py-1 text-xs text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+        className="rounded-md border border-amber-300 px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
       >
         + Agregar al plan
       </button>

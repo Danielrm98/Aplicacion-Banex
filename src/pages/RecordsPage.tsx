@@ -14,7 +14,7 @@ export default function RecordsPage() {
   return (
     <div>
       <div className="mb-4">
-        <h1 className="text-lg font-semibold text-gray-900">Historial de registros</h1>
+        <h1 className="text-xl font-bold text-banex-900 sm:text-2xl">Historial de registros</h1>
         <p className="text-sm text-gray-500">{registros.length} registro(s) · {filas.length} línea(s)</p>
       </div>
 

@@ -195,14 +195,14 @@ function RegistroCard({
         <div className="flex gap-2">
           <button
             onClick={() => setExpanded((e) => !e)}
-            className="rounded border border-banex-600 px-2 py-1 text-xs font-medium text-banex-700 hover:bg-banex-50"
+            className="rounded-md border border-banex-600 px-2 py-1 text-xs font-medium text-banex-700 shadow-sm transition-colors hover:bg-banex-50"
           >
             {expanded ? 'Colapsar ▲' : 'Expandir ▼'}
           </button>
           {!editingHeader && (
             <button
               onClick={startEditHeader}
-              className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
             >
               Editar información
             </button>
@@ -210,7 +210,7 @@ function RegistroCard({
           <button
             onClick={removeRegistro}
             disabled={busy}
-            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
             Eliminar registro
           </button>
@@ -278,7 +278,7 @@ function RegistroCard({
               <Seccion titulo="Racimos">
                 <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
                   {SEMANAS_RACIMO.map((semana) => (
-                    <div key={semana} className="rounded border border-gray-200 p-2">
+                    <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2 transition-colors hover:border-banex-200">
                       <p className="mb-1 text-xs font-semibold text-gray-500">Semana {semana}</p>
                       <MiniField label="Racimos">
                         <input
@@ -371,7 +371,7 @@ function RegistroCard({
                 <button
                   onClick={saveHeader}
                   disabled={busy}
-                  className="rounded-md bg-banex-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+                  className="rounded-lg bg-banex-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
                 >
                   Guardar información
                 </button>
@@ -380,7 +380,7 @@ function RegistroCard({
                     setEditingHeader(false)
                     setHeaderError(null)
                   }}
-                  className="rounded-md border border-gray-300 px-4 py-1.5 text-sm hover:bg-gray-50"
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
@@ -510,7 +510,10 @@ function RegistroCard({
 function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">{titulo}</h3>
+      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-banex-600 uppercase">
+        <span className="h-3 w-0.5 shrink-0 rounded-full bg-banana-500" />
+        {titulo}
+      </h3>
       {children}
     </div>
   )
@@ -526,7 +529,7 @@ function MiniField({ label, children }: { label: string; children: ReactNode }) 
 }
 
 const smallInput =
-  'w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-banex-600 focus:outline-none'
+  'w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15'
 
 function ItemRow({
   item,
@@ -606,14 +609,14 @@ function ItemRow({
               setDraft(item)
               setEditing(true)
             }}
-            className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
           >
             Editar
           </button>
           <button
             onClick={remove}
             disabled={busy}
-            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
             Eliminar
           </button>
@@ -665,11 +668,11 @@ function ItemRow({
         <button
           onClick={save}
           disabled={busy}
-          className="rounded bg-banex-600 px-2 py-1 text-xs font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+          className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
         >
           Guardar
         </button>
-        <button onClick={() => setEditing(false)} className="rounded border border-gray-300 px-2 py-1 text-xs">
+        <button onClick={() => setEditing(false)} className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50">
           Cancelar
         </button>
       </td>
@@ -730,14 +733,14 @@ function TransporteRow({ transporte, onChanged }: { transporte: Transporte; onCh
               setDraft(transporte)
               setEditing(true)
             }}
-            className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
           >
             Editar
           </button>
           <button
             onClick={remove}
             disabled={busy}
-            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
             Eliminar
           </button>
@@ -798,11 +801,11 @@ function TransporteRow({ transporte, onChanged }: { transporte: Transporte; onCh
         <button
           onClick={save}
           disabled={busy}
-          className="rounded bg-banex-600 px-2 py-1 text-xs font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+          className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
         >
           Guardar
         </button>
-        <button onClick={() => setEditing(false)} className="rounded border border-gray-300 px-2 py-1 text-xs">
+        <button onClick={() => setEditing(false)} className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50">
           Cancelar
         </button>
       </td>
@@ -810,4 +813,5 @@ function TransporteRow({ transporte, onChanged }: { transporte: Transporte; onCh
   )
 }
 
-const cellInput = 'w-full rounded border border-gray-300 px-2 py-1 text-xs focus:border-banex-600 focus:outline-none'
+const cellInput =
+  'w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15'

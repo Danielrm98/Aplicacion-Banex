@@ -25,10 +25,12 @@
 body {
   margin: 0;
   min-height: 100svh;
-  background-color: #f4f7f4;
+  background-color: #eef4ef;
   background-image:
-    radial-gradient(1100px circle at -5% -10%, rgba(15, 122, 52, 0.08), transparent 55%),
-    radial-gradient(900px circle at 105% -10%, rgba(237, 183, 15, 0.06), transparent 50%);
+    radial-gradient(1200px circle at -10% -15%, rgba(15, 122, 52, 0.18), transparent 50%),
+    radial-gradient(1000px circle at 110% -10%, rgba(237, 183, 15, 0.16), transparent 55%),
+    radial-gradient(900px circle at 50% 115%, rgba(15, 122, 52, 0.10), transparent 60%),
+    linear-gradient(180deg, #f4f8f4 0%, #eaf2ea 100%);
   background-attachment: fixed;
   background-repeat: no-repeat;
 }

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { FINCAS } from '../lib/fincas'
 import { getIsoWeek } from '../lib/isoWeek'
 import { useReferencias } from '../lib/useReferencias'
+import SectionHeading from './SectionHeading'
 import {
   CAJA_20KG_KG,
   CANASTILLA_KG,
@@ -313,10 +314,10 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-gray-700">Racimos cosechados por edad (semanas)</h2>
+        <SectionHeading>Racimos cosechados por edad (semanas)</SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {SEMANAS_RACIMO.map((semana) => (
-            <div key={semana} className="rounded-lg border border-gray-200 p-2">
+            <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2.5 transition-colors hover:border-banex-200">
               <p className="mb-1.5 text-xs font-semibold text-gray-500">Semana {semana}</p>
               <Field label="Racimos">
                 <input
@@ -372,7 +373,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-gray-700">Canastillas</h2>
+        <SectionHeading>Canastillas</SectionHeading>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           <Field label="Canastillas generadas">
             <input
@@ -396,8 +397,8 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
       </div>
 
       <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-gray-700">Referencias producidas</h2>
+        <div className="mb-3 flex items-center justify-between">
+          <SectionHeading>Referencias producidas</SectionHeading>
           {referenciasError && <span className="text-xs text-red-600">No se pudo cargar el catálogo</span>}
         </div>
 
@@ -406,7 +407,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
             const peso = pesoDe(item.referencia)
             const cajas20kg = cajas20kgDe(item)
             return (
-              <div key={item.key} className="rounded-lg border border-gray-200 p-3">
+              <div key={item.key} className="rounded-xl border border-gray-100 bg-gray-50/40 p-3 transition-colors hover:border-banex-200">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
                   <div className="lg:col-span-2">
                     <Field label="Referencia">
@@ -466,7 +467,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
                     <button
                       type="button"
                       onClick={() => removeItem(item.key)}
-                      className="rounded-md border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50"
+                      className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
                     >
                       Quitar línea {idx + 1}
                     </button>
@@ -480,7 +481,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
         <button
           type="button"
           onClick={addItem}
-          className="mt-3 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
         >
           + Agregar referencia
         </button>
@@ -492,31 +493,31 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
         </datalist>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <div className="rounded-xl border border-banex-100 bg-banex-50/50 p-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <Field label="Total cajas">
-            <input type="text" disabled value={totalCajas} className={`${inputClass} bg-white font-medium`} />
+            <input type="text" disabled value={totalCajas} className={`${inputClass} !bg-white font-medium`} />
           </Field>
           <Field label="Total cajas 20kg">
             <input
               type="text"
               disabled
               value={totalCajas20kg.toFixed(2)}
-              className={`${inputClass} bg-white font-medium`}
+              className={`${inputClass} !bg-white font-medium`}
             />
           </Field>
           <Field label="Kilos cajas 20kg">
-            <input type="text" disabled value={kilosCajas20kg.toFixed(2)} className={`${inputClass} bg-white`} />
+            <input type="text" disabled value={kilosCajas20kg.toFixed(2)} className={`${inputClass} !bg-white`} />
           </Field>
           <Field label="Kilos canastillas">
-            <input type="text" disabled value={kilosCanastillas.toFixed(2)} className={`${inputClass} bg-white`} />
+            <input type="text" disabled value={kilosCanastillas.toFixed(2)} className={`${inputClass} !bg-white`} />
           </Field>
           <Field label="Peso neto de racimo (kg)">
             <input
               type="text"
               disabled
               value={pesoNetoRacimo !== null ? pesoNetoRacimo.toFixed(2) : '—'}
-              className={`${inputClass} bg-white font-medium`}
+              className={`${inputClass} !bg-white font-medium`}
             />
           </Field>
         </div>
@@ -527,7 +528,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
               type="text"
               disabled
               value={ratio !== null ? ratio.toFixed(2) : '—'}
-              className={`${inputClass} bg-white font-medium`}
+              className={`${inputClass} !bg-white font-medium`}
             />
           </Field>
           <Field label="Merma (%)">
@@ -535,7 +536,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
               type="text"
               disabled
               value={merma !== null ? `${merma.toFixed(1)}%` : '—'}
-              className={`${inputClass} bg-white font-medium`}
+              className={`${inputClass} !bg-white font-medium`}
             />
           </Field>
         </div>
@@ -547,12 +548,12 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
       </div>
 
       <div>
-        <h2 className="mb-2 text-sm font-medium text-gray-700">Transporte</h2>
+        <SectionHeading>Transporte</SectionHeading>
 
         {transportes.length > 0 && (
           <div className="flex flex-col gap-3">
             {transportes.map((t, idx) => (
-              <div key={t.key} className="rounded-lg border border-gray-200 p-3">
+              <div key={t.key} className="rounded-xl border border-gray-100 bg-gray-50/40 p-3 transition-colors hover:border-banex-200">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <Field label="Tipo de unidad">
                     <select
@@ -616,7 +617,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
                   <button
                     type="button"
                     onClick={() => removeTransporte(t.key)}
-                    className="rounded-md border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50"
+                    className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm transition-colors hover:bg-red-50"
                   >
                     Quitar unidad {idx + 1}
                   </button>
@@ -629,7 +630,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
         <button
           type="button"
           onClick={addTransporte}
-          className="mt-3 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
         >
           + Agregar unidad de transporte
         </button>
@@ -641,7 +642,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
         <button
           type="submit"
           disabled={saving}
-          className="rounded-md bg-banex-600 px-5 py-2 text-sm font-medium text-white hover:bg-banex-700 disabled:opacity-50"
+          className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50 disabled:hover:bg-banex-600 disabled:hover:shadow-sm"
         >
           {saving ? 'Guardando...' : 'Guardar registro'}
         </button>
@@ -651,7 +652,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
 }
 
 const inputClass =
-  'w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-banex-600 focus:outline-none'
+  'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15 disabled:text-gray-500'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

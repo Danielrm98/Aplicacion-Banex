@@ -13,7 +13,7 @@ const navItems = [
 export default function Layout() {
   return (
     <div className="min-h-svh pb-14 sm:pb-0">
-      <header className="sticky top-0 z-20 border-b border-banex-800 bg-banex-700 shadow-md">
+      <header className="sticky top-0 z-20 border-b border-banex-800 bg-gradient-to-r from-banex-700 via-banex-700 to-banex-800 shadow-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-2.5">
             <img

@@ -55,7 +55,7 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-4">
-        <h1 className="text-lg font-semibold text-gray-900">Reportes</h1>
+        <h1 className="text-xl font-bold text-banex-900 sm:text-2xl">Reportes</h1>
       </div>
 
       <div className="mb-4 flex gap-1 border-b border-gray-200">
@@ -198,8 +198,8 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-        active ? 'border-banex-600 text-banex-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+      className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+        active ? 'border-banex-600 text-banex-700' : 'border-transparent text-gray-500 hover:border-banex-200 hover:text-banex-600'
       }`}
     >
       {children}
@@ -209,9 +209,9 @@ function TabButton({
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 transition-shadow hover:shadow-md">
       <div className="mb-2">
-        <h2 className="text-sm font-medium text-gray-700">{title}</h2>
+        <h2 className="text-sm font-semibold text-banex-800">{title}</h2>
         {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
       </div>
       {children}
