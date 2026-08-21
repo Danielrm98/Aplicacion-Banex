@@ -219,7 +219,7 @@ export default function CatalogPage() {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15'
+  'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

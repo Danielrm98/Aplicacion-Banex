@@ -16,7 +16,7 @@ export default function FiltersBar({ filtros, onChange }: Props) {
         <select
           value={filtros.semana ?? ''}
           onChange={(e) => onChange({ ...filtros, semana: e.target.value ? Number(e.target.value) : undefined })}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
         >
           <option value="">Todas las semanas</option>
           {SEMANAS.map((semana) => (
@@ -33,7 +33,7 @@ export default function FiltersBar({ filtros, onChange }: Props) {
           type="date"
           value={filtros.fecha ?? ''}
           onChange={(e) => onChange({ ...filtros, fecha: e.target.value || undefined })}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
         />
       </label>
 
@@ -42,7 +42,7 @@ export default function FiltersBar({ filtros, onChange }: Props) {
         <select
           value={filtros.finca ?? ''}
           onChange={(e) => onChange({ ...filtros, finca: e.target.value || undefined })}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
         >
           <option value="">Todas las fincas</option>
           {FINCAS.map((finca) => (

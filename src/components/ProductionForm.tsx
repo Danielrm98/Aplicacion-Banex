@@ -248,7 +248,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Fecha">
           <input
@@ -315,10 +315,10 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
 
       <div>
         <SectionHeading>Racimos cosechados por edad (semanas)</SectionHeading>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           {SEMANAS_RACIMO.map((semana) => (
-            <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2.5 transition-colors hover:border-banex-200">
-              <p className="mb-1.5 text-xs font-semibold text-gray-500">Semana {semana}</p>
+            <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2 transition-colors hover:border-banex-200">
+              <p className="mb-1 text-xs font-semibold text-gray-500">Semana {semana}</p>
               <Field label="Racimos">
                 <input
                   type="number"
@@ -329,7 +329,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
                   className={inputClass}
                 />
               </Field>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <Field label="Grado promedio">
                   <input
                     type="number"
@@ -652,7 +652,7 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15 disabled:text-gray-500'
+  'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:text-gray-500'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

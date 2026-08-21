@@ -80,7 +80,7 @@ export default function PlanPage() {
           <select
             value={finca}
             onChange={(e) => setFinca(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           >
             {FINCAS.map((f) => (
               <option key={f} value={f}>
@@ -95,7 +95,7 @@ export default function PlanPage() {
           <select
             value={semana}
             onChange={(e) => setSemana(Number(e.target.value))}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           >
             {SEMANAS.map((s) => (
               <option key={s} value={s}>
@@ -111,7 +111,7 @@ export default function PlanPage() {
             type="number"
             value={anio}
             onChange={(e) => setAnio(Number(e.target.value))}
-            className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+            className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>
       </div>
@@ -389,7 +389,7 @@ function AddPlanItemForm({
             autoComplete="off"
             value={referencia}
             onChange={(e) => setReferencia(e.target.value)}
-            className="w-56 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+            className="w-56 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
             placeholder="Escribe o elige una referencia"
           />
         </Field>
@@ -401,7 +401,7 @@ function AddPlanItemForm({
             step="0.1"
             value={palletsPlan || ''}
             onChange={(e) => setPalletsPlan(Number(e.target.value))}
-            className="w-28 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15"
+            className="w-28 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </Field>
         <Field label="Cajas meta (calculado)">
@@ -409,7 +409,7 @@ function AddPlanItemForm({
             type="text"
             disabled
             value={cajasCalculadas ?? '—'}
-            className="w-28 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2.5 text-sm text-gray-500"
+            className="w-28 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-500"
           />
         </Field>
         <button

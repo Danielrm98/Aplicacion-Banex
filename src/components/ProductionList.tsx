@@ -276,7 +276,7 @@ function RegistroCard({
               </Seccion>
 
               <Seccion titulo="Racimos">
-                <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+                <div className="mb-3 grid grid-cols-3 gap-2.5 sm:grid-cols-6">
                   {SEMANAS_RACIMO.map((semana) => (
                     <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2 transition-colors hover:border-banex-200">
                       <p className="mb-1 text-xs font-semibold text-gray-500">Semana {semana}</p>
@@ -529,7 +529,7 @@ function MiniField({ label, children }: { label: string; children: ReactNode }) 
 }
 
 const smallInput =
-  'w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-banex-500/15'
+  'w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20'
 
 function ItemRow({
   item,
@@ -814,4 +814,4 @@ function TransporteRow({ transporte, onChanged }: { transporte: Transporte; onCh
 }
 
 const cellInput =
-  'w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15'
+  'w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20'
