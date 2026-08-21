@@ -88,7 +88,7 @@ export default function CatalogPage() {
         Crea nuevas marcas/referencias cuando asignen una que no esté en la lista, o elimina las que ya no uses.
       </p>
 
-      <div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+      <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <h2 className="mb-3 text-sm font-medium text-gray-700">Agregar referencia</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="lg:col-span-2">
@@ -168,7 +168,7 @@ export default function CatalogPage() {
         </form>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <h2 className="mb-3 text-sm font-medium text-gray-700">Referencias existentes ({referencias.length})</h2>
         {loading ? (
           <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>

@@ -15,6 +15,10 @@ function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
 }
 
+function campoGrado(semana: (typeof SEMANAS_RACIMO)[number]) {
+  return `grado_semana_${semana}` as const
+}
+
 interface ItemDraft {
   key: number
   referencia: string
@@ -44,6 +48,12 @@ const emptyHeader: ProduccionHeaderInput = {
   racimos_semana_10: 0,
   racimos_semana_11: 0,
   racimos_semana_12: 0,
+  grado_semana_7: null,
+  grado_semana_8: null,
+  grado_semana_9: null,
+  grado_semana_10: null,
+  grado_semana_11: null,
+  grado_semana_12: null,
   racimos_recusados: 0,
   canastillas: 0,
   notas: '',
@@ -306,16 +316,33 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
         <h2 className="mb-2 text-sm font-medium text-gray-700">Racimos cosechados por edad (semanas)</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {SEMANAS_RACIMO.map((semana) => (
-            <Field key={semana} label={`Semana ${semana}`}>
-              <input
-                type="number"
-                min={0}
-                step="1"
-                value={header[campoRacimo(semana)] || ''}
-                onChange={(e) => updateHeader(campoRacimo(semana), Number(e.target.value))}
-                className={inputClass}
-              />
-            </Field>
+            <div key={semana} className="rounded-lg border border-gray-200 p-2">
+              <p className="mb-1.5 text-xs font-semibold text-gray-500">Semana {semana}</p>
+              <Field label="Racimos">
+                <input
+                  type="number"
+                  min={0}
+                  step="1"
+                  value={header[campoRacimo(semana)] || ''}
+                  onChange={(e) => updateHeader(campoRacimo(semana), Number(e.target.value))}
+                  className={inputClass}
+                />
+              </Field>
+              <div className="mt-2">
+                <Field label="Grado promedio">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.1"
+                    value={header[campoGrado(semana)] ?? ''}
+                    onChange={(e) =>
+                      updateHeader(campoGrado(semana), e.target.value === '' ? null : Number(e.target.value))
+                    }
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+            </div>
           ))}
         </div>
 

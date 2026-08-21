@@ -12,9 +12,9 @@ const navItems = [
 
 export default function Layout() {
   return (
-    <div className="min-h-svh bg-gray-50 pb-14 sm:pb-0">
-      <header className="border-b border-banex-800 bg-banex-700">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-2.5">
+    <div className="min-h-svh pb-14 sm:pb-0">
+      <header className="sticky top-0 z-20 border-b border-banex-800 bg-banex-700 shadow-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-2.5">
             <img
               src={banexLogo}
@@ -24,15 +24,15 @@ export default function Layout() {
             <span className="text-sm font-semibold text-white">ApproBan</span>
           </div>
 
-          <nav className="hidden gap-1 sm:flex">
+          <nav className="hidden gap-1 rounded-full bg-black/10 p-1 sm:flex">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `rounded-md px-3 py-1.5 text-sm font-medium ${
-                    isActive ? 'bg-white text-banex-800' : 'text-banex-50 hover:bg-banex-600'
+                  `rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white text-banex-800 shadow-sm' : 'text-banex-50 hover:bg-white/10'
                   }`
                 }
               >
@@ -50,11 +50,11 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-gray-200 bg-white sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] sm:hidden">
         {navItems.map((item) => (
           <NavLink
             key={item.to}

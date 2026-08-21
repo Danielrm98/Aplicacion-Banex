@@ -17,7 +17,7 @@ export default function EntryPage() {
         <ExportButtons registros={registros} />
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <ProductionForm onSaved={() => setSavedCount((c) => c + 1)} />
       </div>
 

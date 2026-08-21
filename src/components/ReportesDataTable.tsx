@@ -2,7 +2,7 @@ import type { FilaCompleta } from '../lib/aggregations'
 
 export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
 
       {filas.length === 0 ? (

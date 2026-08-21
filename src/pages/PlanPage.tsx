@@ -73,7 +73,7 @@ export default function PlanPage() {
         cumplimiento frente a la producción real.
       </p>
 
-      <div className="mb-6 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <label className="text-sm">
           <span className="mb-1 block text-gray-600">Finca</span>
           <select
@@ -120,7 +120,7 @@ export default function PlanPage() {
       ) : error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
       ) : !plan ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 text-center">
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6 text-center">
           <p className="mb-3 text-sm text-gray-600">
             Aún no hay plan para <strong>{finca}</strong>, semana {semana}/{anio}.
           </p>
@@ -145,7 +145,7 @@ export default function PlanPage() {
             </button>
           </div>
 
-          <div className="mb-4 overflow-x-auto rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm p-4">
             <table className="w-full min-w-[820px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
@@ -374,7 +374,7 @@ function AddPlanItemForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-gray-200 bg-white p-4">
+    <form onSubmit={handleSubmit} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <h3 className="mb-3 text-sm font-medium text-gray-700">Agregar referencia al plan</h3>
       <div className="flex flex-wrap items-end gap-3">
         <Field label="Referencia">

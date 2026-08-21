@@ -16,6 +16,10 @@ function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
 }
 
+function campoGrado(semana: (typeof SEMANAS_RACIMO)[number]) {
+  return `grado_semana_${semana}` as const
+}
+
 interface HeaderDraft {
   fecha: string
   hora_finalizacion: string
@@ -27,6 +31,12 @@ interface HeaderDraft {
   racimos_semana_10: number
   racimos_semana_11: number
   racimos_semana_12: number
+  grado_semana_7: number | null
+  grado_semana_8: number | null
+  grado_semana_9: number | null
+  grado_semana_10: number | null
+  grado_semana_11: number | null
+  grado_semana_12: number | null
   racimos_recusados: number
   canastillas: number
   notas: string
@@ -44,6 +54,12 @@ function headerDraftDe(registro: Produccion): HeaderDraft {
     racimos_semana_10: registro.racimos_semana_10,
     racimos_semana_11: registro.racimos_semana_11,
     racimos_semana_12: registro.racimos_semana_12,
+    grado_semana_7: registro.grado_semana_7,
+    grado_semana_8: registro.grado_semana_8,
+    grado_semana_9: registro.grado_semana_9,
+    grado_semana_10: registro.grado_semana_10,
+    grado_semana_11: registro.grado_semana_11,
+    grado_semana_12: registro.grado_semana_12,
     racimos_recusados: registro.racimos_recusados,
     canastillas: registro.canastillas,
     notas: registro.notas ?? '',
@@ -144,6 +160,12 @@ function RegistroCard({
         racimos_semana_10: headerDraft.racimos_semana_10,
         racimos_semana_11: headerDraft.racimos_semana_11,
         racimos_semana_12: headerDraft.racimos_semana_12,
+        grado_semana_7: headerDraft.grado_semana_7,
+        grado_semana_8: headerDraft.grado_semana_8,
+        grado_semana_9: headerDraft.grado_semana_9,
+        grado_semana_10: headerDraft.grado_semana_10,
+        grado_semana_11: headerDraft.grado_semana_11,
+        grado_semana_12: headerDraft.grado_semana_12,
         racimos_recusados: headerDraft.racimos_recusados,
         canastillas: headerDraft.canastillas,
         notas: headerDraft.notas || null,
@@ -160,7 +182,7 @@ function RegistroCard({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <span className="font-medium text-gray-900">{registro.fecha}</span>
@@ -256,17 +278,37 @@ function RegistroCard({
               <Seccion titulo="Racimos">
                 <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
                   {SEMANAS_RACIMO.map((semana) => (
-                    <MiniField key={semana} label={`Semana ${semana}`}>
-                      <input
-                        type="number"
-                        min={0}
-                        value={headerDraft[campoRacimo(semana)] || ''}
-                        onChange={(e) =>
-                          setHeaderDraft((d) => ({ ...d, [campoRacimo(semana)]: Number(e.target.value) }))
-                        }
-                        className={smallInput}
-                      />
-                    </MiniField>
+                    <div key={semana} className="rounded border border-gray-200 p-2">
+                      <p className="mb-1 text-xs font-semibold text-gray-500">Semana {semana}</p>
+                      <MiniField label="Racimos">
+                        <input
+                          type="number"
+                          min={0}
+                          value={headerDraft[campoRacimo(semana)] || ''}
+                          onChange={(e) =>
+                            setHeaderDraft((d) => ({ ...d, [campoRacimo(semana)]: Number(e.target.value) }))
+                          }
+                          className={smallInput}
+                        />
+                      </MiniField>
+                      <div className="mt-1.5">
+                        <MiniField label="Grado prom.">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.1"
+                            value={headerDraft[campoGrado(semana)] ?? ''}
+                            onChange={(e) =>
+                              setHeaderDraft((d) => ({
+                                ...d,
+                                [campoGrado(semana)]: e.target.value === '' ? null : Number(e.target.value),
+                              }))
+                            }
+                            className={smallInput}
+                          />
+                        </MiniField>
+                      </div>
+                    </div>
                   ))}
                 </div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -389,9 +431,11 @@ function RegistroCard({
                 {totalRacimos > 0 && (
                   <p className="text-xs text-gray-500">
                     Por edad (semanas):{' '}
-                    {SEMANAS_RACIMO.map(
-                      (semana) => `S${semana}: ${registro[`racimos_semana_${semana}` as const]}`,
-                    ).join(' · ')}
+                    {SEMANAS_RACIMO.map((semana) => {
+                      const racimos = registro[campoRacimo(semana)]
+                      const grado = registro[campoGrado(semana)]
+                      return `S${semana}: ${racimos}${grado !== null ? ` (grado ${grado})` : ''}`
+                    }).join(' · ')}
                   </p>
                 )}
               </Seccion>

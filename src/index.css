@@ -25,5 +25,10 @@
 body {
   margin: 0;
   min-height: 100svh;
-  background: #f7faf8;
+  background-color: #f4f7f4;
+  background-image:
+    radial-gradient(1100px circle at -5% -10%, rgba(15, 122, 52, 0.08), transparent 55%),
+    radial-gradient(900px circle at 105% -10%, rgba(237, 183, 15, 0.06), transparent 50%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }

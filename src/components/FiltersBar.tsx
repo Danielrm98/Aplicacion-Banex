@@ -10,7 +10,7 @@ const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function FiltersBar({ filtros, onChange }: Props) {
   return (
-    <div className="mb-4 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white p-4">
+    <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <label className="text-sm">
         <span className="mb-1 block text-gray-600">Semana</span>
         <select

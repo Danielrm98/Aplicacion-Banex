@@ -50,6 +50,12 @@ export interface Produccion {
   racimos_semana_10: number
   racimos_semana_11: number
   racimos_semana_12: number
+  grado_semana_7: number | null
+  grado_semana_8: number | null
+  grado_semana_9: number | null
+  grado_semana_10: number | null
+  grado_semana_11: number | null
+  grado_semana_12: number | null
   racimos_recusados: number
   canastillas: number
   notas: string | null
@@ -72,6 +78,12 @@ export type ProduccionHeaderInput = Pick<
   | 'racimos_semana_10'
   | 'racimos_semana_11'
   | 'racimos_semana_12'
+  | 'grado_semana_7'
+  | 'grado_semana_8'
+  | 'grado_semana_9'
+  | 'grado_semana_10'
+  | 'grado_semana_11'
+  | 'grado_semana_12'
   | 'racimos_recusados'
   | 'canastillas'
   | 'notas'

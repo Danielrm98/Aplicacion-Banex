@@ -209,7 +209,7 @@ function TabButton({
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <div className="mb-2">
         <h2 className="text-sm font-medium text-gray-700">{title}</h2>
         {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
