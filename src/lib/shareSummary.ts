@@ -114,57 +114,55 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
 
   lineas.push('*ApproBan – Registro de producción*')
   lineas.push('')
-  lineas.push(`Fecha: ${r.fecha} (semana ${r.semana})`)
-  lineas.push(`Finca: ${r.finca}`)
-  if (r.horaFinalizacion) lineas.push(`Hora finalización: ${r.horaFinalizacion}`)
+  lineas.push(`*Fecha:* ${r.fecha} (semana ${r.semana})`)
+  lineas.push(`*Finca:* ${r.finca}`)
+  if (r.horaFinalizacion) lineas.push(`*Hora finalización:* ${r.horaFinalizacion}`)
 
   if (r.areaRecorrida !== null) {
     lineas.push('')
     lineas.push('*Área recorrida*')
-    lineas.push(`Hoy: ${r.areaRecorrida} ha${r.porcentajeDia !== null ? ` (${r.porcentajeDia.toFixed(1)}% del área total)` : ''}`)
+    lineas.push(`*Hoy:* ${r.areaRecorrida} ha${r.porcentajeDia !== null ? ` (${r.porcentajeDia.toFixed(1)}% del área total)` : ''}`)
   }
 
   lineas.push('')
   lineas.push('*Racimos por edad*')
   for (const e of r.racimosPorEdad) {
     if (e.racimos > 0 || e.grado !== null) {
-      lineas.push(`S${e.semana}: ${e.racimos}${e.grado !== null ? ` (grado ${e.grado})` : ''}`)
+      lineas.push(`*S${e.semana}:* ${e.racimos}${e.grado !== null ? ` (grado ${e.grado})` : ''}`)
     }
   }
-  lineas.push(`Total cosechados: ${r.totalRacimos}`)
-  lineas.push(`Recusados: ${r.racimosRecusados}`)
+  lineas.push(`*Total cosechados:* ${r.totalRacimos}`)
+  lineas.push(`*Recusados:* ${r.racimosRecusados}`)
 
   lineas.push('')
   lineas.push('*Canastillas*')
-  lineas.push(`${r.canastillas}`)
+  lineas.push(`*Cantidad:* ${r.canastillas}`)
 
   lineas.push('')
   lineas.push('*Referencias producidas*')
   for (const it of r.referencias) {
-    const partes = [`${it.referencia}: ${it.cajas} cajas`, it.cajas20kg !== null ? `${it.cajas20kg.toFixed(2)} cajas 20kg` : null].filter(
-      Boolean,
-    )
-    lineas.push(partes.join(' · '))
+    const partes = [`${it.cajas} cajas`, it.cajas20kg !== null ? `${it.cajas20kg.toFixed(2)} cajas 20kg` : null].filter(Boolean)
+    lineas.push(`*${it.referencia}:* ${partes.join(' · ')}`)
   }
 
   lineas.push('')
   lineas.push('*Totales*')
-  lineas.push(`Cajas: ${r.totalCajas}`)
-  lineas.push(`Cajas 20kg: ${r.totalCajas20kg.toFixed(2)}`)
-  if (r.pesoNetoRacimo !== null) lineas.push(`Peso neto de racimo: ${r.pesoNetoRacimo.toFixed(2)} kg`)
-  if (r.ratio !== null) lineas.push(`Ratio: ${r.ratio.toFixed(2)}`)
-  if (r.merma !== null) lineas.push(`Merma: ${r.merma.toFixed(1)}%`)
+  lineas.push(`*Cajas:* ${r.totalCajas}`)
+  lineas.push(`*Cajas 20kg:* ${r.totalCajas20kg.toFixed(2)}`)
+  if (r.pesoNetoRacimo !== null) lineas.push(`*Peso neto de racimo:* ${r.pesoNetoRacimo.toFixed(2)} kg`)
+  if (r.ratio !== null) lineas.push(`*Ratio:* ${r.ratio.toFixed(2)}`)
+  if (r.merma !== null) lineas.push(`*Merma:* ${r.merma.toFixed(1)}%`)
 
   if (r.transportes.length > 0) {
     lineas.push('')
     lineas.push('*Transporte*')
     for (const t of r.transportes) {
       const partes = [
-        t.tipo,
-        t.placa,
-        t.sello,
-        t.horaLlegada ? `Llegada: ${t.horaLlegada}` : null,
-        t.horaSalida ? `Salida: ${t.horaSalida}` : null,
+        t.tipo ? `*Tipo:* ${t.tipo}` : null,
+        t.placa ? `*Placa:* ${t.placa}` : null,
+        t.sello ? `*Sello:* ${t.sello}` : null,
+        t.horaLlegada ? `*Llegada:* ${t.horaLlegada}` : null,
+        t.horaSalida ? `*Salida:* ${t.horaSalida}` : null,
       ].filter(Boolean)
       lineas.push(partes.join(' · '))
     }
@@ -172,7 +170,7 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
 
   if (r.notas) {
     lineas.push('')
-    lineas.push(`Notas: ${r.notas}`)
+    lineas.push(`*Notas:* ${r.notas}`)
   }
 
   return lineas.join('\n')
