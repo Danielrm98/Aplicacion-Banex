@@ -111,7 +111,9 @@ insert into public.referencias (marca, cajas_pallet, factor_conversion, tipo_caj
 -- ============================================================
 create table public.fincas (
   nombre text primary key,
-  hectareas numeric check (hectareas >= 0)
+  hectareas numeric check (hectareas >= 0),
+  latitud numeric check (latitud between -90 and 90),
+  longitud numeric check (longitud between -180 and 180)
 );
 
 alter table public.fincas enable row level security;

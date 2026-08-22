@@ -5,6 +5,7 @@ import { useFincas } from '../lib/useFincas'
 import { FINCAS } from '../lib/fincas'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
+import type { Finca } from '../types/finca'
 import SectionHeading from '../components/SectionHeading'
 import TabButton from '../components/TabButton'
 
@@ -242,36 +243,41 @@ function ReferenciasTab() {
 
 function FincasTab() {
   const { fincas, loading, error, refetch } = useFincas()
-  const hectareasMap = new Map(fincas.map((f) => [f.nombre, f.hectareas]))
+  const fincasMap = new Map(fincas.map((f) => [f.nombre, f]))
   const totalHectareas = fincas.reduce((sum, f) => sum + (f.hectareas ?? 0), 0)
 
   return (
     <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <div className="mb-3 flex items-center justify-between">
-        <SectionHeading>Hectareaje por finca</SectionHeading>
+        <SectionHeading>Hectareaje y ubicación por finca</SectionHeading>
         {totalHectareas > 0 && (
           <span className="text-sm text-gray-500">
             Total: <span className="font-medium text-banex-800">{totalHectareas.toLocaleString('es')} ha</span>
           </span>
         )}
       </div>
+      <p className="mb-3 text-xs text-gray-500">
+        La latitud/longitud de cada finca se usa para mostrar el pronóstico del clima en Registrar.
+      </p>
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
       ) : error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] border-collapse text-sm">
+          <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
                 <th className="py-2 pr-3 font-medium">Finca</th>
                 <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
+                <th className="py-2 pr-3 font-medium">Latitud</th>
+                <th className="py-2 pr-3 font-medium">Longitud</th>
                 <th className="py-2 pr-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {FINCAS.map((nombre) => (
-                <FincaRow key={nombre} nombre={nombre} hectareas={hectareasMap.get(nombre) ?? null} onSaved={refetch} />
+                <FincaRow key={nombre} nombre={nombre} finca={fincasMap.get(nombre) ?? null} onSaved={refetch} />
               ))}
             </tbody>
           </table>
@@ -283,21 +289,28 @@ function FincasTab() {
 
 function FincaRow({
   nombre,
-  hectareas,
+  finca,
   onSaved,
 }: {
   nombre: string
-  hectareas: number | null
+  finca: Finca | null
   onSaved: () => void
 }) {
-  const [draft, setDraft] = useState<string>(hectareas !== null ? String(hectareas) : '')
+  const [draftHectareas, setDraftHectareas] = useState<string>(finca?.hectareas != null ? String(finca.hectareas) : '')
+  const [draftLat, setDraftLat] = useState<string>(finca?.latitud != null ? String(finca.latitud) : '')
+  const [draftLon, setDraftLon] = useState<string>(finca?.longitud != null ? String(finca.longitud) : '')
   const [busy, setBusy] = useState(false)
-  const draftValue = draft === '' ? null : Number(draft)
-  const dirty = draftValue !== hectareas
+
+  const hectareasValue = draftHectareas === '' ? null : Number(draftHectareas)
+  const latValue = draftLat === '' ? null : Number(draftLat)
+  const lonValue = draftLon === '' ? null : Number(draftLon)
+  const dirty = hectareasValue !== (finca?.hectareas ?? null) || latValue !== (finca?.latitud ?? null) || lonValue !== (finca?.longitud ?? null)
 
   async function guardar() {
     setBusy(true)
-    const { error } = await supabase.from('fincas').upsert({ nombre, hectareas: draftValue })
+    const { error } = await supabase
+      .from('fincas')
+      .upsert({ nombre, hectareas: hectareasValue, latitud: latValue, longitud: lonValue })
     setBusy(false)
     if (error) {
       alert(`No se pudo guardar: ${error.message}`)
@@ -310,19 +323,43 @@ function FincaRow({
     <tr className="border-b border-gray-100">
       <td className="py-1.5 pr-3 font-medium text-gray-900">{nombre}</td>
       <td className="py-1.5 pr-3">
-        <div className="w-32">
+        <div className="w-28">
           <input
             type="number"
             min={0}
             step="0.01"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            value={draftHectareas}
+            onChange={(e) => setDraftHectareas(e.target.value)}
             className={inputClass}
             placeholder="—"
           />
         </div>
       </td>
       <td className="py-1.5 pr-3">
+        <div className="w-28">
+          <input
+            type="number"
+            step="0.000001"
+            value={draftLat}
+            onChange={(e) => setDraftLat(e.target.value)}
+            className={inputClass}
+            placeholder="Ej. 10.7"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">
+        <div className="w-28">
+          <input
+            type="number"
+            step="0.000001"
+            value={draftLon}
+            onChange={(e) => setDraftLon(e.target.value)}
+            className={inputClass}
+            placeholder="Ej. -74.2"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3 whitespace-nowrap">
         <button
           onClick={guardar}
           disabled={!dirty || busy}

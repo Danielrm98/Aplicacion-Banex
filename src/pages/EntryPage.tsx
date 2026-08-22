@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ProductionForm from '../components/ProductionForm'
 import ExportButtons from '../components/ExportButtons'
 import ShareSummaryPanel from '../components/ShareSummaryPanel'
+import FincaClimaPanel from '../components/FincaClimaPanel'
 import { useProducciones } from '../lib/useProducciones'
 import { useFincas } from '../lib/useFincas'
 import { FINCAS } from '../lib/fincas'
@@ -66,6 +67,8 @@ export default function EntryPage() {
         </div>
         <ExportButtons registros={registros} />
       </div>
+
+      <FincaClimaPanel finca={fincas.find((f) => f.nombre === fincaSeleccionada) ?? null} />
 
       {ultimoResumen && (
         <div className="mb-6">
