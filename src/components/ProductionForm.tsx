@@ -6,6 +6,7 @@ import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import SectionHeading from './SectionHeading'
+import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import {
   CAJA_20KG_KG,
   CANASTILLA_KG,
@@ -85,7 +86,7 @@ function emptyTransporte(): TransporteDraft {
   }
 }
 
-export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
+export default function ProductionForm({ onSaved }: { onSaved: (resumen: RegistroResumenCompartir) => void }) {
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
   const { fincas } = useFincas()
   const [header, setHeader] = useState<ProduccionHeaderInput>(emptyHeader)
@@ -256,11 +257,52 @@ export default function ProductionForm({ onSaved }: { onSaved: () => void }) {
       }
     }
 
+    const resumen: RegistroResumenCompartir = {
+      fecha: header.fecha,
+      semana: header.semana,
+      finca: header.finca,
+      horaFinalizacion: header.hora_finalizacion,
+      areaTotal,
+      areaRecorrida: header.area_recorrida,
+      porcentajeDia,
+      porcentajeSemana,
+      racimosPorEdad: SEMANAS_RACIMO.map((s) => ({
+        semana: s,
+        racimos: header[campoRacimo(s)] || 0,
+        grado: header[campoGrado(s)],
+      })),
+      totalRacimos,
+      racimosRecusados: header.racimos_recusados || 0,
+      totalRacimosProcesados,
+      canastillas: header.canastillas || 0,
+      kilosCanastillas,
+      referencias: items.map((it) => ({
+        referencia: it.referencia,
+        cajas: it.cantidad_cajas,
+        cajas20kg: cajas20kgDe(it),
+        rechazadas: it.cajas_rechazadas,
+      })),
+      totalCajas,
+      totalCajas20kg,
+      kilosCajas20kg,
+      pesoNetoRacimo,
+      ratio,
+      merma,
+      transportes: transportes.map((t) => ({
+        tipo: t.tipo,
+        placa: t.placa,
+        sello: t.sello,
+        horaLlegada: t.hora_llegada,
+        horaSalida: t.hora_salida,
+      })),
+      notas: header.notas ?? '',
+    }
+
     setSaving(false)
     setHeader({ ...emptyHeader, fecha: header.fecha, semana: header.semana, finca: header.finca })
     setItems([emptyItem()])
     setTransportes([])
-    onSaved()
+    onSaved(resumen)
   }
 
   return (

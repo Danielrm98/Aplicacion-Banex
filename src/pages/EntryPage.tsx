@@ -1,11 +1,19 @@
 import { useState } from 'react'
 import ProductionForm from '../components/ProductionForm'
 import ExportButtons from '../components/ExportButtons'
+import ShareSummaryPanel from '../components/ShareSummaryPanel'
 import { useProducciones } from '../lib/useProducciones'
+import type { RegistroResumenCompartir } from '../lib/shareSummary'
 
 export default function EntryPage() {
   const [savedCount, setSavedCount] = useState(0)
+  const [ultimoResumen, setUltimoResumen] = useState<RegistroResumenCompartir | null>(null)
   const { registros } = useProducciones({})
+
+  function handleSaved(resumen: RegistroResumenCompartir) {
+    setSavedCount((c) => c + 1)
+    setUltimoResumen(resumen)
+  }
 
   return (
     <div>
@@ -17,8 +25,14 @@ export default function EntryPage() {
         <ExportButtons registros={registros} />
       </div>
 
+      {ultimoResumen && (
+        <div className="mb-6">
+          <ShareSummaryPanel resumen={ultimoResumen} onClose={() => setUltimoResumen(null)} />
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
-        <ProductionForm onSaved={() => setSavedCount((c) => c + 1)} />
+        <ProductionForm onSaved={handleSaved} />
       </div>
 
       {savedCount > 0 && (
