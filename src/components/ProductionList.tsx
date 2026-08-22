@@ -12,6 +12,8 @@ import {
   type Transporte,
 } from '../types/produccion'
 import type { Finca } from '../types/finca'
+import { resumenDesdeProduccion } from '../lib/shareSummary'
+import ShareSummaryPanel from './ShareSummaryPanel'
 
 function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
@@ -118,6 +120,7 @@ function RegistroCard({
 }) {
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [sharing, setSharing] = useState(false)
   const [editingHeader, setEditingHeader] = useState(false)
   const [headerDraft, setHeaderDraft] = useState<HeaderDraft>(() => headerDraftDe(registro))
   const [headerError, setHeaderError] = useState<string | null>(null)
@@ -211,12 +214,18 @@ function RegistroCard({
           <span className="text-gray-500">{totalCajas20kg.toLocaleString('es', { maximumFractionDigits: 2 })} cajas 20kg</span>
           {totalRechazadas > 0 && <span className="text-red-600">{totalRechazadas} rechazadas</span>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setExpanded((e) => !e)}
             className="rounded-md border border-banex-600 px-2 py-1 text-xs font-medium text-banex-700 shadow-sm transition-colors hover:bg-banex-50"
           >
             {expanded ? 'Colapsar ▲' : 'Expandir ▼'}
+          </button>
+          <button
+            onClick={() => setSharing((s) => !s)}
+            className="rounded-md border border-[#25D366] px-2 py-1 text-xs font-medium text-[#128C7E] shadow-sm transition-colors hover:bg-[#25D366]/10"
+          >
+            {sharing ? 'Ocultar compartir' : 'Compartir'}
           </button>
           {!editingHeader && (
             <button
@@ -235,6 +244,15 @@ function RegistroCard({
           </button>
         </div>
       </div>
+
+      {sharing && (
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <ShareSummaryPanel
+            resumen={resumenDesdeProduccion(registro, { areaTotal })}
+            onClose={() => setSharing(false)}
+          />
+        </div>
+      )}
 
       {expanded && (
         <div className="mt-4 flex flex-col gap-5 border-t border-gray-100 pt-4">

@@ -1,3 +1,5 @@
+import { CAJA_20KG_KG, CANASTILLA_KG, SEMANAS_RACIMO, type Produccion } from '../types/produccion'
+
 export interface RacimoEdadResumen {
   semana: number
   racimos: number
@@ -43,6 +45,68 @@ export interface RegistroResumenCompartir {
   merma: number | null
   transportes: TransporteResumen[]
   notas: string
+}
+
+/**
+ * Arma el resumen para compartir a partir de un registro ya guardado
+ * (usado en Historial), a diferencia del que se arma en Registrar a
+ * partir del borrador del formulario.
+ */
+export function resumenDesdeProduccion(
+  r: Produccion,
+  opts: { areaTotal: number | null; porcentajeSemana?: number | null } = { areaTotal: null },
+): RegistroResumenCompartir {
+  const cajas20kgTotal = r.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
+  const kilosCajas20kg = cajas20kgTotal * CAJA_20KG_KG
+  const kilosCanastillas = r.canastillas * CANASTILLA_KG
+  const totalRacimos = SEMANAS_RACIMO.reduce((sum, s) => sum + r[`racimos_semana_${s}` as const], 0)
+  const totalRacimosProcesados = totalRacimos - r.racimos_recusados
+  const pesoTotal = kilosCajas20kg + kilosCanastillas
+  const pesoNetoRacimo = totalRacimos > 0 ? pesoTotal / totalRacimos : null
+  const ratio = totalRacimos > 0 ? cajas20kgTotal / totalRacimos : null
+  const merma = pesoTotal > 0 ? (kilosCanastillas / pesoTotal) * 100 : null
+  const porcentajeDia = opts.areaTotal && r.area_recorrida !== null ? (r.area_recorrida / opts.areaTotal) * 100 : null
+
+  return {
+    fecha: r.fecha,
+    semana: r.semana,
+    finca: r.finca,
+    horaFinalizacion: r.hora_finalizacion,
+    areaTotal: opts.areaTotal,
+    areaRecorrida: r.area_recorrida,
+    porcentajeDia,
+    porcentajeSemana: opts.porcentajeSemana ?? null,
+    racimosPorEdad: SEMANAS_RACIMO.map((s) => ({
+      semana: s,
+      racimos: r[`racimos_semana_${s}` as const],
+      grado: r[`grado_semana_${s}` as const],
+    })),
+    totalRacimos,
+    racimosRecusados: r.racimos_recusados,
+    totalRacimosProcesados,
+    canastillas: r.canastillas,
+    kilosCanastillas,
+    referencias: r.items.map((it) => ({
+      referencia: it.referencia,
+      cajas: it.cantidad_cajas,
+      cajas20kg: it.cajas_20kg,
+      rechazadas: it.cajas_rechazadas,
+    })),
+    totalCajas: r.items.reduce((sum, it) => sum + it.cantidad_cajas, 0),
+    totalCajas20kg: cajas20kgTotal,
+    kilosCajas20kg,
+    pesoNetoRacimo,
+    ratio,
+    merma,
+    transportes: r.transportes.map((t) => ({
+      tipo: t.tipo,
+      placa: t.placa ?? '',
+      sello: t.sello ?? '',
+      horaLlegada: t.hora_llegada ?? '',
+      horaSalida: t.hora_salida ?? '',
+    })),
+    notas: r.notas ?? '',
+  }
 }
 
 export function mensajeWhatsapp(r: RegistroResumenCompartir): string {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { domToBlob } from 'modern-screenshot'
 import banexLogo from '../assets/banex-logo.jpg'
 import { mensajeWhatsapp, type RegistroResumenCompartir } from '../lib/shareSummary'
@@ -52,13 +52,14 @@ export default function ShareSummaryPanel({
   }
 
   const racimosConDato = resumen.racimosPorEdad.filter((e) => e.racimos > 0 || e.grado !== null)
+  const tieneArea = resumen.areaRecorrida !== null || resumen.porcentajeSemana !== null
 
   return (
     <div className="rounded-xl border border-banex-100 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3.5">
         <div className="flex items-center gap-2">
           <span className="text-lg">✅</span>
-          <span className="text-sm font-semibold text-banex-800">Registro guardado — comparte el resumen</span>
+          <span className="text-sm font-semibold text-banex-800">Comparte el resumen del registro</span>
         </div>
         <button
           onClick={onClose}
@@ -69,8 +70,8 @@ export default function ShareSummaryPanel({
       </div>
 
       <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start">
-        <div ref={capturaRef} className="w-full max-w-[420px] rounded-lg border border-gray-100 bg-white p-5">
-          <div className="mb-3 flex items-center gap-2 border-b border-gray-100 pb-3">
+        <div ref={capturaRef} className="w-full max-w-[480px] rounded-lg border border-gray-100 bg-white p-5">
+          <div className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
             <img src={banexLogo} alt="BANEX S.A." className="h-9 w-9 shrink-0 rounded-md object-contain" />
             <div>
               <p className="text-sm font-bold text-banex-900">ApproBan</p>
@@ -78,87 +79,106 @@ export default function ShareSummaryPanel({
             </div>
           </div>
 
-          <div className="mb-3 text-sm text-gray-700">
-            <p>
-              <span className="font-medium text-gray-900">{resumen.fecha}</span>{' '}
-              <span className="text-gray-500">· Semana {resumen.semana}</span>
-            </p>
-            <p className="font-medium text-banex-800">{resumen.finca}</p>
-            {resumen.horaFinalizacion && <p className="text-xs text-gray-500">Hora finalización: {resumen.horaFinalizacion}</p>}
+          <div className="mb-4 grid grid-cols-2 gap-1.5">
+            <Casilla label="Fecha" valor={resumen.fecha} />
+            <Casilla label="Semana" valor={resumen.semana} />
+            <Casilla label="Finca" valor={resumen.finca} destacado />
+            <Casilla label="Hora finalización" valor={resumen.horaFinalizacion || '—'} />
           </div>
 
-          {(resumen.areaRecorrida !== null || resumen.porcentajeSemana !== null) && (
-            <div className="mb-3 text-xs text-gray-600">
-              <p className="mb-1 font-semibold text-banex-700">Área recorrida</p>
-              {resumen.areaRecorrida !== null && (
-                <p>
-                  Hoy: {resumen.areaRecorrida} ha
-                  {resumen.porcentajeDia !== null && ` (${resumen.porcentajeDia.toFixed(1)}%)`}
-                </p>
-              )}
-              {resumen.porcentajeSemana !== null && <p>Acumulado semana: {resumen.porcentajeSemana.toFixed(1)}%</p>}
-            </div>
+          {tieneArea && (
+            <CasillaSeccion titulo="Área recorrida">
+              <div className="grid grid-cols-2 gap-1.5">
+                <Casilla label="Área total" valor={resumen.areaTotal !== null ? `${resumen.areaTotal} ha` : '—'} />
+                <Casilla label="Área recorrida hoy" valor={resumen.areaRecorrida !== null ? `${resumen.areaRecorrida} ha` : '—'} />
+                <Casilla label="% del día" valor={resumen.porcentajeDia !== null ? `${resumen.porcentajeDia.toFixed(1)}%` : '—'} />
+                <Casilla
+                  label="% acumulado semana"
+                  valor={resumen.porcentajeSemana !== null ? `${resumen.porcentajeSemana.toFixed(1)}%` : '—'}
+                />
+              </div>
+            </CasillaSeccion>
           )}
 
-          <div className="mb-3 text-xs text-gray-600">
-            <p className="mb-1 font-semibold text-banex-700">Racimos por edad</p>
+          <CasillaSeccion titulo="Racimos por edad">
             {racimosConDato.length > 0 ? (
-              <p>
-                {racimosConDato
-                  .map((e) => `S${e.semana}: ${e.racimos}${e.grado !== null ? ` (grado ${e.grado})` : ''}`)
-                  .join(' · ')}
-              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {racimosConDato.map((e) => (
+                  <Casilla
+                    key={e.semana}
+                    label={`Semana ${e.semana}`}
+                    valor={e.racimos}
+                    subvalor={e.grado !== null ? `grado ${e.grado}` : undefined}
+                  />
+                ))}
+              </div>
             ) : (
-              <p>—</p>
+              <p className="text-xs text-gray-400">Sin racimos registrados.</p>
             )}
-            <p className="mt-1">
-              Cosechados: <span className="font-medium text-gray-900">{resumen.totalRacimos}</span> · Recusados:{' '}
-              {resumen.racimosRecusados} · Procesados: {resumen.totalRacimosProcesados}
-            </p>
-          </div>
+            <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+              <Casilla label="Cosechados" valor={resumen.totalRacimos} destacado />
+              <Casilla label="Recusados" valor={resumen.racimosRecusados} />
+              <Casilla label="Procesados" valor={resumen.totalRacimosProcesados} />
+            </div>
+          </CasillaSeccion>
 
-          <div className="mb-3 text-xs text-gray-600">
-            <p className="mb-1 font-semibold text-banex-700">Referencias producidas</p>
-            {resumen.referencias.map((it, i) => (
-              <p key={i}>
-                {it.referencia}: {it.cajas} cajas
-                {it.cajas20kg !== null && ` (${it.cajas20kg.toFixed(2)} cajas 20kg)`}
-                {it.rechazadas > 0 && ` · ${it.rechazadas} rechazadas`}
-              </p>
-            ))}
-          </div>
+          <CasillaSeccion titulo="Canastillas">
+            <div className="grid grid-cols-2 gap-1.5">
+              <Casilla label="Cantidad" valor={resumen.canastillas} />
+              <Casilla label="Kilos" valor={`${resumen.kilosCanastillas.toFixed(2)} kg`} />
+            </div>
+          </CasillaSeccion>
 
-          <div className="mb-3 text-xs text-gray-600">
-            <p className="mb-1 font-semibold text-banex-700">Totales</p>
-            <p>
-              Cajas: <span className="font-medium text-gray-900">{resumen.totalCajas}</span> · Cajas 20kg:{' '}
-              {resumen.totalCajas20kg.toFixed(2)} · Canastillas: {resumen.canastillas} ({resumen.kilosCanastillas.toFixed(2)} kg)
-            </p>
-            <p>
-              {resumen.pesoNetoRacimo !== null && `Peso neto racimo: ${resumen.pesoNetoRacimo.toFixed(2)} kg · `}
-              {resumen.ratio !== null && `Ratio: ${resumen.ratio.toFixed(2)} · `}
-              {resumen.merma !== null && `Merma: ${resumen.merma.toFixed(1)}%`}
-            </p>
-          </div>
-
-          {resumen.transportes.length > 0 && (
-            <div className="mb-3 text-xs text-gray-600">
-              <p className="mb-1 font-semibold text-banex-700">Transporte</p>
-              {resumen.transportes.map((t, i) => (
-                <p key={i}>
-                  {[t.tipo, t.placa, t.sello, t.horaLlegada && t.horaSalida ? `${t.horaLlegada}-${t.horaSalida}` : t.horaLlegada]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </p>
+          <CasillaSeccion titulo="Referencias producidas">
+            <div className="flex flex-col gap-1.5">
+              {resumen.referencias.map((it, i) => (
+                <div key={i} className="rounded-md border border-gray-200 bg-gray-50 p-2">
+                  <p className="mb-1 text-xs font-semibold text-gray-900">{it.referencia}</p>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <Casilla label="Cajas" valor={it.cajas} compacto />
+                    <Casilla label="Cajas 20kg" valor={it.cajas20kg !== null ? it.cajas20kg.toFixed(2) : '—'} compacto />
+                    <Casilla label="Rechazadas" valor={it.rechazadas} compacto />
+                  </div>
+                </div>
               ))}
             </div>
+          </CasillaSeccion>
+
+          <CasillaSeccion titulo="Totales">
+            <div className="grid grid-cols-3 gap-1.5">
+              <Casilla label="Cajas" valor={resumen.totalCajas} destacado />
+              <Casilla label="Cajas 20kg" valor={resumen.totalCajas20kg.toFixed(2)} />
+              <Casilla label="Peso neto racimo" valor={resumen.pesoNetoRacimo !== null ? `${resumen.pesoNetoRacimo.toFixed(2)} kg` : '—'} />
+              <Casilla label="Ratio" valor={resumen.ratio !== null ? resumen.ratio.toFixed(2) : '—'} />
+              <Casilla label="Merma" valor={resumen.merma !== null ? `${resumen.merma.toFixed(1)}%` : '—'} />
+            </div>
+          </CasillaSeccion>
+
+          {resumen.transportes.length > 0 && (
+            <CasillaSeccion titulo="Transporte">
+              <div className="flex flex-col gap-1.5">
+                {resumen.transportes.map((t, i) => (
+                  <div key={i} className="rounded-md border border-gray-200 bg-gray-50 p-2">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Casilla label="Tipo" valor={t.tipo || '—'} compacto />
+                      <Casilla label="Placa" valor={t.placa || '—'} compacto />
+                      <Casilla label="Sello" valor={t.sello || '—'} compacto />
+                      <Casilla
+                        label="Horario"
+                        valor={t.horaLlegada && t.horaSalida ? `${t.horaLlegada}-${t.horaSalida}` : t.horaLlegada || '—'}
+                        compacto
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CasillaSeccion>
           )}
 
           {resumen.notas && (
-            <p className="text-xs text-gray-500">
-              <span className="font-semibold text-banex-700">Notas: </span>
-              {resumen.notas}
-            </p>
+            <CasillaSeccion titulo="Notas" ultima>
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs text-gray-700">{resumen.notas}</div>
+            </CasillaSeccion>
           )}
         </div>
 
@@ -182,6 +202,40 @@ export default function ShareSummaryPanel({
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function CasillaSeccion({ titulo, children, ultima = false }: { titulo: string; children: ReactNode; ultima?: boolean }) {
+  return (
+    <div className={ultima ? '' : 'mb-4'}>
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-banex-600 uppercase">
+        <span className="h-3 w-0.5 shrink-0 rounded-full bg-banana-500" />
+        {titulo}
+      </p>
+      {children}
+    </div>
+  )
+}
+
+function Casilla({
+  label,
+  valor,
+  subvalor,
+  destacado = false,
+  compacto = false,
+}: {
+  label: string
+  valor: ReactNode
+  subvalor?: string
+  destacado?: boolean
+  compacto?: boolean
+}) {
+  return (
+    <div className={`rounded-md border ${destacado ? 'border-banex-200 bg-banex-50' : 'border-gray-200 bg-gray-50'} ${compacto ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
+      <p className="truncate text-[10px] font-medium tracking-wide text-gray-500 uppercase">{label}</p>
+      <p className={`truncate text-xs font-semibold ${destacado ? 'text-banex-800' : 'text-gray-900'}`}>{valor}</p>
+      {subvalor && <p className="truncate text-[10px] text-gray-500">{subvalor}</p>}
     </div>
   )
 }
