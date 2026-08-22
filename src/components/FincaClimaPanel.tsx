@@ -1,146 +1,59 @@
-import { useState, type FormEvent } from 'react'
 import { useClima } from '../lib/useClima'
 import { descripcionClima } from '../lib/climaCodigos'
 import { diaSemana } from '../lib/diaSemana'
-import { ubicacionEstaDesbloqueada, desbloquearUbicacion } from '../lib/ubicacionAcceso'
 import type { Finca } from '../types/finca'
-
-function formatGrados(valor: number, positivo: string, negativo: string) {
-  return `${Math.abs(valor).toFixed(4)}° ${valor >= 0 ? positivo : negativo}`
-}
 
 export default function FincaClimaPanel({ finca }: { finca: Finca | null }) {
   const tieneCoordenadas = finca?.latitud != null && finca?.longitud != null
   const { clima, loading, error } = useClima(tieneCoordenadas ? finca!.latitud : null, tieneCoordenadas ? finca!.longitud : null)
-  const [desbloqueado, setDesbloqueado] = useState(() => ubicacionEstaDesbloqueada())
-  const [mostrarInput, setMostrarInput] = useState(false)
-  const [password, setPassword] = useState('')
-  const [passwordError, setPasswordError] = useState(false)
-
-  function intentarDesbloquear(e: FormEvent) {
-    e.preventDefault()
-    if (desbloquearUbicacion(password)) {
-      setDesbloqueado(true)
-      setMostrarInput(false)
-      setPasswordError(false)
-      setPassword('')
-    } else {
-      setPasswordError(true)
-    }
-  }
-
-  function cancelarDesbloqueo() {
-    setMostrarInput(false)
-    setPassword('')
-    setPasswordError(false)
-  }
 
   if (!tieneCoordenadas) {
     return (
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <p className="text-sm text-gray-500">
-          Esta finca todavía no tiene coordenadas registradas. Agrégalas en Catálogo → Fincas para ver su ubicación y
-          el pronóstico del clima.
+          Esta finca todavía no tiene coordenadas registradas. Agrégalas en Catálogo → Fincas para ver el pronóstico
+          del clima.
         </p>
       </div>
     )
   }
 
-  const mapaUrl = `https://www.google.com/maps?q=${finca!.latitud},${finca!.longitud}`
-
   return (
     <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-banex-600 uppercase">Ubicación</p>
-          {desbloqueado ? (
-            <p className="text-sm text-gray-700">
-              {formatGrados(finca!.latitud!, 'N', 'S')}, {formatGrados(finca!.longitud!, 'E', 'O')}
-            </p>
-          ) : mostrarInput ? (
-            <form onSubmit={intentarDesbloquear} className="mt-1 flex items-center gap-1.5">
-              <input
-                type="password"
-                autoFocus
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  setPasswordError(false)
-                }}
-                placeholder="Contraseña"
-                className="w-28 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:border-banex-500 focus:bg-white focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-banex-700"
-              >
-                Ver
-              </button>
-              <button
-                type="button"
-                onClick={cancelarDesbloqueo}
-                className="text-xs text-gray-400 transition-colors hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </form>
-          ) : (
-            <p className="text-sm text-gray-400">🔒 Ubicación protegida</p>
-          )}
-          {passwordError && <p className="mt-0.5 text-[10px] text-red-600">Contraseña incorrecta.</p>}
-        </div>
-
-        {desbloqueado ? (
-          <a
-            href={mapaUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-          >
-            Ver en el mapa ↗
-          </a>
-        ) : !mostrarInput ? (
-          <button
-            onClick={() => setMostrarInput(true)}
-            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-          >
-            🔒 Desbloquear
-          </button>
-        ) : null}
-      </div>
+      <p className="mb-2 text-xs font-semibold tracking-wide text-banex-600 uppercase">Clima</p>
 
       {loading ? (
-        <p className="mt-3 text-sm text-gray-500">Cargando clima...</p>
+        <p className="text-sm text-gray-500">Cargando clima...</p>
       ) : error ? (
-        <p className="mt-3 text-sm text-red-600">{error}</p>
+        <p className="text-sm text-red-600">{error}</p>
       ) : clima ? (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <p className="mb-2 text-xs font-semibold tracking-wide text-banex-600 uppercase">Clima</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-3xl">{descripcionClima(clima.actual.codigo).icono}</span>
-              <div>
-                <p className="text-lg font-semibold text-gray-900">{Math.round(clima.actual.temperatura)}°C</p>
-                <p className="text-xs text-gray-500">{descripcionClima(clima.actual.codigo).texto}</p>
-              </div>
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-3xl">{descripcionClima(clima.actual.codigo).icono}</span>
+            <div>
+              <p className="text-lg font-semibold text-gray-900">{Math.round(clima.actual.temperatura)}°C</p>
+              <p className="text-xs text-gray-500">{descripcionClima(clima.actual.codigo).texto}</p>
             </div>
-            <div className="text-xs text-gray-500">
-              <p>Humedad: {clima.actual.humedad}%</p>
-              <p>Viento: {Math.round(clima.actual.vientoKmh)} km/h</p>
-            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            <p>Humedad: {clima.actual.humedad}%</p>
+            <p>Viento: {Math.round(clima.actual.vientoKmh)} km/h</p>
+            <p>Lluvia hoy: {clima.dias[0].precipitacionMm.toFixed(1)} mm</p>
+            <p>Evapotranspiración: {clima.dias[0].evapotranspiracionMm.toFixed(1)} mm</p>
+          </div>
 
-            <div className="ml-auto flex gap-3">
-              {clima.dias.map((d) => (
-                <div key={d.fecha} className="text-center">
-                  <p className="text-[10px] font-medium text-gray-500 uppercase">{diaSemana(d.fecha).slice(0, 3)}</p>
-                  <p className="text-lg">{descripcionClima(d.codigo).icono}</p>
-                  <p className="text-xs text-gray-700">
-                    {Math.round(d.tempMax)}° / {Math.round(d.tempMin)}°
-                  </p>
-                  <p className="text-[10px] text-gray-400">💧{d.probabilidadLluvia}%</p>
-                </div>
-              ))}
-            </div>
+          <div className="ml-auto flex gap-3">
+            {clima.dias.map((d) => (
+              <div key={d.fecha} className="text-center">
+                <p className="text-[10px] font-medium text-gray-500 uppercase">{diaSemana(d.fecha).slice(0, 3)}</p>
+                <p className="text-lg">{descripcionClima(d.codigo).icono}</p>
+                <p className="text-xs text-gray-700">
+                  {Math.round(d.tempMax)}° / {Math.round(d.tempMin)}°
+                </p>
+                <p className="text-[10px] text-gray-400">💧{d.probabilidadLluvia}% · {d.precipitacionMm.toFixed(1)}mm</p>
+                <p className="text-[10px] text-gray-400">ET {d.evapotranspiracionMm.toFixed(1)}mm</p>
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

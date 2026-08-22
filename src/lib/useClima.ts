@@ -13,6 +13,8 @@ export interface ClimaDia {
   tempMax: number
   tempMin: number
   probabilidadLluvia: number
+  precipitacionMm: number
+  evapotranspiracionMm: number
 }
 
 export interface Clima {
@@ -22,7 +24,8 @@ export interface Clima {
 
 /**
  * Usa Open-Meteo (no requiere API key) para traer el clima actual y un
- * pronóstico de 3 días a partir de la latitud/longitud de una finca.
+ * pronóstico de 3 días a partir de la latitud/longitud de una finca,
+ * incluyendo mm de lluvia y evapotranspiración (útiles para riego).
  */
 export function useClima(latitud: number | null, longitud: number | null) {
   const [clima, setClima] = useState<Clima | null>(null)
@@ -43,7 +46,7 @@ export function useClima(latitud: number | null, longitud: number | null) {
     const url =
       `https://api.open-meteo.com/v1/forecast?latitude=${latitud}&longitude=${longitud}` +
       `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code` +
-      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,et0_fao_evapotranspiration` +
       `&timezone=auto&forecast_days=3`
 
     fetch(url, { signal: controller.signal })
@@ -65,6 +68,8 @@ export function useClima(latitud: number | null, longitud: number | null) {
             tempMax: data.daily.temperature_2m_max[i],
             tempMin: data.daily.temperature_2m_min[i],
             probabilidadLluvia: data.daily.precipitation_probability_max[i],
+            precipitacionMm: data.daily.precipitation_sum[i],
+            evapotranspiracionMm: data.daily.et0_fao_evapotranspiration[i],
           })),
         })
         setLoading(false)
