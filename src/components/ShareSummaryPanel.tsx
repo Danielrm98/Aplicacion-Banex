@@ -83,9 +83,9 @@ export default function ShareSummaryPanel({
           <div className="grid grid-cols-2 gap-5">
             <div className="flex flex-col gap-3.5">
               <div className="grid grid-cols-2 gap-1.5">
-                <Casilla label="Fecha" valor={resumen.fecha} subvalor={diaSemana(resumen.fecha)} />
-                <Casilla label="Semana" valor={resumen.semana} />
                 <Casilla label="Finca" valor={resumen.finca} destacado />
+                <Casilla label="Semana" valor={resumen.semana} />
+                <Casilla label="Fecha" valor={resumen.fecha} subvalor={diaSemana(resumen.fecha)} />
                 <Casilla label="Hora finalización" valor={resumen.horaFinalizacion || '—'} />
               </div>
 

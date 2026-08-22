@@ -115,8 +115,8 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
 
   lineas.push('*ApproBan – Registro de producción*')
   lineas.push('')
-  lineas.push(`*Fecha:* ${r.fecha} · ${diaSemana(r.fecha)} (semana ${r.semana})`)
   lineas.push(`*Finca:* ${r.finca}`)
+  lineas.push(`*Fecha:* ${r.fecha} · ${diaSemana(r.fecha)} (semana ${r.semana})`)
   if (r.horaFinalizacion) lineas.push(`*Hora finalización:* ${r.horaFinalizacion}`)
 
   if (r.areaRecorrida !== null) {
