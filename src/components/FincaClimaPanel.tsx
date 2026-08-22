@@ -1,6 +1,8 @@
+import { useState, type FormEvent } from 'react'
 import { useClima } from '../lib/useClima'
 import { descripcionClima } from '../lib/climaCodigos'
 import { diaSemana } from '../lib/diaSemana'
+import { ubicacionEstaDesbloqueada, desbloquearUbicacion } from '../lib/ubicacionAcceso'
 import type { Finca } from '../types/finca'
 
 function formatGrados(valor: number, positivo: string, negativo: string) {
@@ -10,6 +12,28 @@ function formatGrados(valor: number, positivo: string, negativo: string) {
 export default function FincaClimaPanel({ finca }: { finca: Finca | null }) {
   const tieneCoordenadas = finca?.latitud != null && finca?.longitud != null
   const { clima, loading, error } = useClima(tieneCoordenadas ? finca!.latitud : null, tieneCoordenadas ? finca!.longitud : null)
+  const [desbloqueado, setDesbloqueado] = useState(() => ubicacionEstaDesbloqueada())
+  const [mostrarInput, setMostrarInput] = useState(false)
+  const [password, setPassword] = useState('')
+  const [passwordError, setPasswordError] = useState(false)
+
+  function intentarDesbloquear(e: FormEvent) {
+    e.preventDefault()
+    if (desbloquearUbicacion(password)) {
+      setDesbloqueado(true)
+      setMostrarInput(false)
+      setPasswordError(false)
+      setPassword('')
+    } else {
+      setPasswordError(true)
+    }
+  }
+
+  function cancelarDesbloqueo() {
+    setMostrarInput(false)
+    setPassword('')
+    setPasswordError(false)
+  }
 
   if (!tieneCoordenadas) {
     return (
@@ -29,18 +53,60 @@ export default function FincaClimaPanel({ finca }: { finca: Finca | null }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold tracking-wide text-banex-600 uppercase">Ubicación</p>
-          <p className="text-sm text-gray-700">
-            {formatGrados(finca!.latitud!, 'N', 'S')}, {formatGrados(finca!.longitud!, 'E', 'O')}
-          </p>
+          {desbloqueado ? (
+            <p className="text-sm text-gray-700">
+              {formatGrados(finca!.latitud!, 'N', 'S')}, {formatGrados(finca!.longitud!, 'E', 'O')}
+            </p>
+          ) : mostrarInput ? (
+            <form onSubmit={intentarDesbloquear} className="mt-1 flex items-center gap-1.5">
+              <input
+                type="password"
+                autoFocus
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setPasswordError(false)
+                }}
+                placeholder="Contraseña"
+                className="w-28 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:border-banex-500 focus:bg-white focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-banex-700"
+              >
+                Ver
+              </button>
+              <button
+                type="button"
+                onClick={cancelarDesbloqueo}
+                className="text-xs text-gray-400 transition-colors hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </form>
+          ) : (
+            <p className="text-sm text-gray-400">🔒 Ubicación protegida</p>
+          )}
+          {passwordError && <p className="mt-0.5 text-[10px] text-red-600">Contraseña incorrecta.</p>}
         </div>
-        <a
-          href={mapaUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-        >
-          Ver en el mapa ↗
-        </a>
+
+        {desbloqueado ? (
+          <a
+            href={mapaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+          >
+            Ver en el mapa ↗
+          </a>
+        ) : !mostrarInput ? (
+          <button
+            onClick={() => setMostrarInput(true)}
+            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+          >
+            🔒 Desbloquear
+          </button>
+        ) : null}
       </div>
 
       {loading ? (
