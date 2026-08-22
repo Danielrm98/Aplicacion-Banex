@@ -6,6 +6,7 @@ import FincaClimaPanel from '../components/FincaClimaPanel'
 import { useProducciones } from '../lib/useProducciones'
 import { useFincas } from '../lib/useFincas'
 import { useClima } from '../lib/useClima'
+import { guardarFincaActual } from '../lib/fincaActual'
 import { FINCAS } from '../lib/fincas'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
@@ -20,6 +21,11 @@ export default function EntryPage() {
   function handleSaved(resumen: RegistroResumenCompartir) {
     setSavedCount((c) => c + 1)
     setUltimoResumen(resumen)
+  }
+
+  function elegirFinca(nombre: string) {
+    setFincaSeleccionada(nombre)
+    guardarFincaActual(nombre)
   }
 
   function volverAFincas() {
@@ -43,7 +49,7 @@ export default function EntryPage() {
             <FincaTile
               key={nombre}
               finca={fincas.find((f) => f.nombre === nombre) ?? { nombre, hectareas: null, latitud: null, longitud: null }}
-              onClick={() => setFincaSeleccionada(nombre)}
+              onClick={() => elegirFinca(nombre)}
             />
           ))}
         </div>

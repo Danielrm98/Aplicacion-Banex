@@ -6,6 +6,7 @@ import { useReferencias } from '../lib/useReferencias'
 import { useProducciones } from '../lib/useProducciones'
 import { usePlan } from '../lib/usePlan'
 import { flattenItems } from '../lib/aggregations'
+import { obtenerFincaActual } from '../lib/fincaActual'
 import type { PlanItem } from '../types/plan'
 import SectionHeading from '../components/SectionHeading'
 
@@ -13,7 +14,10 @@ const hoy = new Date().toISOString().slice(0, 10)
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanPage() {
-  const [finca, setFinca] = useState<string>(FINCAS[0])
+  const [finca, setFinca] = useState<string>(() => {
+    const guardada = obtenerFincaActual()
+    return guardada && (FINCAS as readonly string[]).includes(guardada) ? guardada : FINCAS[0]
+  })
   const [semana, setSemana] = useState<number>(getIsoWeek(hoy))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
 
