@@ -5,8 +5,10 @@ import ShareSummaryPanel from '../components/ShareSummaryPanel'
 import FincaClimaPanel from '../components/FincaClimaPanel'
 import { useProducciones } from '../lib/useProducciones'
 import { useFincas } from '../lib/useFincas'
+import { useClima } from '../lib/useClima'
 import { FINCAS } from '../lib/fincas'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
+import type { Finca } from '../types/finca'
 
 export default function EntryPage() {
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string | null>(null)
@@ -40,8 +42,7 @@ export default function EntryPage() {
           {FINCAS.map((nombre) => (
             <FincaTile
               key={nombre}
-              nombre={nombre}
-              hectareas={fincas.find((f) => f.nombre === nombre)?.hectareas ?? null}
+              finca={fincas.find((f) => f.nombre === nombre) ?? { nombre, hectareas: null, latitud: null, longitud: null }}
               onClick={() => setFincaSeleccionada(nombre)}
             />
           ))}
@@ -89,23 +90,25 @@ export default function EntryPage() {
   )
 }
 
-function FincaTile({
-  nombre,
-  hectareas,
-  onClick,
-}: {
-  nombre: string
-  hectareas: number | null
-  onClick: () => void
-}) {
+function FincaTile({ finca, onClick }: { finca: Finca; onClick: () => void }) {
+  const tieneCoordenadas = finca.latitud != null && finca.longitud != null
+  const { clima } = useClima(tieneCoordenadas ? finca.latitud : null, tieneCoordenadas ? finca.longitud : null)
+
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-start gap-2 rounded-xl border border-gray-100 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-banex-300 hover:shadow-md"
+      className="relative flex flex-col items-start gap-2 rounded-xl border border-gray-100 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-banex-300 hover:shadow-md"
     >
+      {clima && (
+        <span className="absolute top-2 right-2 rounded-full bg-banex-50 px-2 py-0.5 text-xs font-medium text-banex-700">
+          {Math.round(clima.actual.temperatura)}°
+        </span>
+      )}
       <span className="h-1.5 w-8 rounded-full bg-banana-500" />
-      <span className="text-sm font-semibold text-banex-900">{nombre}</span>
-      <span className="text-xs text-gray-500">{hectareas !== null ? `${hectareas.toLocaleString('es')} ha` : 'Sin hectareaje'}</span>
+      <span className="text-sm font-semibold text-banex-900">{finca.nombre}</span>
+      <span className="text-xs text-gray-500">
+        {finca.hectareas !== null ? `${finca.hectareas.toLocaleString('es')} ha` : 'Sin hectareaje'}
+      </span>
     </button>
   )
 }
