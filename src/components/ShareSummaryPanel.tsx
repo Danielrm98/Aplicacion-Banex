@@ -152,15 +152,12 @@ export default function ShareSummaryPanel({
               <div className="flex flex-col gap-1.5">
                 {resumen.transportes.map((t, i) => (
                   <div key={i} className="rounded-md border border-gray-200 bg-gray-50 p-2">
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-3 gap-1.5">
                       <Casilla label="Tipo" valor={t.tipo || '—'} compacto />
                       <Casilla label="Placa" valor={t.placa || '—'} compacto />
                       <Casilla label="Sello" valor={t.sello || '—'} compacto />
-                      <Casilla
-                        label="Horario"
-                        valor={t.horaLlegada && t.horaSalida ? `${t.horaLlegada}-${t.horaSalida}` : t.horaLlegada || '—'}
-                        compacto
-                      />
+                      <Casilla label="Hora llegada" valor={t.horaLlegada || '—'} compacto />
+                      <Casilla label="Hora salida" valor={t.horaSalida || '—'} compacto />
                     </div>
                   </div>
                 ))}

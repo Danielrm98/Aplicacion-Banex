@@ -159,8 +159,14 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
     lineas.push('')
     lineas.push('*Transporte*')
     for (const t of r.transportes) {
-      const horas = t.horaLlegada && t.horaSalida ? `${t.horaLlegada}-${t.horaSalida}` : t.horaLlegada
-      lineas.push([t.tipo, t.placa, t.sello, horas].filter(Boolean).join(' · '))
+      const partes = [
+        t.tipo,
+        t.placa,
+        t.sello,
+        t.horaLlegada ? `Llegada: ${t.horaLlegada}` : null,
+        t.horaSalida ? `Salida: ${t.horaSalida}` : null,
+      ].filter(Boolean)
+      lineas.push(partes.join(' · '))
     }
   }
 
