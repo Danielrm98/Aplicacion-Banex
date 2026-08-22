@@ -411,18 +411,20 @@ export default function ProductionForm({
           {SEMANAS_RACIMO.map((semana) => (
             <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2 transition-colors hover:border-banex-200">
               <p className="mb-1 text-xs font-semibold text-gray-500">Semana {semana}</p>
-              <Field label="Racimos">
-                <input
-                  type="number"
-                  min={0}
-                  step="1"
-                  value={header[campoRacimo(semana)] || ''}
-                  onChange={(e) => updateHeader(campoRacimo(semana), Number(e.target.value))}
-                  className={inputClass}
-                />
-              </Field>
-              <div className="mt-1.5">
-                <Field label="Grado promedio">
+              <div className="grid grid-cols-2 gap-1.5">
+                <label className="block">
+                  <span className="mb-0.5 block text-[10px] font-medium text-gray-500">Racimos</span>
+                  <input
+                    type="number"
+                    min={0}
+                    step="1"
+                    value={header[campoRacimo(semana)] || ''}
+                    onChange={(e) => updateHeader(campoRacimo(semana), Number(e.target.value))}
+                    className={inputCompacto}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-0.5 block text-[10px] font-medium text-gray-500">Grado</span>
                   <input
                     type="number"
                     min={0}
@@ -431,9 +433,9 @@ export default function ProductionForm({
                     onChange={(e) =>
                       updateHeader(campoGrado(semana), e.target.value === '' ? null : Number(e.target.value))
                     }
-                    className={inputClass}
+                    className={inputCompacto}
                   />
-                </Field>
+                </label>
               </div>
             </div>
           ))}
@@ -745,6 +747,9 @@ export default function ProductionForm({
 
 const inputClass =
   'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:text-gray-500'
+
+const inputCompacto =
+  'w-full min-w-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-1 text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

@@ -350,19 +350,21 @@ function RegistroCard({
                   {SEMANAS_RACIMO.map((semana) => (
                     <div key={semana} className="rounded-lg border border-gray-200 bg-gray-50/60 p-2 transition-colors hover:border-banex-200">
                       <p className="mb-1 text-xs font-semibold text-gray-500">Semana {semana}</p>
-                      <MiniField label="Racimos">
-                        <input
-                          type="number"
-                          min={0}
-                          value={headerDraft[campoRacimo(semana)] || ''}
-                          onChange={(e) =>
-                            setHeaderDraft((d) => ({ ...d, [campoRacimo(semana)]: Number(e.target.value) }))
-                          }
-                          className={smallInput}
-                        />
-                      </MiniField>
-                      <div className="mt-1.5">
-                        <MiniField label="Grado prom.">
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <label className="block">
+                          <span className="mb-0.5 block text-[10px] font-medium text-gray-500">Racimos</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={headerDraft[campoRacimo(semana)] || ''}
+                            onChange={(e) =>
+                              setHeaderDraft((d) => ({ ...d, [campoRacimo(semana)]: Number(e.target.value) }))
+                            }
+                            className={cellInput}
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-0.5 block text-[10px] font-medium text-gray-500">Grado</span>
                           <input
                             type="number"
                             min={0}
@@ -374,9 +376,9 @@ function RegistroCard({
                                 [campoGrado(semana)]: e.target.value === '' ? null : Number(e.target.value),
                               }))
                             }
-                            className={smallInput}
+                            className={cellInput}
                           />
-                        </MiniField>
+                        </label>
                       </div>
                     </div>
                   ))}
