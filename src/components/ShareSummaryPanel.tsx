@@ -52,7 +52,7 @@ export default function ShareSummaryPanel({
   }
 
   const racimosConDato = resumen.racimosPorEdad.filter((e) => e.racimos > 0 || e.grado !== null)
-  const tieneArea = resumen.areaRecorrida !== null || resumen.porcentajeSemana !== null
+  const tieneArea = resumen.areaRecorrida !== null
 
   return (
     <div className="rounded-xl border border-banex-100 bg-white shadow-sm">
@@ -88,14 +88,10 @@ export default function ShareSummaryPanel({
 
           {tieneArea && (
             <CasillaSeccion titulo="Área recorrida">
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 <Casilla label="Área total" valor={resumen.areaTotal !== null ? `${resumen.areaTotal} ha` : '—'} />
                 <Casilla label="Área recorrida hoy" valor={resumen.areaRecorrida !== null ? `${resumen.areaRecorrida} ha` : '—'} />
                 <Casilla label="% del día" valor={resumen.porcentajeDia !== null ? `${resumen.porcentajeDia.toFixed(1)}%` : '—'} />
-                <Casilla
-                  label="% acumulado semana"
-                  valor={resumen.porcentajeSemana !== null ? `${resumen.porcentajeSemana.toFixed(1)}%` : '—'}
-                />
               </div>
             </CasillaSeccion>
           )}
@@ -115,17 +111,15 @@ export default function ShareSummaryPanel({
             ) : (
               <p className="text-xs text-gray-400">Sin racimos registrados.</p>
             )}
-            <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
               <Casilla label="Cosechados" valor={resumen.totalRacimos} destacado />
               <Casilla label="Recusados" valor={resumen.racimosRecusados} />
-              <Casilla label="Procesados" valor={resumen.totalRacimosProcesados} />
             </div>
           </CasillaSeccion>
 
           <CasillaSeccion titulo="Canastillas">
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               <Casilla label="Cantidad" valor={resumen.canastillas} />
-              <Casilla label="Kilos" valor={`${resumen.kilosCanastillas.toFixed(2)} kg`} />
             </div>
           </CasillaSeccion>
 
@@ -134,10 +128,9 @@ export default function ShareSummaryPanel({
               {resumen.referencias.map((it, i) => (
                 <div key={i} className="rounded-md border border-gray-200 bg-gray-50 p-2">
                   <p className="mb-1 text-xs font-semibold text-gray-900">{it.referencia}</p>
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-2 gap-1.5">
                     <Casilla label="Cajas" valor={it.cajas} compacto />
                     <Casilla label="Cajas 20kg" valor={it.cajas20kg !== null ? it.cajas20kg.toFixed(2) : '—'} compacto />
-                    <Casilla label="Rechazadas" valor={it.rechazadas} compacto />
                   </div>
                 </div>
               ))}

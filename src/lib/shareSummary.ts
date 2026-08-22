@@ -118,15 +118,10 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
   lineas.push(`Finca: ${r.finca}`)
   if (r.horaFinalizacion) lineas.push(`Hora finalización: ${r.horaFinalizacion}`)
 
-  if (r.areaRecorrida !== null || r.porcentajeSemana !== null) {
+  if (r.areaRecorrida !== null) {
     lineas.push('')
     lineas.push('*Área recorrida*')
-    if (r.areaRecorrida !== null) {
-      lineas.push(`Hoy: ${r.areaRecorrida} ha${r.porcentajeDia !== null ? ` (${r.porcentajeDia.toFixed(1)}% del área total)` : ''}`)
-    }
-    if (r.porcentajeSemana !== null) {
-      lineas.push(`Acumulado semana ${r.semana}: ${r.porcentajeSemana.toFixed(1)}%`)
-    }
+    lineas.push(`Hoy: ${r.areaRecorrida} ha${r.porcentajeDia !== null ? ` (${r.porcentajeDia.toFixed(1)}% del área total)` : ''}`)
   }
 
   lineas.push('')
@@ -138,20 +133,17 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
   }
   lineas.push(`Total cosechados: ${r.totalRacimos}`)
   lineas.push(`Recusados: ${r.racimosRecusados}`)
-  lineas.push(`Procesados: ${r.totalRacimosProcesados}`)
 
   lineas.push('')
   lineas.push('*Canastillas*')
-  lineas.push(`${r.canastillas} (${r.kilosCanastillas.toFixed(2)} kg)`)
+  lineas.push(`${r.canastillas}`)
 
   lineas.push('')
   lineas.push('*Referencias producidas*')
   for (const it of r.referencias) {
-    const partes = [
-      `${it.referencia}: ${it.cajas} cajas`,
-      it.cajas20kg !== null ? `${it.cajas20kg.toFixed(2)} cajas 20kg` : null,
-      it.rechazadas > 0 ? `${it.rechazadas} rechazadas` : null,
-    ].filter(Boolean)
+    const partes = [`${it.referencia}: ${it.cajas} cajas`, it.cajas20kg !== null ? `${it.cajas20kg.toFixed(2)} cajas 20kg` : null].filter(
+      Boolean,
+    )
     lineas.push(partes.join(' · '))
   }
 
