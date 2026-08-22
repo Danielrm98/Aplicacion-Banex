@@ -1,6 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { FINCAS } from '../lib/fincas'
 import { getIsoWeek } from '../lib/isoWeek'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
@@ -86,10 +85,16 @@ function emptyTransporte(): TransporteDraft {
   }
 }
 
-export default function ProductionForm({ onSaved }: { onSaved: (resumen: RegistroResumenCompartir) => void }) {
+export default function ProductionForm({
+  finca,
+  onSaved,
+}: {
+  finca: string
+  onSaved: (resumen: RegistroResumenCompartir) => void
+}) {
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
   const { fincas } = useFincas()
-  const [header, setHeader] = useState<ProduccionHeaderInput>(emptyHeader)
+  const [header, setHeader] = useState<ProduccionHeaderInput>(() => ({ ...emptyHeader, finca }))
   const [items, setItems] = useState<ItemDraft[]>([emptyItem()])
   const [transportes, setTransportes] = useState<TransporteDraft[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -299,7 +304,7 @@ export default function ProductionForm({ onSaved }: { onSaved: (resumen: Registr
     }
 
     setSaving(false)
-    setHeader({ ...emptyHeader, fecha: header.fecha, semana: header.semana, finca: header.finca })
+    setHeader({ ...emptyHeader, finca, fecha: header.fecha, semana: header.semana })
     setItems([emptyItem()])
     setTransportes([])
     onSaved(resumen)
@@ -307,7 +312,7 @@ export default function ProductionForm({ onSaved }: { onSaved: (resumen: Registr
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Fecha">
           <input
             type="date"
@@ -341,24 +346,6 @@ export default function ProductionForm({ onSaved }: { onSaved: (resumen: Registr
             onChange={(e) => updateHeader('semana', Number(e.target.value))}
             className={inputClass}
           />
-        </Field>
-
-        <Field label="Finca">
-          <select
-            required
-            value={header.finca}
-            onChange={(e) => updateHeader('finca', e.target.value)}
-            className={inputClass}
-          >
-            <option value="" disabled>
-              Selecciona una finca
-            </option>
-            {FINCAS.map((finca) => (
-              <option key={finca} value={finca}>
-                {finca}
-              </option>
-            ))}
-          </select>
         </Field>
 
         <Field label="Notas (opcional)">
