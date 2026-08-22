@@ -3,6 +3,7 @@ import FiltersBar from '../components/FiltersBar'
 import StatTile from '../components/StatTile'
 import ProductionOverTimeChart from '../components/charts/ProductionOverTimeChart'
 import ProductionByFarmChart from '../components/charts/ProductionByFarmChart'
+import CajasPorFincaSemanaChart from '../components/charts/CajasPorFincaSemanaChart'
 import RejectionRateChart from '../components/charts/RejectionRateChart'
 import RacimosPorEdadChart from '../components/charts/RacimosPorEdadChart'
 import SingleLineChart from '../components/charts/SingleLineChart'
@@ -14,6 +15,7 @@ import {
   flattenItems,
   porFecha,
   porFinca,
+  cajasPorFincaYSemana,
   totales,
   resumenPorRegistro,
   racimosPorEdad,
@@ -50,6 +52,9 @@ export default function DashboardPage() {
   const resumenesTendencia = useMemo(() => resumenPorRegistro(registrosTendencia), [registrosTendencia])
   const serieRacimosSemana = useMemo(() => racimosPorSemana(resumenesTendencia), [resumenesTendencia])
   const serieRatioMerma = useMemo(() => ratioMermaPorSemana(resumenesTendencia), [resumenesTendencia])
+
+  const filasTendencia = useMemo(() => flattenItems(registrosTendencia), [registrosTendencia])
+  const serieCajasFincaSemana = useMemo(() => cajasPorFincaYSemana(filasTendencia), [filasTendencia])
 
   const filasCompletas = useMemo(() => filaCompleta(registros), [registros])
 
@@ -93,6 +98,14 @@ export default function DashboardPage() {
             <ChartCard title="Cajas producidas por finca">
               <ProductionByFarmChart data={serieFinca} />
             </ChartCard>
+            <div className="lg:col-span-2">
+              <ChartCard
+                title="Cajas producidas por finca — semana a semana"
+                subtitle="Historial completo por finca — no cambia con el filtro de Semana/Día"
+              >
+                <CajasPorFincaSemanaChart data={serieCajasFincaSemana} />
+              </ChartCard>
+            </div>
             <div className="lg:col-span-2">
               <ChartCard title="Tasa de rechazo por día">
                 <RejectionRateChart data={serieFecha} />

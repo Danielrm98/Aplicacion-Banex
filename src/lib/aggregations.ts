@@ -73,6 +73,37 @@ export function porFinca(filas: FilaProduccion[]): PuntoFinca[] {
     .sort((a, b) => b.cajas - a.cajas)
 }
 
+export interface PuntoSemanaCajas {
+  semana: number
+  cajas: number
+}
+
+export interface SerieFincaSemana {
+  finca: string
+  total: number
+  puntos: PuntoSemanaCajas[]
+}
+
+export function cajasPorFincaYSemana(filas: FilaProduccion[]): SerieFincaSemana[] {
+  const porFincaSemana = new Map<string, Map<number, number>>()
+
+  for (const f of filas) {
+    const porSemana = porFincaSemana.get(f.finca) ?? new Map<number, number>()
+    porSemana.set(f.semana, (porSemana.get(f.semana) ?? 0) + f.cantidad_cajas)
+    porFincaSemana.set(f.finca, porSemana)
+  }
+
+  return Array.from(porFincaSemana.entries())
+    .map(([finca, porSemana]) => {
+      const puntos = Array.from(porSemana.entries())
+        .map(([semana, cajas]) => ({ semana, cajas }))
+        .sort((a, b) => a.semana - b.semana)
+      const total = puntos.reduce((sum, p) => sum + p.cajas, 0)
+      return { finca, total, puntos }
+    })
+    .sort((a, b) => b.total - a.total)
+}
+
 export function totales(filas: FilaProduccion[]) {
   const cajas = filas.reduce((sum, f) => sum + f.cantidad_cajas, 0)
   const cajas20kg = filas.reduce((sum, f) => sum + f.cajas_20kg, 0)
