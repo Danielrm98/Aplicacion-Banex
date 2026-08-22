@@ -235,13 +235,6 @@ function RegistroCard({
               Editar información
             </button>
           )}
-          <button
-            onClick={removeRegistro}
-            disabled={busy}
-            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar registro
-          </button>
         </div>
       </div>
 
@@ -578,6 +571,16 @@ function RegistroCard({
               </div>
             </Seccion>
           )}
+
+          <div className="flex justify-end border-t border-gray-100 pt-4">
+            <button
+              onClick={removeRegistro}
+              disabled={busy}
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar registro
+            </button>
+          </div>
         </div>
       )}
     </div>
