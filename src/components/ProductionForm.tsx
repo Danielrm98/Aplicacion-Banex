@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { getIsoWeek } from '../lib/isoWeek'
+import { diaSemana } from '../lib/diaSemana'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
@@ -324,6 +325,7 @@ export default function ProductionForm({
             }}
             className={inputClass}
           />
+          {header.fecha && <p className="mt-1 text-xs text-gray-500">{diaSemana(header.fecha)}</p>}
         </Field>
 
         <Field label="Hora de finalización">

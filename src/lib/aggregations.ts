@@ -1,4 +1,5 @@
 import { CAJA_20KG_KG, CANASTILLA_KG, SEMANAS_RACIMO, type Produccion } from '../types/produccion'
+import { diaSemana } from './diaSemana'
 
 export interface FilaProduccion {
   fecha: string
@@ -213,6 +214,7 @@ export function ratioMermaPorSemana(resumenes: ResumenRegistro[]): PuntoRatioMer
 
 export interface ResumenDiaFinca {
   fecha: string
+  dia: string
   semana: number
   finca: string
   horaFinalizacion: string
@@ -264,6 +266,7 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
 
     return {
       fecha: r.fecha,
+      dia: diaSemana(r.fecha),
       semana: r.semana,
       finca: r.finca,
       horaFinalizacion: r.hora_finalizacion ?? '',

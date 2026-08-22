@@ -41,6 +41,7 @@ export async function exportToExcel(filas: FilaProduccion[], filename = 'producc
 
 const columnasCompletas: { header: string; key: keyof FilaCompleta; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
+  { header: 'Día', key: 'dia', width: 12 },
   { header: 'Semana', key: 'semana', width: 10 },
   { header: 'Finca', key: 'finca', width: 22 },
   { header: 'Hora finalización', key: 'horaFinalizacion', width: 14 },
@@ -64,6 +65,7 @@ const columnasCompletas: { header: string; key: keyof FilaCompleta; width?: numb
 
 const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
+  { header: 'Día', key: 'dia', width: 12 },
   { header: 'Semana', key: 'semana', width: 10 },
   { header: 'Finca', key: 'finca', width: 22 },
   { header: 'Hora finalización', key: 'horaFinalizacion', width: 14 },

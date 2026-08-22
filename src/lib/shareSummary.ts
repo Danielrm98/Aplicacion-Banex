@@ -1,4 +1,5 @@
 import { CAJA_20KG_KG, CANASTILLA_KG, SEMANAS_RACIMO, type Produccion } from '../types/produccion'
+import { diaSemana } from './diaSemana'
 
 export interface RacimoEdadResumen {
   semana: number
@@ -114,7 +115,7 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
 
   lineas.push('*ApproBan – Registro de producción*')
   lineas.push('')
-  lineas.push(`*Fecha:* ${r.fecha} (semana ${r.semana})`)
+  lineas.push(`*Fecha:* ${r.fecha} · ${diaSemana(r.fecha)} (semana ${r.semana})`)
   lineas.push(`*Finca:* ${r.finca}`)
   if (r.horaFinalizacion) lineas.push(`*Hora finalización:* ${r.horaFinalizacion}`)
 
