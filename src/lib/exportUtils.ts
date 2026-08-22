@@ -76,6 +76,7 @@ const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: num
   { header: 'Racimos cosechados', key: 'racimosCosechados', width: 16 },
   { header: 'Racimos recusados', key: 'racimosRecusados', width: 16 },
   { header: 'Racimos procesados', key: 'racimosProcesados', width: 16 },
+  { header: 'Calibración promedio', key: 'gradoPromedio', width: 18 },
   { header: 'Canastillas', key: 'canastillas', width: 12 },
   { header: 'Kilos canastillas', key: 'kilosCanastillas', width: 16 },
   { header: 'Peso neto racimo (kg)', key: 'pesoNetoRacimo', width: 18 },
@@ -101,6 +102,7 @@ export async function exportFilaCompletaToExcel(
       ratio: r.ratio !== null ? Number(r.ratio.toFixed(2)) : '',
       merma: r.merma !== null ? Number(r.merma.toFixed(1)) : '',
       pesoNetoRacimo: r.pesoNetoRacimo !== null ? Number(r.pesoNetoRacimo.toFixed(2)) : '',
+      gradoPromedio: r.gradoPromedio !== null ? Number(r.gradoPromedio.toFixed(1)) : '',
     })
   }
 

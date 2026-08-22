@@ -225,6 +225,7 @@ export interface ResumenDiaFinca {
   racimosCosechados: number
   racimosRecusados: number
   racimosProcesados: number
+  gradoPromedio: number | null
   canastillas: number
   kilosCanastillas: number
   pesoNetoRacimo: number | null
@@ -245,6 +246,11 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
     const kilosCanastillas = r.canastillas * CANASTILLA_KG
     const racimosCosechados = SEMANAS_RACIMO.reduce((sum, s) => sum + r[`racimos_semana_${s}` as const], 0)
     const racimosProcesados = racimosCosechados - r.racimos_recusados
+    const gradosRegistrados = SEMANAS_RACIMO.map((s) => r[`grado_semana_${s}` as const]).filter(
+      (g): g is number => g !== null,
+    )
+    const gradoPromedio =
+      gradosRegistrados.length > 0 ? gradosRegistrados.reduce((sum, g) => sum + g, 0) / gradosRegistrados.length : null
     const pesoTotal = kilosCajas20kg + kilosCanastillas
     const pesoNetoRacimo = racimosCosechados > 0 ? pesoTotal / racimosCosechados : null
     const ratio = racimosCosechados > 0 ? cajas20kgTotal / racimosCosechados : null
@@ -270,6 +276,7 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
       racimosCosechados,
       racimosRecusados: r.racimos_recusados,
       racimosProcesados,
+      gradoPromedio,
       canastillas: r.canastillas,
       kilosCanastillas,
       pesoNetoRacimo,
