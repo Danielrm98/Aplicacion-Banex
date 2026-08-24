@@ -82,11 +82,13 @@ export default function ShareSummaryPanel({
 
           <div className="grid grid-cols-2 gap-5">
             <div className="flex flex-col gap-3.5">
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="flex flex-col gap-1.5">
                 <Casilla label="Finca" valor={resumen.finca} destacado />
-                <Casilla label="Semana" valor={resumen.semana} />
-                <Casilla label="Fecha" valor={resumen.fecha} subvalor={diaSemana(resumen.fecha)} />
-                <Casilla label="Hora finalización" valor={resumen.horaFinalizacion || '—'} />
+                <div className="grid grid-cols-3 gap-1.5">
+                  <Casilla label="Semana" valor={resumen.semana} />
+                  <Casilla label="Fecha" valor={resumen.fecha} subvalor={diaSemana(resumen.fecha)} />
+                  <Casilla label="Hora finalización" valor={resumen.horaFinalizacion || '—'} />
+                </div>
               </div>
 
               {tieneArea && (
@@ -157,7 +159,7 @@ export default function ShareSummaryPanel({
                   <div className="flex flex-col gap-1.5">
                     {resumen.transportes.map((t, i) => (
                       <div key={i} className="rounded-md border border-gray-200 bg-gray-50 p-2">
-                        <div className="grid grid-cols-3 gap-1.5">
+                        <div className="grid grid-cols-2 gap-1.5">
                           <Casilla label="Tipo" valor={t.tipo || '—'} compacto />
                           <Casilla label="Placa" valor={t.placa || '—'} compacto />
                           <Casilla label="Sello" valor={t.sello || '—'} compacto />
@@ -230,9 +232,9 @@ function Casilla({
 }) {
   return (
     <div className={`rounded-md border ${destacado ? 'border-banex-200 bg-banex-50' : 'border-gray-200 bg-gray-50'} ${compacto ? 'px-1.5 py-1' : 'px-2 py-1.5'}`}>
-      <p className="truncate text-[10px] font-medium tracking-wide text-gray-500 uppercase">{label}</p>
-      <p className={`truncate text-xs font-semibold ${destacado ? 'text-banex-800' : 'text-gray-900'}`}>{valor}</p>
-      {subvalor && <p className="truncate text-[10px] text-gray-500">{subvalor}</p>}
+      <p className="break-words text-[10px] leading-tight font-medium tracking-wide text-gray-500 uppercase">{label}</p>
+      <p className={`leading-tight break-words text-xs font-semibold ${destacado ? 'text-banex-800' : 'text-gray-900'}`}>{valor}</p>
+      {subvalor && <p className="break-words text-[10px] leading-tight text-gray-500">{subvalor}</p>}
     </div>
   )
 }
