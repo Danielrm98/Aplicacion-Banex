@@ -11,6 +11,13 @@ import { FINCAS } from '../lib/fincas'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
 
+function saludoSegunHora(): string {
+  const hora = new Date().getHours()
+  if (hora < 12) return 'Hola buenos días amigo productor'
+  if (hora < 18) return 'Hola buenas tardes amigo productor'
+  return 'Hola buenas noches amigo productor'
+}
+
 export default function EntryPage() {
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string | null>(null)
   const [savedCount, setSavedCount] = useState(0)
@@ -38,8 +45,8 @@ export default function EntryPage() {
       <div>
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Registrar producción</h1>
-            <p className="text-sm text-gray-500">Selecciona la finca para registrar el día.</p>
+            <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">{saludoSegunHora()}</h1>
+            <p className="text-sm text-gray-500">¿Qué finca deseas registrar?</p>
           </div>
           <ExportButtons registros={registros} />
         </div>
