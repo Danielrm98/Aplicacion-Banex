@@ -69,6 +69,8 @@ export default function PlanPage() {
 
   const planReferencias = new Set(plan?.items.map((it) => it.referencia) ?? [])
   const adicionales = Array.from(producidoMap.entries()).filter(([ref]) => !planReferencias.has(ref))
+  const totalPalletsPlan = plan?.items.reduce((sum, it) => sum + it.pallets_plan, 0) ?? 0
+  const totalCajasPlan = plan?.items.reduce((sum, it) => sum + it.cajas_plan, 0) ?? 0
 
   return (
     <div>
@@ -182,6 +184,16 @@ export default function PlanPage() {
                   </tr>
                 )}
               </tbody>
+              {plan.items.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
+                    <td className="py-1.5 pr-3">Total</td>
+                    <td className="py-1.5 pr-3">{totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
+                    <td className="py-1.5 pr-3">{totalCajasPlan.toLocaleString('es')}</td>
+                    <td colSpan={5}></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
 
