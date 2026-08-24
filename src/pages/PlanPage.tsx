@@ -1,8 +1,8 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { FINCAS } from '../lib/fincas'
 import { getIsoWeek } from '../lib/isoWeek'
 import { useReferencias } from '../lib/useReferencias'
+import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import { usePlan } from '../lib/usePlan'
 import { flattenItems } from '../lib/aggregations'
@@ -14,12 +14,17 @@ const hoy = new Date().toISOString().slice(0, 10)
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanPage() {
-  const [finca, setFinca] = useState<string>(() => {
-    const guardada = obtenerFincaActual()
-    return guardada && (FINCAS as readonly string[]).includes(guardada) ? guardada : FINCAS[0]
-  })
+  const { fincas } = useFincas()
+  const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
   const [semana, setSemana] = useState<number>(getIsoWeek(hoy))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
+
+  useEffect(() => {
+    if (fincas.length === 0) return
+    if (finca && fincas.some((f) => f.nombre === finca)) return
+    const guardada = obtenerFincaActual()
+    setFinca(guardada && fincas.some((f) => f.nombre === guardada) ? guardada : fincas[0].nombre)
+  }, [fincas, finca])
 
   const { referencias } = useReferencias()
   const { registros } = useProducciones({ semana, finca })
@@ -88,9 +93,9 @@ export default function PlanPage() {
             onChange={(e) => setFinca(e.target.value)}
             className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           >
-            {FINCAS.map((f) => (
-              <option key={f} value={f}>
-                {f}
+            {fincas.map((f) => (
+              <option key={f.nombre} value={f.nombre}>
+                {f.nombre}
               </option>
             ))}
           </select>

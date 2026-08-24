@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { FINCAS } from '../lib/fincas'
 import {
   CAJA_20KG_KG,
   CANASTILLA_KG,
@@ -285,9 +284,9 @@ function RegistroCard({
                       onChange={(e) => setHeaderDraft((d) => ({ ...d, finca: e.target.value }))}
                       className={smallInput}
                     >
-                      {FINCAS.map((finca) => (
-                        <option key={finca} value={finca}>
-                          {finca}
+                      {fincas.map((f) => (
+                        <option key={f.nombre} value={f.nombre}>
+                          {f.nombre}
                         </option>
                       ))}
                     </select>

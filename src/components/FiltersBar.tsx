@@ -1,4 +1,4 @@
-import { FINCAS } from '../lib/fincas'
+import { useFincas } from '../lib/useFincas'
 import type { Filtros } from '../lib/useProducciones'
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function FiltersBar({ filtros, onChange }: Props) {
+  const { fincas } = useFincas()
+
   return (
     <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <label className="text-sm">
@@ -45,9 +47,9 @@ export default function FiltersBar({ filtros, onChange }: Props) {
           className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
         >
           <option value="">Todas las fincas</option>
-          {FINCAS.map((finca) => (
-            <option key={finca} value={finca}>
-              {finca}
+          {fincas.map((f) => (
+            <option key={f.nombre} value={f.nombre}>
+              {f.nombre}
             </option>
           ))}
         </select>

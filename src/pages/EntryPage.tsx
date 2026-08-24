@@ -7,7 +7,6 @@ import { useProducciones } from '../lib/useProducciones'
 import { useFincas } from '../lib/useFincas'
 import { useClima } from '../lib/useClima'
 import { guardarFincaActual } from '../lib/fincaActual'
-import { FINCAS } from '../lib/fincas'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
 
@@ -51,15 +50,17 @@ export default function EntryPage() {
           <ExportButtons registros={registros} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {FINCAS.map((nombre) => (
-            <FincaTile
-              key={nombre}
-              finca={fincas.find((f) => f.nombre === nombre) ?? { nombre, hectareas: null, latitud: null, longitud: null }}
-              onClick={() => elegirFinca(nombre)}
-            />
-          ))}
-        </div>
+        {fincas.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-500">
+            Todavía no hay fincas en el catálogo. Agrega una en Catálogo → Fincas.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {fincas.map((finca) => (
+              <FincaTile key={finca.nombre} finca={finca} onClick={() => elegirFinca(finca.nombre)} />
+            ))}
+          </div>
+        )}
       </div>
     )
   }

@@ -2,7 +2,6 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
-import { FINCAS } from '../lib/fincas'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
 import type { Finca } from '../types/finca'
@@ -243,68 +242,124 @@ function ReferenciasTab() {
 
 function FincasTab() {
   const { fincas, loading, error, refetch } = useFincas()
-  const fincasMap = new Map(fincas.map((f) => [f.nombre, f]))
   const totalHectareas = fincas.reduce((sum, f) => sum + (f.hectareas ?? 0), 0)
 
+  const [nombreNuevo, setNombreNuevo] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [creando, setCreando] = useState(false)
+
+  async function agregarFinca(e: FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+
+    const nombre = nombreNuevo.trim().toUpperCase()
+    if (!nombre) {
+      setFormError('Escribe el nombre de la finca.')
+      return
+    }
+    if (fincas.some((f) => f.nombre === nombre)) {
+      setFormError(`Ya existe una finca llamada "${nombre}".`)
+      return
+    }
+
+    setCreando(true)
+    const { error: insertError } = await supabase.from('fincas').insert({ nombre })
+    setCreando(false)
+
+    if (insertError) {
+      setFormError(insertError.message)
+      return
+    }
+
+    setNombreNuevo('')
+    refetch()
+  }
+
   return (
-    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <SectionHeading>Hectareaje y ubicación por finca</SectionHeading>
-        {totalHectareas > 0 && (
-          <span className="text-sm text-gray-500">
-            Total: <span className="font-medium text-banex-800">{totalHectareas.toLocaleString('es')} ha</span>
-          </span>
+    <>
+      <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
+        <SectionHeading>Agregar finca</SectionHeading>
+        <form onSubmit={agregarFinca} className="flex flex-wrap items-end gap-3">
+          <Field label="Nombre de la finca">
+            <input
+              type="text"
+              required
+              value={nombreNuevo}
+              onChange={(e) => setNombreNuevo(e.target.value)}
+              className={inputClass}
+              placeholder="Ej. SANTA ROSA"
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={creando}
+            className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
+          >
+            {creando ? 'Guardando...' : 'Agregar finca'}
+          </button>
+        </form>
+        {formError && <p className="mt-2 text-sm text-red-600">{formError}</p>}
+      </div>
+
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <SectionHeading>Hectareaje y ubicación por finca ({fincas.length})</SectionHeading>
+          {totalHectareas > 0 && (
+            <span className="text-sm text-gray-500">
+              Total: <span className="font-medium text-banex-800">{totalHectareas.toLocaleString('es')} ha</span>
+            </span>
+          )}
+        </div>
+        <p className="mb-3 text-xs text-gray-500">
+          La finca que agregues aquí aparece automáticamente en Registrar, Historial, Reportes y Plan. La
+          latitud/longitud se usa para mostrar el pronóstico del clima en Registrar.
+        </p>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+        ) : error ? (
+          <p className="py-8 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-2 pr-3 font-medium">Finca</th>
+                  <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
+                  <th className="py-2 pr-3 font-medium">Latitud</th>
+                  <th className="py-2 pr-3 font-medium">Longitud</th>
+                  <th className="py-2 pr-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {fincas.map((f) => (
+                  <FincaRow key={f.nombre} finca={f} onSaved={refetch} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-      <p className="mb-3 text-xs text-gray-500">
-        La latitud/longitud de cada finca se usa para mostrar el pronóstico del clima en Registrar.
-      </p>
-      {loading ? (
-        <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
-      ) : error ? (
-        <p className="py-8 text-center text-sm text-red-600">{error}</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-500">
-                <th className="py-2 pr-3 font-medium">Finca</th>
-                <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
-                <th className="py-2 pr-3 font-medium">Latitud</th>
-                <th className="py-2 pr-3 font-medium">Longitud</th>
-                <th className="py-2 pr-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {FINCAS.map((nombre) => (
-                <FincaRow key={nombre} nombre={nombre} finca={fincasMap.get(nombre) ?? null} onSaved={refetch} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
 function FincaRow({
-  nombre,
   finca,
   onSaved,
 }: {
-  nombre: string
-  finca: Finca | null
+  finca: Finca
   onSaved: () => void
 }) {
-  const [draftHectareas, setDraftHectareas] = useState<string>(finca?.hectareas != null ? String(finca.hectareas) : '')
-  const [draftLat, setDraftLat] = useState<string>(finca?.latitud != null ? String(finca.latitud) : '')
-  const [draftLon, setDraftLon] = useState<string>(finca?.longitud != null ? String(finca.longitud) : '')
+  const nombre = finca.nombre
+  const [draftHectareas, setDraftHectareas] = useState<string>(finca.hectareas != null ? String(finca.hectareas) : '')
+  const [draftLat, setDraftLat] = useState<string>(finca.latitud != null ? String(finca.latitud) : '')
+  const [draftLon, setDraftLon] = useState<string>(finca.longitud != null ? String(finca.longitud) : '')
   const [busy, setBusy] = useState(false)
 
   const hectareasValue = draftHectareas === '' ? null : Number(draftHectareas)
   const latValue = draftLat === '' ? null : Number(draftLat)
   const lonValue = draftLon === '' ? null : Number(draftLon)
-  const dirty = hectareasValue !== (finca?.hectareas ?? null) || latValue !== (finca?.latitud ?? null) || lonValue !== (finca?.longitud ?? null)
+  const dirty = hectareasValue !== finca.hectareas || latValue !== finca.latitud || lonValue !== finca.longitud
 
   async function guardar() {
     setBusy(true)
