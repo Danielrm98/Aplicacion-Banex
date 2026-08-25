@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { useClima } from '../lib/useClima'
 import { descripcionClima } from '../lib/climaCodigos'
 import { diaSemana } from '../lib/diaSemana'
+import LluviaHistorialChart from './charts/LluviaHistorialChart'
 import type { Finca } from '../types/finca'
 
 export default function FincaClimaPanel({ finca }: { finca: Finca | null }) {
   const tieneCoordenadas = finca?.latitud != null && finca?.longitud != null
   const { clima, loading, error } = useClima(tieneCoordenadas ? finca!.latitud : null, tieneCoordenadas ? finca!.longitud : null)
+  const [verHistorial, setVerHistorial] = useState(false)
 
   if (!tieneCoordenadas) {
     return (
@@ -38,7 +41,13 @@ export default function FincaClimaPanel({ finca }: { finca: Finca | null }) {
           <div className="text-xs text-gray-500">
             <p>Humedad: {clima.actual.humedad}%</p>
             <p>Viento: {Math.round(clima.actual.vientoKmh)} km/h</p>
-            <p>Lluvia hoy: {clima.dias[0].precipitacionMm.toFixed(1)} mm</p>
+            <p>
+              Lluvia en este momento:{' '}
+              <span className={clima.actual.lluviaAhora > 0 ? 'font-medium text-blue-600' : ''}>
+                {clima.actual.lluviaAhora > 0 ? `${clima.actual.lluviaAhora.toFixed(1)} mm/h` : 'sin lluvia'}
+              </span>
+            </p>
+            <p>Acumulado hoy (con pronóstico): {clima.dias[0].precipitacionMm.toFixed(1)} mm</p>
             <p>Evapotranspiración: {clima.dias[0].evapotranspiracionMm.toFixed(1)} mm</p>
           </div>
 
@@ -54,6 +63,20 @@ export default function FincaClimaPanel({ finca }: { finca: Finca | null }) {
                 <p className="text-[10px] text-gray-400">ET {d.evapotranspiracionMm.toFixed(1)}mm</p>
               </div>
             ))}
+          </div>
+
+          <div className="w-full">
+            <button
+              onClick={() => setVerHistorial((v) => !v)}
+              className="text-xs font-medium text-banex-700 hover:text-banex-800"
+            >
+              {verHistorial ? '▾ Ocultar historial de lluvia (14 días)' : '▸ Ver historial de lluvia (14 días)'}
+            </button>
+            {verHistorial && (
+              <div className="mt-2">
+                <LluviaHistorialChart data={clima.historialLluvia} />
+              </div>
+            )}
           </div>
         </div>
       ) : null}
