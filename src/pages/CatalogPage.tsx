@@ -432,7 +432,8 @@ function FincasTab() {
         </div>
         <p className="mb-3 text-xs text-gray-500">
           La finca que agregues aquí aparece automáticamente en Registrar, Historial, Reportes y Plan. La
-          latitud/longitud se usa para mostrar el pronóstico del clima en Registrar.
+          latitud/longitud se usa para mostrar el pronóstico del clima en Registrar. El responsable es solo
+          información de referencia por ahora: todavía no crea una cuenta de acceso para esa persona.
         </p>
         {loading ? (
           <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
@@ -440,13 +441,15 @@ function FincasTab() {
           <p className="py-8 text-center text-sm text-red-600">{error}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
+            <table className="w-full min-w-[960px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
                   <th className="py-2 pr-3 font-medium">Finca</th>
                   <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
                   <th className="py-2 pr-3 font-medium">Latitud</th>
                   <th className="py-2 pr-3 font-medium">Longitud</th>
+                  <th className="py-2 pr-3 font-medium">Responsable</th>
+                  <th className="py-2 pr-3 font-medium">Correo del responsable</th>
                   <th className="py-2 pr-3 font-medium"></th>
                 </tr>
               </thead>
@@ -474,18 +477,32 @@ function FincaRow({
   const [draftHectareas, setDraftHectareas] = useState<string>(finca.hectareas != null ? String(finca.hectareas) : '')
   const [draftLat, setDraftLat] = useState<string>(finca.latitud != null ? String(finca.latitud) : '')
   const [draftLon, setDraftLon] = useState<string>(finca.longitud != null ? String(finca.longitud) : '')
+  const [draftResponsableNombre, setDraftResponsableNombre] = useState(finca.responsable_nombre ?? '')
+  const [draftResponsableCorreo, setDraftResponsableCorreo] = useState(finca.responsable_correo ?? '')
   const [busy, setBusy] = useState(false)
 
   const hectareasValue = draftHectareas === '' ? null : Number(draftHectareas)
   const latValue = draftLat === '' ? null : Number(draftLat)
   const lonValue = draftLon === '' ? null : Number(draftLon)
-  const dirty = hectareasValue !== finca.hectareas || latValue !== finca.latitud || lonValue !== finca.longitud
+  const responsableNombreValue = draftResponsableNombre.trim() === '' ? null : draftResponsableNombre.trim()
+  const responsableCorreoValue = draftResponsableCorreo.trim() === '' ? null : draftResponsableCorreo.trim()
+  const dirty =
+    hectareasValue !== finca.hectareas ||
+    latValue !== finca.latitud ||
+    lonValue !== finca.longitud ||
+    responsableNombreValue !== finca.responsable_nombre ||
+    responsableCorreoValue !== finca.responsable_correo
 
   async function guardar() {
     setBusy(true)
-    const { error } = await supabase
-      .from('fincas')
-      .upsert({ nombre, hectareas: hectareasValue, latitud: latValue, longitud: lonValue })
+    const { error } = await supabase.from('fincas').upsert({
+      nombre,
+      hectareas: hectareasValue,
+      latitud: latValue,
+      longitud: lonValue,
+      responsable_nombre: responsableNombreValue,
+      responsable_correo: responsableCorreoValue,
+    })
     setBusy(false)
     if (error) {
       alert(`No se pudo guardar: ${error.message}`)
@@ -531,6 +548,28 @@ function FincaRow({
             onChange={(e) => setDraftLon(e.target.value)}
             className={inputClass}
             placeholder="Ej. -74.2"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">
+        <div className="w-36">
+          <input
+            type="text"
+            value={draftResponsableNombre}
+            onChange={(e) => setDraftResponsableNombre(e.target.value)}
+            className={inputClass}
+            placeholder="Nombre"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">
+        <div className="w-44">
+          <input
+            type="email"
+            value={draftResponsableCorreo}
+            onChange={(e) => setDraftResponsableCorreo(e.target.value)}
+            className={inputClass}
+            placeholder="correo@ejemplo.com"
           />
         </div>
       </td>

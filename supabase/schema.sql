@@ -118,7 +118,9 @@ create table public.fincas (
   nombre text primary key,
   hectareas numeric check (hectareas >= 0),
   latitud numeric check (latitud between -90 and 90),
-  longitud numeric check (longitud between -180 and 180)
+  longitud numeric check (longitud between -180 and 180),
+  responsable_nombre text,
+  responsable_correo text
 );
 
 alter table public.fincas enable row level security;
