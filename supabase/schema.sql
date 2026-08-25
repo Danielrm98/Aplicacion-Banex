@@ -29,6 +29,11 @@ create policy "Usuarios autenticados eliminan referencias"
   on public.referencias for delete
   using (auth.role() = 'authenticated');
 
+create policy "Usuarios autenticados editan referencias"
+  on public.referencias for update
+  using (auth.role() = 'authenticated')
+  with check (auth.role() = 'authenticated');
+
 insert into public.referencias (marca, cajas_pallet, factor_conversion, tipo_caja, especificacion, peso_neto_kg) values
   ('20LD7RA', 55, 0.9297, 'Convencional', 'Corta', 17.20),
   ('AGSTDBVRA', 54, 1.0000, 'Convencional', 'Larga', 18.50),

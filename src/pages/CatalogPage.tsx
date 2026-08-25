@@ -213,23 +213,13 @@ function ReferenciasTab() {
               </thead>
               <tbody>
                 {referencias.map((r) => (
-                  <tr key={r.marca} className="border-b border-gray-100">
-                    <td className="py-1.5 pr-3 font-medium text-gray-900">{r.marca}</td>
-                    <td className="py-1.5 pr-3">{r.cajas_pallet}</td>
-                    <td className="py-1.5 pr-3">{r.peso_neto_kg}</td>
-                    <td className="py-1.5 pr-3">{r.factor_conversion}</td>
-                    <td className="py-1.5 pr-3">{r.tipo_caja}</td>
-                    <td className="py-1.5 pr-3">{r.especificacion}</td>
-                    <td className="py-1.5 pr-3">
-                      <button
-                        onClick={() => handleDelete(r.marca)}
-                        disabled={deletingMarca === r.marca}
-                        className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
+                  <ReferenciaRow
+                    key={r.marca}
+                    referencia={r}
+                    deleting={deletingMarca === r.marca}
+                    onDelete={() => handleDelete(r.marca)}
+                    onSaved={refetch}
+                  />
                 ))}
               </tbody>
             </table>
@@ -237,6 +227,136 @@ function ReferenciasTab() {
         )}
       </div>
     </>
+  )
+}
+
+function ReferenciaRow({
+  referencia,
+  deleting,
+  onDelete,
+  onSaved,
+}: {
+  referencia: Referencia
+  deleting: boolean
+  onDelete: () => void
+  onSaved: () => void
+}) {
+  const [draftCajasPallet, setDraftCajasPallet] = useState(String(referencia.cajas_pallet))
+  const [draftPesoNeto, setDraftPesoNeto] = useState(String(referencia.peso_neto_kg))
+  const [draftTipoCaja, setDraftTipoCaja] = useState(referencia.tipo_caja)
+  const [draftEspecificacion, setDraftEspecificacion] = useState(referencia.especificacion)
+  const [busy, setBusy] = useState(false)
+  const [rowError, setRowError] = useState<string | null>(null)
+
+  const cajasPalletValue = Number(draftCajasPallet)
+  const pesoNetoValue = Number(draftPesoNeto)
+  const factorConversion = pesoNetoValue > 0 ? pesoNetoValue / CAJA_20KG_KG : 0
+
+  const dirty =
+    cajasPalletValue !== referencia.cajas_pallet ||
+    pesoNetoValue !== referencia.peso_neto_kg ||
+    draftTipoCaja !== referencia.tipo_caja ||
+    draftEspecificacion !== referencia.especificacion
+
+  async function guardar() {
+    setRowError(null)
+    if (!(cajasPalletValue > 0)) {
+      setRowError('Las cajas por pallet deben ser mayor a 0.')
+      return
+    }
+    if (!(pesoNetoValue > 0)) {
+      setRowError('El peso neto debe ser mayor a 0.')
+      return
+    }
+
+    setBusy(true)
+    const { error } = await supabase
+      .from('referencias')
+      .update({
+        cajas_pallet: cajasPalletValue,
+        peso_neto_kg: pesoNetoValue,
+        factor_conversion: factorConversion,
+        tipo_caja: draftTipoCaja,
+        especificacion: draftEspecificacion,
+      })
+      .eq('marca', referencia.marca)
+    setBusy(false)
+
+    if (error) {
+      setRowError(error.message)
+      return
+    }
+    onSaved()
+  }
+
+  return (
+    <tr className="border-b border-gray-100">
+      <td className="py-1.5 pr-3 font-medium text-gray-900">{referencia.marca}</td>
+      <td className="py-1.5 pr-3">
+        <div className="w-20">
+          <input
+            type="number"
+            min={1}
+            step="1"
+            value={draftCajasPallet}
+            onChange={(e) => setDraftCajasPallet(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">
+        <div className="w-24">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={draftPesoNeto}
+            onChange={(e) => setDraftPesoNeto(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">{factorConversion ? factorConversion.toFixed(4) : '—'}</td>
+      <td className="py-1.5 pr-3">
+        <select
+          value={draftTipoCaja}
+          onChange={(e) => setDraftTipoCaja(e.target.value as Referencia['tipo_caja'])}
+          className={inputClass}
+        >
+          <option value="Convencional">Convencional</option>
+          <option value="Orgánica">Orgánica</option>
+        </select>
+      </td>
+      <td className="py-1.5 pr-3">
+        <select
+          value={draftEspecificacion}
+          onChange={(e) => setDraftEspecificacion(e.target.value as Referencia['especificacion'])}
+          className={inputClass}
+        >
+          <option value="Larga">Larga</option>
+          <option value="Corta">Corta</option>
+        </select>
+      </td>
+      <td className="py-1.5 pr-3 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={guardar}
+            disabled={!dirty || busy}
+            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Guardar
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+          >
+            Eliminar
+          </button>
+        </div>
+        {rowError && <p className="mt-1 text-xs text-red-600">{rowError}</p>}
+      </td>
+    </tr>
   )
 }
 
