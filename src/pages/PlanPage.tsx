@@ -7,16 +7,16 @@ import { useProducciones } from '../lib/useProducciones'
 import { usePlan } from '../lib/usePlan'
 import { flattenItems } from '../lib/aggregations'
 import { obtenerFincaActual } from '../lib/fincaActual'
+import { fechaLocalHoy } from '../lib/fechaLocal'
 import type { PlanItem } from '../types/plan'
 import SectionHeading from '../components/SectionHeading'
 
-const hoy = new Date().toISOString().slice(0, 10)
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanPage() {
   const { fincas } = useFincas()
   const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
-  const [semana, setSemana] = useState<number>(getIsoWeek(hoy))
+  const [semana, setSemana] = useState<number>(() => getIsoWeek(fechaLocalHoy()))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
 
   useEffect(() => {

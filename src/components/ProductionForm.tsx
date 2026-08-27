@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { getIsoWeek } from '../lib/isoWeek'
 import { diaSemana } from '../lib/diaSemana'
+import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
@@ -39,7 +40,7 @@ interface TransporteDraft {
   sello: string
 }
 
-const initialFecha = new Date().toISOString().slice(0, 10)
+const initialFecha = fechaLocalHoy()
 
 const emptyHeader: ProduccionHeaderInput = {
   fecha: initialFecha,
@@ -95,7 +96,10 @@ export default function ProductionForm({
 }) {
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
   const { fincas } = useFincas()
-  const [header, setHeader] = useState<ProduccionHeaderInput>(() => ({ ...emptyHeader, finca }))
+  const [header, setHeader] = useState<ProduccionHeaderInput>(() => {
+    const fecha = fechaLocalHoy()
+    return { ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) }
+  })
   const [items, setItems] = useState<ItemDraft[]>([emptyItem()])
   const [transportes, setTransportes] = useState<TransporteDraft[]>([])
   const [error, setError] = useState<string | null>(null)
