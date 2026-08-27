@@ -26,7 +26,18 @@ export default function ShareSummaryPanel({
     setImagenError(null)
     setGenerandoImagen(true)
     try {
-      const blob = await domToBlob(capturaRef.current, { backgroundColor: '#ffffff', scale: 2 })
+      // Se fija el ancho/alto explícitos (en vez de dejar que la librería los
+      // infiera) porque en algunos navegadores móviles la medición implícita
+      // no respeta el ancho fijo de 840px de la casilla y la captura sale
+      // recortada al ancho de la pantalla del celular.
+      const { scrollWidth, scrollHeight } = capturaRef.current
+      const blob = await domToBlob(capturaRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        width: scrollWidth,
+        height: scrollHeight,
+        style: { width: `${scrollWidth}px`, maxWidth: 'none' },
+      })
 
       const nombreArchivo = `registro_${resumen.finca}_${resumen.fecha}.png`.replace(/\s+/g, '_')
       const file = new File([blob], nombreArchivo, { type: 'image/png' })
