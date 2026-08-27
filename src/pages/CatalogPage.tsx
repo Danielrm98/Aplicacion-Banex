@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
@@ -22,8 +23,16 @@ const emptyForm = {
 
 export default function CatalogPage() {
   const [vista, setVista] = useState<'referencias' | 'fincas' | 'usuarios'>('referencias')
-  const { perfil } = usePerfil()
+  const { perfil, loading } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
+
+  if (loading) {
+    return <p className="py-16 text-center text-sm text-gray-500">Cargando...</p>
+  }
+
+  if (perfil?.rol === 'operador') {
+    return <Navigate to="/" replace />
+  }
 
   return (
     <div>
