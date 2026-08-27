@@ -4,6 +4,14 @@ import banexLogo from '../assets/banex-logo.jpg'
 
 const DOMINIO_USUARIO = 'approban.local'
 
+function emailDesdeUsuario(usuario: string): string {
+  const limpio = usuario.trim().toLowerCase()
+  // Las cuentas creadas antes de este cambio usan su correo real; los
+  // usuarios nuevos (creados en Catálogo → Usuarios) solo tienen un nombre
+  // de usuario, al que se le agrega un dominio interno para el login.
+  return limpio.includes('@') ? limpio : `${limpio}@${DOMINIO_USUARIO}`
+}
+
 export default function LoginPage() {
   const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
@@ -15,7 +23,7 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const email = `${usuario.trim().toLowerCase()}@${DOMINIO_USUARIO}`
+    const email = emailDesdeUsuario(usuario)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     setLoading(false)
