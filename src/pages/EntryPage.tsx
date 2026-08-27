@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ProductionForm from '../components/ProductionForm'
 import ExportButtons from '../components/ExportButtons'
 import ShareSummaryPanel from '../components/ShareSummaryPanel'
@@ -6,6 +6,7 @@ import FincaClimaPanel from '../components/FincaClimaPanel'
 import { useProducciones } from '../lib/useProducciones'
 import { useFincas } from '../lib/useFincas'
 import { useClima } from '../lib/useClima'
+import { usePerfil } from '../lib/usePerfil'
 import { guardarFincaActual } from '../lib/fincaActual'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
@@ -18,11 +19,20 @@ function saludoSegunHora(): string {
 }
 
 export default function EntryPage() {
+  const { perfil, loading: loadingPerfil } = usePerfil()
+  const esOperador = perfil?.rol === 'operador'
+
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string | null>(null)
   const [savedCount, setSavedCount] = useState(0)
   const [ultimoResumen, setUltimoResumen] = useState<RegistroResumenCompartir | null>(null)
   const { registros } = useProducciones({})
   const { fincas } = useFincas()
+
+  const fincaActiva = esOperador ? (perfil?.finca ?? null) : fincaSeleccionada
+
+  useEffect(() => {
+    if (esOperador && perfil?.finca) guardarFincaActual(perfil.finca)
+  }, [esOperador, perfil?.finca])
 
   function handleSaved(resumen: RegistroResumenCompartir) {
     setSavedCount((c) => c + 1)
@@ -39,7 +49,22 @@ export default function EntryPage() {
     setUltimoResumen(null)
   }
 
-  if (!fincaSeleccionada) {
+  if (loadingPerfil) {
+    return <p className="py-16 text-center text-sm text-gray-500">Cargando...</p>
+  }
+
+  if (esOperador && !perfil?.finca) {
+    return (
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
+        <p className="text-sm text-gray-500">
+          Tu usuario todavía no tiene una finca asignada. Pídele al administrador que te la asigne en Catálogo →
+          Usuarios.
+        </p>
+      </div>
+    )
+  }
+
+  if (!fincaActiva) {
     return (
       <div>
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -69,21 +94,23 @@ export default function EntryPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button
-            onClick={volverAFincas}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-          >
-            ← Fincas
-          </button>
+          {!esOperador && (
+            <button
+              onClick={volverAFincas}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+            >
+              ← Fincas
+            </button>
+          )}
           <div>
-            <h1 className="text-xl font-bold text-banex-900 sm:text-2xl">{fincaSeleccionada}</h1>
+            <h1 className="text-xl font-bold text-banex-900 sm:text-2xl">{fincaActiva}</h1>
             <p className="text-sm text-gray-500">Captura los datos de un lote de cajas de banano.</p>
           </div>
         </div>
         <ExportButtons registros={registros} />
       </div>
 
-      <FincaClimaPanel finca={fincas.find((f) => f.nombre === fincaSeleccionada) ?? null} />
+      <FincaClimaPanel finca={fincas.find((f) => f.nombre === fincaActiva) ?? null} />
 
       {ultimoResumen && (
         <div className="mb-6">
@@ -92,7 +119,7 @@ export default function EntryPage() {
       )}
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
-        <ProductionForm finca={fincaSeleccionada} onSaved={handleSaved} />
+        <ProductionForm finca={fincaActiva} onSaved={handleSaved} />
       </div>
 
       {savedCount > 0 && (

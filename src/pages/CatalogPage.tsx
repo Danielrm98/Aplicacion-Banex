@@ -2,9 +2,13 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
+import { usePerfil } from '../lib/usePerfil'
+import { usePerfiles } from '../lib/usePerfiles'
+import { crearUsuario, eliminarUsuario, resetearPassword } from '../lib/adminUsuarios'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
 import type { Finca } from '../types/finca'
+import type { Perfil } from '../types/perfil'
 import SectionHeading from '../components/SectionHeading'
 import TabButton from '../components/TabButton'
 
@@ -17,13 +21,15 @@ const emptyForm = {
 }
 
 export default function CatalogPage() {
-  const [vista, setVista] = useState<'referencias' | 'fincas'>('referencias')
+  const [vista, setVista] = useState<'referencias' | 'fincas' | 'usuarios'>('referencias')
+  const { perfil } = usePerfil()
+  const esAdmin = perfil?.rol === 'admin'
 
   return (
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Catálogo</h1>
       <p className="mb-4 text-sm text-gray-500">
-        Gestiona las marcas/referencias de cajas y el hectareaje de cada finca.
+        Gestiona las marcas/referencias de cajas, el hectareaje de cada finca{esAdmin && ' y los usuarios'}.
       </p>
 
       <div className="mb-6 flex gap-1 border-b border-gray-200">
@@ -33,9 +39,20 @@ export default function CatalogPage() {
         <TabButton active={vista === 'fincas'} onClick={() => setVista('fincas')}>
           Fincas
         </TabButton>
+        {esAdmin && (
+          <TabButton active={vista === 'usuarios'} onClick={() => setVista('usuarios')}>
+            Usuarios
+          </TabButton>
+        )}
       </div>
 
-      {vista === 'referencias' ? <ReferenciasTab /> : <FincasTab />}
+      {vista === 'referencias' ? (
+        <ReferenciasTab />
+      ) : vista === 'fincas' ? (
+        <FincasTab />
+      ) : esAdmin ? (
+        <UsuariosTab />
+      ) : null}
     </div>
   )
 }
@@ -581,6 +598,283 @@ function FincaRow({
         >
           Guardar
         </button>
+      </td>
+    </tr>
+  )
+}
+
+function UsuariosTab() {
+  const { fincas } = useFincas()
+  const { perfiles, loading, error, refetch } = usePerfiles()
+
+  const [usuario, setUsuario] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [password, setPassword] = useState('')
+  const [rol, setRol] = useState<Perfil['rol']>('operador')
+  const [finca, setFinca] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [creando, setCreando] = useState(false)
+  const [creado, setCreado] = useState<{ usuario: string; password: string } | null>(null)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    setCreado(null)
+
+    if (rol === 'operador' && !finca) {
+      setFormError('Selecciona la finca del nuevo usuario.')
+      return
+    }
+
+    setCreando(true)
+    try {
+      await crearUsuario({
+        usuario,
+        password,
+        nombre: nombre.trim() || null,
+        rol,
+        finca: rol === 'operador' ? finca : null,
+      })
+      setCreado({ usuario: usuario.trim().toLowerCase(), password })
+      setUsuario('')
+      setNombre('')
+      setPassword('')
+      setRol('operador')
+      setFinca('')
+      refetch()
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'No se pudo crear el usuario.')
+    } finally {
+      setCreando(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
+        <SectionHeading>Crear usuario</SectionHeading>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <Field label="Usuario (para iniciar sesión)">
+            <input
+              type="text"
+              required
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
+              className={inputClass}
+              placeholder="Ej. jperez"
+            />
+          </Field>
+          <Field label="Nombre completo">
+            <input
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className={inputClass}
+              placeholder="Ej. Juan Pérez"
+            />
+          </Field>
+          <Field label="Contraseña">
+            <input
+              type="text"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+              placeholder="Mínimo 6 caracteres"
+            />
+          </Field>
+          <Field label="Rol">
+            <select value={rol} onChange={(e) => setRol(e.target.value as Perfil['rol'])} className={inputClass}>
+              <option value="operador">Operador (solo su finca)</option>
+              <option value="admin">Administrador (ve todo)</option>
+            </select>
+          </Field>
+          <Field label="Finca asignada">
+            <select
+              value={finca}
+              onChange={(e) => setFinca(e.target.value)}
+              disabled={rol === 'admin'}
+              className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              <option value="">Selecciona una finca</option>
+              {fincas.map((f) => (
+                <option key={f.nombre} value={f.nombre}>
+                  {f.nombre}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          {formError && <p className="text-sm text-red-600 sm:col-span-2 lg:col-span-5">{formError}</p>}
+
+          <div className="sm:col-span-2 lg:col-span-5">
+            <button
+              type="submit"
+              disabled={creando}
+              className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
+            >
+              {creando ? 'Creando...' : 'Crear usuario'}
+            </button>
+          </div>
+        </form>
+
+        {creado && (
+          <p className="mt-3 rounded-lg bg-banex-50 px-3 py-2 text-sm text-banex-800">
+            Usuario <strong>{creado.usuario}</strong> creado con contraseña <strong>{creado.password}</strong>.
+            Compártela ahora con esa persona — no se vuelve a mostrar.
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <SectionHeading>Usuarios existentes ({perfiles.length})</SectionHeading>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+        ) : error ? (
+          <p className="py-8 text-center text-sm text-red-600">{error}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-2 pr-3 font-medium">Usuario</th>
+                  <th className="py-2 pr-3 font-medium">Nombre</th>
+                  <th className="py-2 pr-3 font-medium">Rol</th>
+                  <th className="py-2 pr-3 font-medium">Finca</th>
+                  <th className="py-2 pr-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {perfiles.map((p) => (
+                  <PerfilRow key={p.user_id} perfil={p} fincas={fincas} onChanged={refetch} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+function PerfilRow({
+  perfil,
+  fincas,
+  onChanged,
+}: {
+  perfil: Perfil
+  fincas: Finca[]
+  onChanged: () => void
+}) {
+  const [draftRol, setDraftRol] = useState<Perfil['rol']>(perfil.rol)
+  const [draftFinca, setDraftFinca] = useState(perfil.finca ?? '')
+  const [busy, setBusy] = useState(false)
+
+  const dirty = draftRol !== perfil.rol || (draftFinca || null) !== perfil.finca
+
+  async function guardar() {
+    if (draftRol === 'operador' && !draftFinca) {
+      alert('Selecciona la finca para este usuario.')
+      return
+    }
+    setBusy(true)
+    const { error } = await supabase
+      .from('perfiles')
+      .update({ rol: draftRol, finca: draftRol === 'admin' ? null : draftFinca })
+      .eq('user_id', perfil.user_id)
+    setBusy(false)
+    if (error) {
+      alert(`No se pudo guardar: ${error.message}`)
+      return
+    }
+    onChanged()
+  }
+
+  async function resetear() {
+    const nueva = prompt(`Nueva contraseña para "${perfil.usuario}" (mínimo 6 caracteres):`)
+    if (!nueva) return
+    if (nueva.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres.')
+      return
+    }
+    setBusy(true)
+    try {
+      await resetearPassword(perfil.usuario, nueva)
+      alert(`Contraseña de "${perfil.usuario}" actualizada.`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo resetear la contraseña.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function eliminar() {
+    if (!confirm(`¿Eliminar el usuario "${perfil.usuario}"? Esta acción no se puede deshacer.`)) return
+    setBusy(true)
+    try {
+      await eliminarUsuario(perfil.usuario)
+      onChanged()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo eliminar el usuario.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <tr className="border-b border-gray-100">
+      <td className="py-1.5 pr-3 font-medium text-gray-900">{perfil.usuario}</td>
+      <td className="py-1.5 pr-3 text-gray-500">{perfil.nombre ?? '—'}</td>
+      <td className="py-1.5 pr-3">
+        <select
+          value={draftRol}
+          onChange={(e) => setDraftRol(e.target.value as Perfil['rol'])}
+          className={`${inputClass} w-36`}
+        >
+          <option value="operador">Operador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </td>
+      <td className="py-1.5 pr-3">
+        <select
+          value={draftFinca}
+          onChange={(e) => setDraftFinca(e.target.value)}
+          disabled={draftRol === 'admin'}
+          className={`${inputClass} w-40 disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <option value="">{draftRol === 'admin' ? 'Todas' : 'Selecciona una finca'}</option>
+          {fincas.map((f) => (
+            <option key={f.nombre} value={f.nombre}>
+              {f.nombre}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="py-1.5 pr-3 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={guardar}
+            disabled={!dirty || busy}
+            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Guardar
+          </button>
+          <button
+            onClick={resetear}
+            disabled={busy}
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
+          >
+            Resetear clave
+          </button>
+          <button
+            onClick={eliminar}
+            disabled={busy}
+            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+          >
+            Eliminar
+          </button>
+        </div>
       </td>
     </tr>
   )

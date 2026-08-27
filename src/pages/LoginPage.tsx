@@ -2,8 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import banexLogo from '../assets/banex-logo.jpg'
 
+const DOMINIO_USUARIO = 'approban.local'
+
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [usuario, setUsuario] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -13,12 +15,13 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
+    const email = `${usuario.trim().toLowerCase()}@${DOMINIO_USUARIO}`
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     setLoading(false)
 
     if (error) {
-      setError(error.message)
+      setError('Usuario o contraseña incorrectos.')
     }
   }
 
@@ -38,15 +41,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
-              Correo
+            <label htmlFor="usuario" className="mb-1 block text-sm font-medium text-gray-700">
+              Usuario
             </label>
             <input
-              id="email"
-              type="email"
+              id="usuario"
+              type="text"
+              autoCapitalize="none"
+              autoCorrect="off"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={usuario}
+              onChange={(e) => setUsuario(e.target.value)}
               className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
             />
           </div>

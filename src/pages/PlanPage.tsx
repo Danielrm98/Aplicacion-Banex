@@ -8,6 +8,7 @@ import { usePlan } from '../lib/usePlan'
 import { flattenItems } from '../lib/aggregations'
 import { obtenerFincaActual } from '../lib/fincaActual'
 import { fechaLocalHoy } from '../lib/fechaLocal'
+import { usePerfil } from '../lib/usePerfil'
 import type { PlanItem } from '../types/plan'
 import SectionHeading from '../components/SectionHeading'
 
@@ -15,16 +16,22 @@ const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanPage() {
   const { fincas } = useFincas()
+  const { perfil } = usePerfil()
+  const esOperador = perfil?.rol === 'operador'
   const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
   const [semana, setSemana] = useState<number>(() => getIsoWeek(fechaLocalHoy()))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
 
   useEffect(() => {
+    if (esOperador) {
+      if (perfil?.finca && finca !== perfil.finca) setFinca(perfil.finca)
+      return
+    }
     if (fincas.length === 0) return
     if (finca && fincas.some((f) => f.nombre === finca)) return
     const guardada = obtenerFincaActual()
     setFinca(guardada && fincas.some((f) => f.nombre === guardada) ? guardada : fincas[0].nombre)
-  }, [fincas, finca])
+  }, [fincas, finca, esOperador, perfil?.finca])
 
   const { referencias } = useReferencias()
   const { registros } = useProducciones({ semana, finca })
@@ -90,14 +97,19 @@ export default function PlanPage() {
           <span className="mb-1 block text-gray-600">Finca</span>
           <select
             value={finca}
+            disabled={esOperador}
             onChange={(e) => setFinca(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {fincas.map((f) => (
-              <option key={f.nombre} value={f.nombre}>
-                {f.nombre}
-              </option>
-            ))}
+            {esOperador ? (
+              <option value={finca}>{finca}</option>
+            ) : (
+              fincas.map((f) => (
+                <option key={f.nombre} value={f.nombre}>
+                  {f.nombre}
+                </option>
+              ))
+            )}
           </select>
         </label>
 

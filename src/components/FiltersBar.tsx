@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { useFincas } from '../lib/useFincas'
+import { usePerfil } from '../lib/usePerfil'
 import type { Filtros } from '../lib/useProducciones'
 
 interface Props {
@@ -10,6 +12,14 @@ const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function FiltersBar({ filtros, onChange }: Props) {
   const { fincas } = useFincas()
+  const { perfil } = usePerfil()
+  const esOperador = perfil?.rol === 'operador'
+
+  useEffect(() => {
+    if (esOperador && perfil?.finca && filtros.finca !== perfil.finca) {
+      onChange({ ...filtros, finca: perfil.finca })
+    }
+  }, [esOperador, perfil?.finca, filtros, onChange])
 
   return (
     <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -43,21 +53,28 @@ export default function FiltersBar({ filtros, onChange }: Props) {
         <span className="mb-1 block text-gray-600">Finca</span>
         <select
           value={filtros.finca ?? ''}
+          disabled={esOperador}
           onChange={(e) => onChange({ ...filtros, finca: e.target.value || undefined })}
-          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <option value="">Todas las fincas</option>
-          {fincas.map((f) => (
-            <option key={f.nombre} value={f.nombre}>
-              {f.nombre}
-            </option>
-          ))}
+          {esOperador ? (
+            <option value={perfil?.finca ?? ''}>{perfil?.finca}</option>
+          ) : (
+            <>
+              <option value="">Todas las fincas</option>
+              {fincas.map((f) => (
+                <option key={f.nombre} value={f.nombre}>
+                  {f.nombre}
+                </option>
+              ))}
+            </>
+          )}
         </select>
       </label>
 
-      {(filtros.semana || filtros.fecha || filtros.finca) && (
+      {(filtros.semana || filtros.fecha || (!esOperador && filtros.finca)) && (
         <button
-          onClick={() => onChange({})}
+          onClick={() => onChange(esOperador ? { finca: perfil?.finca ?? undefined } : {})}
           className="rounded-lg px-2 py-1.5 text-sm font-medium text-banex-700 transition-colors hover:bg-banex-50"
         >
           Limpiar filtros
