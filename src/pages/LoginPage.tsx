@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { saludoSegunHora } from '../lib/saludo'
 import banexLogo from '../assets/banex-logo.jpg'
 
 const DOMINIO_USUARIO = 'approban.local'
@@ -45,6 +46,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-white p-8 shadow-2xl">
         <img src={banexLogo} alt="BANEX S.A." className="mx-auto mb-4 h-28 w-28 object-contain" />
         <h1 className="mb-1 text-center text-xl font-bold text-banex-900">ApproBan</h1>
+        <p className="text-center text-sm font-medium text-banex-700">{saludoSegunHora()}</p>
         <p className="mb-6 text-center text-sm text-gray-500">Registro de producción de cajas de banano</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

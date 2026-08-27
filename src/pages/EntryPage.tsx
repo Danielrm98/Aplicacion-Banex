@@ -8,15 +8,9 @@ import { useFincas } from '../lib/useFincas'
 import { useClima } from '../lib/useClima'
 import { usePerfil } from '../lib/usePerfil'
 import { guardarFincaActual } from '../lib/fincaActual'
+import { saludoSegunHora } from '../lib/saludo'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
-
-function saludoSegunHora(): string {
-  const hora = new Date().getHours()
-  if (hora < 12) return 'Hola buenos días amigo productor'
-  if (hora < 18) return 'Hola buenas tardes amigo productor'
-  return 'Hola buenas noches amigo productor'
-}
 
 export default function EntryPage() {
   const { perfil, loading: loadingPerfil } = usePerfil()
