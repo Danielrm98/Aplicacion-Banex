@@ -8,13 +8,26 @@ export default function EspecificacionesPage() {
   const { referencias, loading, error, refetch } = useReferencias()
   const { perfil } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
+  const [busqueda, setBusqueda] = useState('')
+
+  const referenciasFiltradas = referencias.filter((r) =>
+    r.marca.toLowerCase().includes(busqueda.trim().toLowerCase()),
+  )
 
   return (
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Especificaciones</h1>
-      <p className="mb-6 text-sm text-gray-500">
+      <p className="mb-4 text-sm text-gray-500">
         Hoja de especificaciones de fruta, empaque y paletizado por referencia.
       </p>
+
+      <input
+        type="text"
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscar referencia..."
+        className="mb-4 w-full max-w-xs rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+      />
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         {loading ? (
@@ -23,6 +36,8 @@ export default function EspecificacionesPage() {
           <p className="py-8 text-center text-sm text-red-600">{error}</p>
         ) : referencias.length === 0 ? (
           <p className="py-8 text-center text-sm text-gray-500">Todavía no hay referencias en el catálogo.</p>
+        ) : referenciasFiltradas.length === 0 ? (
+          <p className="py-8 text-center text-sm text-gray-500">Ninguna referencia coincide con "{busqueda}".</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-sm">
@@ -36,7 +51,7 @@ export default function EspecificacionesPage() {
                 </tr>
               </thead>
               <tbody>
-                {referencias.map((r) => (
+                {referenciasFiltradas.map((r) => (
                   <FilaReferencia key={r.marca} referencia={r} esAdmin={esAdmin} onChanged={refetch} />
                 ))}
               </tbody>
