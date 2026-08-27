@@ -71,7 +71,10 @@ export default function ShareSummaryPanel({
       </div>
 
       <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start">
-        <div ref={capturaRef} className="w-full max-w-[840px] rounded-lg border border-gray-100 bg-white p-5">
+        <div className="w-full lg:max-w-[840px]">
+          <p className="mb-1.5 text-xs text-gray-400 lg:hidden">👉 Desliza hacia los lados para ver el resumen completo.</p>
+          <div className="overflow-x-auto">
+          <div ref={capturaRef} className="w-[840px] rounded-lg border border-gray-100 bg-white p-5">
           <div className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
             <img src={banexLogo} alt="BANEX S.A." className="h-9 w-9 shrink-0 rounded-md object-contain" />
             <div>
@@ -178,6 +181,8 @@ export default function ShareSummaryPanel({
                 </CasillaSeccion>
               )}
             </div>
+          </div>
+          </div>
           </div>
         </div>
 
