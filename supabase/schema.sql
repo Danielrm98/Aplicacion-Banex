@@ -12,7 +12,8 @@ create table public.referencias (
   factor_conversion numeric not null,
   tipo_caja text not null check (tipo_caja in ('Convencional', 'Orgánica')),
   especificacion text not null check (especificacion in ('Corta', 'Larga')),
-  peso_neto_kg numeric not null check (peso_neto_kg >= 0)
+  peso_neto_kg numeric not null check (peso_neto_kg >= 0),
+  especificacion_pdf_path text
 );
 
 alter table public.referencias enable row level security;
@@ -198,6 +199,30 @@ insert into public.perfiles (user_id, usuario, nombre, rol, finca)
 select id, split_part(email, '@', 1), email, 'admin', null
 from auth.users
 on conflict (user_id) do nothing;
+
+-- ============================================================
+-- Especificaciones en PDF por referencia (bucket privado de Storage)
+-- ============================================================
+insert into storage.buckets (id, name, public)
+values ('especificaciones', 'especificaciones', false)
+on conflict (id) do nothing;
+
+create policy "Usuarios autenticados ven especificaciones"
+  on storage.objects for select
+  using (bucket_id = 'especificaciones' and auth.role() = 'authenticated');
+
+create policy "Solo el admin sube especificaciones"
+  on storage.objects for insert
+  with check (bucket_id = 'especificaciones' and public.es_admin(auth.uid()));
+
+create policy "Solo el admin reemplaza especificaciones"
+  on storage.objects for update
+  using (bucket_id = 'especificaciones' and public.es_admin(auth.uid()))
+  with check (bucket_id = 'especificaciones' and public.es_admin(auth.uid()));
+
+create policy "Solo el admin elimina especificaciones"
+  on storage.objects for delete
+  using (bucket_id = 'especificaciones' and public.es_admin(auth.uid()));
 
 -- ============================================================
 -- Cabecera de producción: un registro por día + finca

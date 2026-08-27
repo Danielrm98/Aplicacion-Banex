@@ -5,6 +5,7 @@ export interface Referencia {
   tipo_caja: 'Convencional' | 'Orgánica'
   especificacion: 'Corta' | 'Larga'
   peso_neto_kg: number
+  especificacion_pdf_path: string | null
 }
 
 export interface ProduccionItem {

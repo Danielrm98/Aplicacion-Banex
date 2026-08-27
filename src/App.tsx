@@ -7,6 +7,7 @@ import EntryPage from './pages/EntryPage'
 import RecordsPage from './pages/RecordsPage'
 import DashboardPage from './pages/DashboardPage'
 import CatalogPage from './pages/CatalogPage'
+import EspecificacionesPage from './pages/EspecificacionesPage'
 import PlanPage from './pages/PlanPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="/registros" element={<RecordsPage />} />
         <Route path="/reportes" element={<DashboardPage />} />
         <Route path="/catalogo" element={<CatalogPage />} />
+        <Route path="/especificaciones" element={<EspecificacionesPage />} />
         <Route path="/plan" element={<PlanPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
