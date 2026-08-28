@@ -9,6 +9,7 @@ import { flattenItems } from '../lib/aggregations'
 import { obtenerFincaActual } from '../lib/fincaActual'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { usePerfil } from '../lib/usePerfil'
+import { useDraftState } from '../lib/useDraftState'
 import type { PlanItem } from '../types/plan'
 import SectionHeading from '../components/SectionHeading'
 
@@ -369,8 +370,11 @@ function AddPlanItemForm({
   onAdded: () => void
 }) {
   const { referencias } = useReferencias()
-  const [referencia, setReferencia] = useState('')
-  const [palletsPlan, setPalletsPlan] = useState(0)
+  const [draft, setDraft, limpiarDraft] = useDraftState(`approban_borrador_plan_item_${planId}`, {
+    referencia: '',
+    palletsPlan: 0,
+  })
+  const { referencia, palletsPlan } = draft
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -405,8 +409,7 @@ function AddPlanItemForm({
       setError(insertError.message)
       return
     }
-    setReferencia('')
-    setPalletsPlan(0)
+    limpiarDraft()
     onAdded()
   }
 
@@ -421,7 +424,7 @@ function AddPlanItemForm({
             list="referencias-catalogo-plan"
             autoComplete="off"
             value={referencia}
-            onChange={(e) => setReferencia(e.target.value)}
+            onChange={(e) => setDraft((prev) => ({ ...prev, referencia: e.target.value }))}
             className="w-56 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
             placeholder="Escribe o elige una referencia"
           />
@@ -433,7 +436,7 @@ function AddPlanItemForm({
             min={0}
             step="0.1"
             value={palletsPlan || ''}
-            onChange={(e) => setPalletsPlan(Number(e.target.value))}
+            onChange={(e) => setDraft((prev) => ({ ...prev, palletsPlan: Number(e.target.value) }))}
             className="w-28 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </Field>

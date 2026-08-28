@@ -6,6 +6,7 @@ import { useFincas } from '../lib/useFincas'
 import { usePerfil } from '../lib/usePerfil'
 import { usePerfiles } from '../lib/usePerfiles'
 import { crearUsuario, eliminarUsuario, resetearPassword } from '../lib/adminUsuarios'
+import { useDraftState } from '../lib/useDraftState'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
 import type { Finca } from '../types/finca'
@@ -68,7 +69,7 @@ export default function CatalogPage() {
 
 function ReferenciasTab() {
   const { referencias, loading, error, refetch } = useReferencias()
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm, limpiarForm] = useDraftState('approban_borrador_nueva_referencia', emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingMarca, setDeletingMarca] = useState<string | null>(null)
@@ -114,7 +115,7 @@ function ReferenciasTab() {
       return
     }
 
-    setForm(emptyForm)
+    limpiarForm()
     refetch()
   }
 
@@ -390,7 +391,7 @@ function FincasTab() {
   const { fincas, loading, error, refetch } = useFincas()
   const totalHectareas = fincas.reduce((sum, f) => sum + (f.hectareas ?? 0), 0)
 
-  const [nombreNuevo, setNombreNuevo] = useState('')
+  const [nombreNuevo, setNombreNuevo, limpiarNombreNuevo] = useDraftState('approban_borrador_nueva_finca', '')
   const [formError, setFormError] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
 
@@ -417,7 +418,7 @@ function FincasTab() {
       return
     }
 
-    setNombreNuevo('')
+    limpiarNombreNuevo()
     refetch()
   }
 
@@ -612,25 +613,36 @@ function FincaRow({
   )
 }
 
+interface DraftUsuario {
+  usuario: string
+  nombre: string
+  rol: Perfil['rol']
+  finca: string
+}
+
+const draftUsuarioInicial: DraftUsuario = { usuario: '', nombre: '', rol: 'operador', finca: '' }
+
 function UsuariosTab() {
   const { fincas } = useFincas()
   const { perfiles, loading, error, refetch } = usePerfiles()
 
-  const [usuario, setUsuario] = useState('')
-  const [nombre, setNombre] = useState('')
+  const [draft, setDraft, limpiarDraft] = useDraftState('approban_borrador_crear_usuario', draftUsuarioInicial)
+  // La contraseña nunca se guarda en localStorage (quedaría en texto plano).
   const [password, setPassword] = useState('')
-  const [rol, setRol] = useState<Perfil['rol']>('operador')
-  const [finca, setFinca] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [creando, setCreando] = useState(false)
   const [creado, setCreado] = useState<{ usuario: string; password: string } | null>(null)
+
+  function actualizarDraft<K extends keyof DraftUsuario>(campo: K, valor: DraftUsuario[K]) {
+    setDraft((prev) => ({ ...prev, [campo]: valor }))
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
     setCreado(null)
 
-    if (rol === 'operador' && !finca) {
+    if (draft.rol === 'operador' && !draft.finca) {
       setFormError('Selecciona la finca del nuevo usuario.')
       return
     }
@@ -638,18 +650,15 @@ function UsuariosTab() {
     setCreando(true)
     try {
       await crearUsuario({
-        usuario,
+        usuario: draft.usuario,
         password,
-        nombre: nombre.trim() || null,
-        rol,
-        finca: rol === 'operador' ? finca : null,
+        nombre: draft.nombre.trim() || null,
+        rol: draft.rol,
+        finca: draft.rol === 'operador' ? draft.finca : null,
       })
-      setCreado({ usuario: usuario.trim().toLowerCase(), password })
-      setUsuario('')
-      setNombre('')
+      setCreado({ usuario: draft.usuario.trim().toLowerCase(), password })
+      limpiarDraft()
       setPassword('')
-      setRol('operador')
-      setFinca('')
       refetch()
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'No se pudo crear el usuario.')
@@ -667,8 +676,8 @@ function UsuariosTab() {
             <input
               type="text"
               required
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
+              value={draft.usuario}
+              onChange={(e) => actualizarDraft('usuario', e.target.value)}
               className={inputClass}
               placeholder="Ej. jperez"
             />
@@ -676,8 +685,8 @@ function UsuariosTab() {
           <Field label="Nombre completo">
             <input
               type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
+              value={draft.nombre}
+              onChange={(e) => actualizarDraft('nombre', e.target.value)}
               className={inputClass}
               placeholder="Ej. Juan Pérez"
             />
@@ -694,16 +703,20 @@ function UsuariosTab() {
             />
           </Field>
           <Field label="Rol">
-            <select value={rol} onChange={(e) => setRol(e.target.value as Perfil['rol'])} className={inputClass}>
+            <select
+              value={draft.rol}
+              onChange={(e) => actualizarDraft('rol', e.target.value as Perfil['rol'])}
+              className={inputClass}
+            >
               <option value="operador">Operador (solo su finca)</option>
               <option value="admin">Administrador (ve todo)</option>
             </select>
           </Field>
           <Field label="Finca asignada">
             <select
-              value={finca}
-              onChange={(e) => setFinca(e.target.value)}
-              disabled={rol === 'admin'}
+              value={draft.finca}
+              onChange={(e) => actualizarDraft('finca', e.target.value)}
+              disabled={draft.rol === 'admin'}
               className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
             >
               <option value="">Selecciona una finca</option>
