@@ -84,6 +84,15 @@ export default function PlanPage() {
   const adicionales = Array.from(producidoMap.entries()).filter(([ref]) => !planReferencias.has(ref))
   const totalPalletsPlan = plan?.items.reduce((sum, it) => sum + it.pallets_plan, 0) ?? 0
   const totalCajasPlan = plan?.items.reduce((sum, it) => sum + it.cajas_plan, 0) ?? 0
+  const totalCajasProducidas = plan?.items.reduce((sum, it) => sum + (producidoMap.get(it.referencia) ?? 0), 0) ?? 0
+  const totalPalletsProducidos =
+    plan?.items.reduce((sum, it) => {
+      const cajasPallet = catalogoDe(it.referencia)?.cajas_pallet ?? null
+      const cajasProducidas = producidoMap.get(it.referencia) ?? 0
+      return sum + (cajasPallet ? cajasProducidas / cajasPallet : 0)
+    }, 0) ?? 0
+  const totalFaltanteCajas = totalCajasPlan - totalCajasProducidas
+  const totalFaltantePallets = totalPalletsPlan - totalPalletsProducidos
 
   return (
     <div>
@@ -212,7 +221,19 @@ export default function PlanPage() {
                     </td>
                     <td className="py-1.5 pr-3">{totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
                     <td className="py-1.5 pr-3">{totalCajasPlan.toLocaleString('es')}</td>
-                    <td colSpan={5}></td>
+                    <td className="py-1.5 pr-3">{totalCajasProducidas.toLocaleString('es')}</td>
+                    <td className="py-1.5 pr-3">
+                      {totalPalletsProducidos.toLocaleString('es', { maximumFractionDigits: 2 })}
+                    </td>
+                    <td className={`py-1.5 pr-3 ${totalFaltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                      {totalFaltanteCajas > 0 ? `Faltan ${totalFaltanteCajas}` : `Cumplido (+${-totalFaltanteCajas})`}
+                    </td>
+                    <td className={`py-1.5 pr-3 ${totalFaltantePallets > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                      {totalFaltantePallets > 0
+                        ? `Faltan ${totalFaltantePallets.toFixed(2)}`
+                        : `Cumplido (+${(-totalFaltantePallets).toFixed(2)})`}
+                    </td>
+                    <td></td>
                   </tr>
                 </tfoot>
               )}
