@@ -117,15 +117,15 @@ export default function EntryPage() {
 
       <FincaClimaPanel finca={fincas.find((f) => f.nombre === fincaActiva) ?? null} />
 
-      {ultimoResumen && (
-        <div className="mb-6">
-          <ShareSummaryPanel resumen={ultimoResumen} onClose={() => setUltimoResumen(null)} />
-        </div>
-      )}
-
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <ProductionForm finca={fincaActiva} onSaved={handleSaved} />
       </div>
+
+      {ultimoResumen && (
+        <div className="mt-6">
+          <ShareSummaryPanel resumen={ultimoResumen} onClose={() => setUltimoResumen(null)} />
+        </div>
+      )}
 
       {savedCount > 0 && (
         <p className="mt-4 text-sm text-banex-700">
