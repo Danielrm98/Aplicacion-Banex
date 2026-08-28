@@ -7,16 +7,27 @@ import { useProducciones } from '../lib/useProducciones'
 import { useFincas } from '../lib/useFincas'
 import { useClima } from '../lib/useClima'
 import { usePerfil } from '../lib/usePerfil'
-import { guardarFincaActual } from '../lib/fincaActual'
+import { guardarFincaActual, obtenerFincaActual } from '../lib/fincaActual'
+import { leerBorrador, borradorTieneDatos } from '../lib/borradorRegistro'
 import { saludoSegunHora } from '../lib/saludo'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
+
+function fincaConBorradorPendiente(): string | null {
+  const ultima = obtenerFincaActual()
+  if (!ultima) return null
+  const borrador = leerBorrador(ultima)
+  return borrador && borradorTieneDatos(borrador) ? ultima : null
+}
 
 export default function EntryPage() {
   const { perfil, loading: loadingPerfil } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
 
-  const [fincaSeleccionada, setFincaSeleccionada] = useState<string | null>(null)
+  // Si el navegador recargó la página (por ejemplo al volver de otra pestaña
+  // en el celular) y había un registro sin guardar, vuelve directo a esa
+  // finca en vez de mostrar el selector de nuevo.
+  const [fincaSeleccionada, setFincaSeleccionada] = useState<string | null>(fincaConBorradorPendiente)
   const [savedCount, setSavedCount] = useState(0)
   const [ultimoResumen, setUltimoResumen] = useState<RegistroResumenCompartir | null>(null)
   const { registros } = useProducciones({})

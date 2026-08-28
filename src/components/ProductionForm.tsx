@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { getIsoWeek } from '../lib/isoWeek'
 import { diaSemana } from '../lib/diaSemana'
@@ -6,6 +6,7 @@ import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
+import { leerBorrador, guardarBorrador, borrarBorrador, borradorTieneDatos } from '../lib/borradorRegistro'
 import SectionHeading from './SectionHeading'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import {
@@ -98,14 +99,46 @@ export default function ProductionForm({
   const { fincas } = useFincas()
   const [header, setHeader] = useState<ProduccionHeaderInput>(() => {
     const fecha = fechaLocalHoy()
+    const borrador = leerBorrador(finca)
+    if (borrador) return { ...borrador.header, finca }
     return { ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) }
   })
-  const [items, setItems] = useState<ItemDraft[]>([emptyItem()])
-  const [transportes, setTransportes] = useState<TransporteDraft[]>([])
+  const [items, setItems] = useState<ItemDraft[]>(() => {
+    const borrador = leerBorrador(finca)
+    if (borrador && borrador.items.length > 0) return borrador.items.map((it) => ({ ...it, key: itemKeySeq++ }))
+    return [emptyItem()]
+  })
+  const [transportes, setTransportes] = useState<TransporteDraft[]>(() => {
+    const borrador = leerBorrador(finca)
+    if (borrador) return borrador.transportes.map((t) => ({ ...t, key: transporteKeySeq++ }))
+    return []
+  })
+  const [borradorRestaurado, setBorradorRestaurado] = useState(() => {
+    const borrador = leerBorrador(finca)
+    return borrador !== null && borradorTieneDatos(borrador)
+  })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const { registros: registrosSemana } = useProducciones({ semana: header.semana, finca: header.finca })
+
+  useEffect(() => {
+    guardarBorrador(finca, {
+      header,
+      items: items.map(({ key: _key, ...resto }) => resto),
+      transportes: transportes.map(({ key: _key, ...resto }) => resto),
+    })
+  }, [finca, header, items, transportes])
+
+  function descartarBorrador() {
+    if (!confirm('¿Descartar la información no guardada de este formulario y empezar de nuevo?')) return
+    borrarBorrador(finca)
+    const fecha = fechaLocalHoy()
+    setHeader({ ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) })
+    setItems([emptyItem()])
+    setTransportes([])
+    setBorradorRestaurado(false)
+  }
 
   function updateHeader<K extends keyof ProduccionHeaderInput>(field: K, value: ProduccionHeaderInput[K]) {
     setHeader((prev) => ({ ...prev, [field]: value }))
@@ -317,6 +350,19 @@ export default function ProductionForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {borradorRestaurado && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>Se recuperó la información que no habías guardado de este registro.</span>
+          <button
+            type="button"
+            onClick={descartarBorrador}
+            className="font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
+          >
+            Descartar y empezar de nuevo
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Fecha">
           <input
