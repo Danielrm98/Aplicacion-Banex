@@ -113,66 +113,62 @@ export function resumenDesdeProduccion(
 export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
   const lineas: string[] = []
 
-  lineas.push('*ApproBan – Registro de producción*')
-  lineas.push('')
-  lineas.push(`*Finca:* ${r.finca}`)
-  lineas.push(`*Fecha:* ${r.fecha} · ${diaSemana(r.fecha)} (semana ${r.semana})`)
-  if (r.horaFinalizacion) lineas.push(`*Hora finalización:* ${r.horaFinalizacion}`)
+  lineas.push('*INFORME DE EXPORTACIÓN*')
+  lineas.push(`*FINCA:* ${r.finca}`)
+  lineas.push(`*SEMANA:* ${r.semana}`)
+  lineas.push(`*DÍA:* ${diaSemana(r.fecha).toUpperCase()}`)
+  lineas.push(`*FECHA:* ${r.fecha}`)
+  lineas.push(`*FIN CORTE:* ${r.horaFinalizacion ?? ''}`)
+  lineas.push(`*CANASTILLAS:* ${r.canastillas}`)
 
   if (r.areaRecorrida !== null) {
-    lineas.push('')
-    lineas.push('*Área recorrida*')
-    lineas.push(`*Hoy:* ${r.areaRecorrida} ha${r.porcentajeDia !== null ? ` (${r.porcentajeDia.toFixed(1)}% del área total)` : ''}`)
+    const total = r.areaTotal !== null ? r.areaTotal : '—'
+    const porcentaje = r.porcentajeDia !== null ? `${r.porcentajeDia.toFixed(2)}%` : '—'
+    lineas.push(`*ÁREA REC.:* ${r.areaRecorrida} de ${total} :: ${porcentaje}`)
   }
 
-  lineas.push('')
-  lineas.push('*Racimos por edad*')
   for (const e of r.racimosPorEdad) {
     if (e.racimos > 0 || e.grado !== null) {
-      lineas.push(`*S${e.semana}:* ${e.racimos}${e.grado !== null ? ` (grado ${e.grado})` : ''}`)
+      const edad = String(e.semana).padStart(2, '0')
+      lineas.push(`*EDAD ${edad}:* ${e.racimos} RACIMOS${e.grado !== null ? `, A ${e.grado.toFixed(1)}` : ''}`)
     }
   }
-  lineas.push(`*Total cosechados:* ${r.totalRacimos}`)
-  lineas.push(`*Recusados:* ${r.racimosRecusados}`)
+  lineas.push(`*TOTAL RACIMOS:* ${r.totalRacimos}`)
+  lineas.push(`*RACIMOS RECUSADOS:* ${r.racimosRecusados}`)
 
-  lineas.push('')
-  lineas.push('*Canastillas*')
-  lineas.push(`*Cantidad:* ${r.canastillas}`)
-
-  lineas.push('')
-  lineas.push('*Referencias producidas*')
   for (const it of r.referencias) {
-    const partes = [`${it.cajas} cajas`, it.cajas20kg !== null ? `${it.cajas20kg.toFixed(2)} cajas 20kg` : null].filter(Boolean)
-    lineas.push(`*${it.referencia}:* ${partes.join(' · ')}`)
+    const cajas20kg = it.cajas20kg !== null ? ` = ${it.cajas20kg.toFixed(2)} (20K)` : ''
+    lineas.push(`*${it.referencia}:* ${it.cajas}${cajas20kg}`)
   }
-
-  lineas.push('')
-  lineas.push('*Totales*')
-  lineas.push(`*Cajas:* ${r.totalCajas}`)
-  lineas.push(`*Cajas 20kg:* ${r.totalCajas20kg.toFixed(2)}`)
-  if (r.pesoNetoRacimo !== null) lineas.push(`*Peso neto de racimo:* ${r.pesoNetoRacimo.toFixed(2)} kg`)
-  if (r.ratio !== null) lineas.push(`*Ratio:* ${r.ratio.toFixed(2)}`)
-  if (r.merma !== null) lineas.push(`*Merma:* ${r.merma.toFixed(1)}%`)
+  lineas.push(`*TOTAL CAJAS:* ${r.totalCajas} = ${r.totalCajas20kg.toFixed(2)} (20K)`)
+  if (r.ratio !== null) lineas.push(`*RATIO:* ${r.ratio.toFixed(2)}`)
+  if (r.merma !== null) lineas.push(`*MERMA:* ${r.merma.toFixed(2)}%`)
 
   if (r.transportes.length > 0) {
-    lineas.push('')
-    lineas.push('*Transporte*')
-    for (const t of r.transportes) {
+    lineas.push('*TRANSPORTADOS EN:*')
+    const camiones = r.transportes.filter((t) => t.tipo === 'Camión')
+    const contenedores = r.transportes.filter((t) => t.tipo === 'Contenedor')
+    const otros = r.transportes.filter((t) => t.tipo !== 'Camión' && t.tipo !== 'Contenedor')
+    const pares = Math.max(camiones.length, contenedores.length)
+
+    for (let i = 0; i < pares; i++) {
+      const camion = camiones[i]
+      const contenedor = contenedores[i]
       const partes = [
-        t.tipo ? `*Tipo:* ${t.tipo}` : null,
-        t.placa ? `*Placa:* ${t.placa}` : null,
-        t.sello ? `*Sello:* ${t.sello}` : null,
-        t.horaLlegada ? `*Llegada:* ${t.horaLlegada}` : null,
-        t.horaSalida ? `*Salida:* ${t.horaSalida}` : null,
+        camion ? `*CABEZOTE CON PLACA:* ${camion.placa}` : null,
+        contenedor ? `*No. CONT.:* ${contenedor.placa}` : null,
       ].filter(Boolean)
-      lineas.push(partes.join(' · '))
+      lineas.push(partes.join(' Y '))
+      lineas.push(`*SALIENDO A LAS:* ${camion?.horaSalida || contenedor?.horaSalida || ''}`)
+    }
+
+    for (const t of otros) {
+      lineas.push(`*${t.tipo.toUpperCase()} CON PLACA:* ${t.placa}`)
+      lineas.push(`*SALIENDO A LAS:* ${t.horaSalida || ''}`)
     }
   }
 
-  if (r.notas) {
-    lineas.push('')
-    lineas.push(`*Notas:* ${r.notas}`)
-  }
+  if (r.notas) lineas.push(`*NOTAS:* ${r.notas}`)
 
   return lineas.join('\n')
 }
