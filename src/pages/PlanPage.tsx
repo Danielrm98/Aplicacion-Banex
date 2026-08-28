@@ -174,7 +174,9 @@ export default function PlanPage() {
             <table className="w-full min-w-[820px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
-                  <th className="py-1.5 pr-3 font-medium">Referencia</th>
+                  <th className="sticky left-0 z-10 border-r border-gray-200 bg-white py-1.5 pr-3 pl-1 font-medium">
+                    Referencia
+                  </th>
                   <th className="py-1.5 pr-3 font-medium">Pallets plan</th>
                   <th className="py-1.5 pr-3 font-medium">Cajas plan</th>
                   <th className="py-1.5 pr-3 font-medium">Cajas producidas</th>
@@ -205,7 +207,7 @@ export default function PlanPage() {
               {plan.items.length > 0 && (
                 <tfoot>
                   <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                    <td className="py-1.5 pr-3">Total</td>
+                    <td className="sticky left-0 z-10 border-r border-gray-200 bg-banex-50 py-1.5 pr-3 pl-1">Total</td>
                     <td className="py-1.5 pr-3">{totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
                     <td className="py-1.5 pr-3">{totalCajasPlan.toLocaleString('es')}</td>
                     <td colSpan={5}></td>
@@ -288,7 +290,9 @@ function PlanItemRow({
 
   return (
     <tr className="border-b border-gray-100">
-      <td className="py-1.5 pr-3 font-medium text-gray-900">{item.referencia}</td>
+      <td className="sticky left-0 z-10 border-r border-gray-200 bg-white py-1.5 pr-3 pl-1 font-medium text-gray-900">
+        {item.referencia}
+      </td>
       <td className="py-1.5 pr-3">
         {editing ? (
           <input
