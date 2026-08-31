@@ -9,15 +9,11 @@ export interface FilaProduccion {
   peso_neto_kg: number
   cantidad_cajas: number
   cajas_20kg: number
-  cajas_rechazadas: number
-  motivo_rechazo: string
 }
 
 export interface PuntoFecha {
   fecha: string
   cajas: number
-  rechazadas: number
-  tasaRechazo: number
 }
 
 export interface PuntoFinca {
@@ -35,29 +31,19 @@ export function flattenItems(registros: Produccion[]): FilaProduccion[] {
       peso_neto_kg: item.peso_neto_kg,
       cantidad_cajas: item.cantidad_cajas,
       cajas_20kg: item.cajas_20kg,
-      cajas_rechazadas: item.cajas_rechazadas,
-      motivo_rechazo: item.motivo_rechazo ?? '',
     })),
   )
 }
 
 export function porFecha(filas: FilaProduccion[]): PuntoFecha[] {
-  const map = new Map<string, { cajas: number; rechazadas: number }>()
+  const map = new Map<string, number>()
 
   for (const f of filas) {
-    const acc = map.get(f.fecha) ?? { cajas: 0, rechazadas: 0 }
-    acc.cajas += f.cantidad_cajas
-    acc.rechazadas += f.cajas_rechazadas
-    map.set(f.fecha, acc)
+    map.set(f.fecha, (map.get(f.fecha) ?? 0) + f.cantidad_cajas)
   }
 
   return Array.from(map.entries())
-    .map(([fecha, v]) => ({
-      fecha,
-      cajas: v.cajas,
-      rechazadas: v.rechazadas,
-      tasaRechazo: v.cajas + v.rechazadas > 0 ? (v.rechazadas / (v.cajas + v.rechazadas)) * 100 : 0,
-    }))
+    .map(([fecha, cajas]) => ({ fecha, cajas }))
     .sort((a, b) => a.fecha.localeCompare(b.fecha))
 }
 
@@ -107,9 +93,7 @@ export function cajasPorFincaYSemana(filas: FilaProduccion[]): SerieFincaSemana[
 export function totales(filas: FilaProduccion[]) {
   const cajas = filas.reduce((sum, f) => sum + f.cantidad_cajas, 0)
   const cajas20kg = filas.reduce((sum, f) => sum + f.cajas_20kg, 0)
-  const rechazadas = filas.reduce((sum, f) => sum + f.cajas_rechazadas, 0)
-  const tasaRechazo = cajas + rechazadas > 0 ? (rechazadas / (cajas + rechazadas)) * 100 : 0
-  return { cajas, cajas20kg, rechazadas, tasaRechazo }
+  return { cajas, cajas20kg }
 }
 
 export interface ResumenRegistro {
@@ -327,8 +311,6 @@ export interface FilaCompleta extends ResumenDiaFinca {
   cantidadCajas: number
   pesoNetoKg: number
   cajas20kg: number
-  cajasRechazadas: number
-  motivoRechazo: string
 }
 
 export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
@@ -345,8 +327,6 @@ export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
           cantidadCajas: 0,
           pesoNetoKg: 0,
           cajas20kg: 0,
-          cajasRechazadas: 0,
-          motivoRechazo: '',
         },
       ]
     }
@@ -357,8 +337,6 @@ export function filaCompleta(registros: Produccion[]): FilaCompleta[] {
       cantidadCajas: item.cantidad_cajas,
       pesoNetoKg: item.peso_neto_kg,
       cajas20kg: item.cajas_20kg,
-      cajasRechazadas: item.cajas_rechazadas,
-      motivoRechazo: item.motivo_rechazo ?? '',
     }))
   })
 }

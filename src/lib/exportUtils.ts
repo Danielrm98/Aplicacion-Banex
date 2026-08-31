@@ -11,8 +11,6 @@ const columns: { header: string; key: keyof FilaProduccion; width?: number }[] =
   { header: 'Peso neto (kg)', key: 'peso_neto_kg', width: 16 },
   { header: 'Cajas', key: 'cantidad_cajas', width: 10 },
   { header: 'Cajas 20kg', key: 'cajas_20kg', width: 12 },
-  { header: 'Rechazadas', key: 'cajas_rechazadas', width: 12 },
-  { header: 'Motivo rechazo', key: 'motivo_rechazo', width: 24 },
 ]
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -49,8 +47,6 @@ const columnasCompletas: { header: string; key: keyof FilaCompleta; width?: numb
   { header: 'Cajas', key: 'cantidadCajas', width: 10 },
   { header: 'Peso neto (kg)', key: 'pesoNetoKg', width: 14 },
   { header: 'Cajas 20kg', key: 'cajas20kg', width: 12 },
-  { header: 'Cajas rechazadas', key: 'cajasRechazadas', width: 14 },
-  { header: 'Motivo rechazo', key: 'motivoRechazo', width: 22 },
   { header: 'Racimos cosechados', key: 'racimosCosechados', width: 16 },
   { header: 'Racimos recusados', key: 'racimosRecusados', width: 16 },
   { header: 'Racimos procesados', key: 'racimosProcesados', width: 16 },

@@ -20,8 +20,6 @@ export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) 
                 <th className="py-1.5 pr-3 font-medium">Cajas</th>
                 <th className="py-1.5 pr-3 font-medium">Peso (kg)</th>
                 <th className="py-1.5 pr-3 font-medium">Cajas 20kg</th>
-                <th className="py-1.5 pr-3 font-medium">Rechazadas</th>
-                <th className="py-1.5 pr-3 font-medium">Motivo</th>
                 <th className="py-1.5 pr-3 font-medium">Racimos cos.</th>
                 <th className="py-1.5 pr-3 font-medium">Racimos rec.</th>
                 <th className="py-1.5 pr-3 font-medium">Racimos proc.</th>
@@ -45,8 +43,6 @@ export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) 
                   <td className="py-1.5 pr-3">{f.cantidadCajas}</td>
                   <td className="py-1.5 pr-3">{f.pesoNetoKg || '—'}</td>
                   <td className="py-1.5 pr-3">{f.cajas20kg.toFixed(2)}</td>
-                  <td className="py-1.5 pr-3">{f.cajasRechazadas}</td>
-                  <td className="py-1.5 pr-3">{f.motivoRechazo || '—'}</td>
                   <td className="py-1.5 pr-3">{f.racimosCosechados}</td>
                   <td className="py-1.5 pr-3">{f.racimosRecusados}</td>
                   <td className="py-1.5 pr-3">{f.racimosProcesados}</td>

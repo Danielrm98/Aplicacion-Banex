@@ -11,7 +11,6 @@ export interface ReferenciaResumen {
   referencia: string
   cajas: number
   cajas20kg: number | null
-  rechazadas: number
 }
 
 export interface TransporteResumen {
@@ -91,7 +90,6 @@ export function resumenDesdeProduccion(
       referencia: it.referencia,
       cajas: it.cantidad_cajas,
       cajas20kg: it.cajas_20kg,
-      rechazadas: it.cajas_rechazadas,
     })),
     totalCajas: r.items.reduce((sum, it) => sum + it.cantidad_cajas, 0),
     totalCajas20kg: cajas20kgTotal,

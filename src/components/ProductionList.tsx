@@ -129,7 +129,6 @@ function RegistroCard({
   const porcentajeDia = areaTotal && areaRecorrida !== null ? (areaRecorrida / areaTotal) * 100 : null
   const totalCajas = registro.items.reduce((sum, it) => sum + it.cantidad_cajas, 0)
   const totalCajas20kg = registro.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
-  const totalRechazadas = registro.items.reduce((sum, it) => sum + it.cajas_rechazadas, 0)
   const totalRacimos = SEMANAS_RACIMO.reduce((sum, semana) => sum + racimosSource[campoRacimo(semana)], 0)
   const totalRacimosProcesados = totalRacimos - racimosSource.racimos_recusados
   const kilosCajas20kg = totalCajas20kg * CAJA_20KG_KG
@@ -211,7 +210,6 @@ function RegistroCard({
           <span className="text-gray-500">{registro.finca}</span>
           <span className="text-gray-500">{totalCajas.toLocaleString('es')} cajas</span>
           <span className="text-gray-500">{totalCajas20kg.toLocaleString('es', { maximumFractionDigits: 2 })} cajas 20kg</span>
-          {totalRechazadas > 0 && <span className="text-red-600">{totalRechazadas} rechazadas</span>}
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -533,8 +531,6 @@ function RegistroCard({
                     <th className="py-1.5 pr-3 font-medium">Cajas</th>
                     <th className="py-1.5 pr-3 font-medium">Peso (kg)</th>
                     <th className="py-1.5 pr-3 font-medium">Cajas 20kg</th>
-                    <th className="py-1.5 pr-3 font-medium">Rechazadas</th>
-                    <th className="py-1.5 pr-3 font-medium">Motivo</th>
                     <th className="py-1.5 pr-3 font-medium"></th>
                   </tr>
                 </thead>
@@ -647,8 +643,6 @@ function ItemRow({
         cantidad_cajas: draft.cantidad_cajas,
         peso_neto_kg: ref.peso_neto_kg,
         cajas_20kg: draft.cantidad_cajas * ref.factor_conversion,
-        cajas_rechazadas: draft.cajas_rechazadas,
-        motivo_rechazo: draft.cajas_rechazadas > 0 ? draft.motivo_rechazo : null,
       })
       .eq('id', item.id)
 
@@ -680,8 +674,6 @@ function ItemRow({
         <td className="py-1.5 pr-3">{item.cantidad_cajas}</td>
         <td className="py-1.5 pr-3">{item.peso_neto_kg}</td>
         <td className="py-1.5 pr-3">{item.cajas_20kg.toFixed(2)}</td>
-        <td className="py-1.5 pr-3">{item.cajas_rechazadas}</td>
-        <td className="py-1.5 pr-3">{item.motivo_rechazo ?? '—'}</td>
         <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
           <button
             onClick={() => {
@@ -727,22 +719,6 @@ function ItemRow({
       </td>
       <td className="py-1.5 pr-3 text-gray-500">{catalogoDe(draft.referencia)?.peso_neto_kg ?? draft.peso_neto_kg}</td>
       <td className="py-1.5 pr-3 text-gray-500">{cajas20kgDe().toFixed(2)}</td>
-      <td className="py-1.5 pr-3">
-        <input
-          type="number"
-          min={0}
-          value={draft.cajas_rechazadas}
-          onChange={(e) => setDraft((d) => ({ ...d, cajas_rechazadas: Number(e.target.value) }))}
-          className={cellInput}
-        />
-      </td>
-      <td className="py-1.5 pr-3">
-        <input
-          value={draft.motivo_rechazo ?? ''}
-          onChange={(e) => setDraft((d) => ({ ...d, motivo_rechazo: e.target.value }))}
-          className={cellInput}
-        />
-      </td>
       <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
         <button
           onClick={save}

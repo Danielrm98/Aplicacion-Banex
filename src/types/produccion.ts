@@ -15,8 +15,6 @@ export interface ProduccionItem {
   cantidad_cajas: number
   peso_neto_kg: number
   cajas_20kg: number
-  cajas_rechazadas: number
-  motivo_rechazo: string | null
   created_at: string
 }
 

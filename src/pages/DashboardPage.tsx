@@ -4,7 +4,6 @@ import StatTile from '../components/StatTile'
 import ProductionOverTimeChart from '../components/charts/ProductionOverTimeChart'
 import ProductionByFarmChart from '../components/charts/ProductionByFarmChart'
 import CajasPorFincaSemanaChart from '../components/charts/CajasPorFincaSemanaChart'
-import RejectionRateChart from '../components/charts/RejectionRateChart'
 import RacimosPorEdadChart from '../components/charts/RacimosPorEdadChart'
 import SingleLineChart from '../components/charts/SingleLineChart'
 import { chartColors } from '../components/charts/chartTheme'
@@ -83,11 +82,9 @@ export default function DashboardPage() {
         <ReportesDataTable filas={filasCompletas} />
       ) : (
         <>
-          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <StatTile label="Cajas producidas" value={resumen.cajas.toLocaleString('es')} />
             <StatTile label="Cajas 20kg" value={resumen.cajas20kg.toLocaleString('es', { maximumFractionDigits: 2 })} />
-            <StatTile label="Cajas rechazadas" value={resumen.rechazadas.toLocaleString('es')} />
-            <StatTile label="Tasa de rechazo" value={`${resumen.tasaRechazo.toFixed(1)}%`} />
             <StatTile label="Racimos cosechados" value={totalRacimos.toLocaleString('es')} />
           </div>
 
@@ -106,12 +103,6 @@ export default function DashboardPage() {
                 <CajasPorFincaSemanaChart data={serieCajasFincaSemana} />
               </ChartCard>
             </div>
-            <div className="lg:col-span-2">
-              <ChartCard title="Tasa de rechazo por día">
-                <RejectionRateChart data={serieFecha} />
-              </ChartCard>
-            </div>
-
             <ChartCard title="Racimos cosechados por edad (semana)">
               <RacimosPorEdadChart data={serieRacimosEdad} />
             </ChartCard>

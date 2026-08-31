@@ -3,7 +3,6 @@ import type { ProduccionHeaderInput } from '../types/produccion'
 interface ItemBorrador {
   referencia: string
   cantidad_cajas: number
-  cajas_rechazadas: number
 }
 
 interface TransporteBorrador {

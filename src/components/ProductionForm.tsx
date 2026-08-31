@@ -29,7 +29,6 @@ interface ItemDraft {
   key: number
   referencia: string
   cantidad_cajas: number
-  cajas_rechazadas: number
 }
 
 interface TransporteDraft {
@@ -72,7 +71,6 @@ function emptyItem(): ItemDraft {
     key: itemKeySeq++,
     referencia: '',
     cantidad_cajas: 0,
-    cajas_rechazadas: 0,
   }
 }
 
@@ -256,8 +254,6 @@ export default function ProductionForm({
         cantidad_cajas: item.cantidad_cajas,
         peso_neto_kg: pesoDe(item.referencia) ?? 0,
         cajas_20kg: cajas20kgDe(item) ?? 0,
-        cajas_rechazadas: item.cajas_rechazadas,
-        motivo_rechazo: null,
       })),
     )
 
@@ -309,7 +305,6 @@ export default function ProductionForm({
         referencia: it.referencia,
         cajas: it.cantidad_cajas,
         cajas20kg: cajas20kgDe(it),
-        rechazadas: it.cajas_rechazadas,
       })),
       totalCajas,
       totalCajas20kg,
@@ -527,7 +522,7 @@ export default function ProductionForm({
             const cajas20kg = cajas20kgDe(item)
             return (
               <div key={item.key} className="rounded-xl border border-gray-100 bg-gray-50/40 p-3 transition-colors hover:border-banex-200">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   <div className="lg:col-span-2">
                     <Field label="Referencia">
                       <input
@@ -569,16 +564,6 @@ export default function ProductionForm({
                     />
                   </Field>
 
-                  <Field label="Cajas rechazadas">
-                    <input
-                      type="number"
-                      min={0}
-                      step="1"
-                      value={item.cajas_rechazadas || ''}
-                      onChange={(e) => updateItem(item.key, 'cajas_rechazadas', Number(e.target.value))}
-                      className={inputClass}
-                    />
-                  </Field>
                 </div>
 
                 {items.length > 1 && (
