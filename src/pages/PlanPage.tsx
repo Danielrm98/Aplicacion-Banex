@@ -179,13 +179,11 @@ export default function PlanPage() {
             </button>
           </div>
 
-          <div className="mb-4 overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+          <div className="hidden sm:mb-4 sm:block sm:overflow-x-auto sm:rounded-xl sm:border sm:border-gray-100 sm:bg-white sm:shadow-sm sm:p-4">
             <table className="w-full min-w-[820px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
-                  <th className="sticky left-0 z-10 border-r border-gray-200 bg-white py-1.5 pr-3 pl-1 font-medium sm:static sm:border-r-0 sm:bg-transparent sm:pl-0">
-                    Referencia
-                  </th>
+                  <th className="py-1.5 pr-3 font-medium">Referencia</th>
                   <th className="py-1.5 pr-3 font-medium">Pallets plan</th>
                   <th className="py-1.5 pr-3 font-medium">Cajas plan</th>
                   <th className="py-1.5 pr-3 font-medium">Cajas producidas</th>
@@ -216,9 +214,7 @@ export default function PlanPage() {
               {plan.items.length > 0 && (
                 <tfoot>
                   <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                    <td className="sticky left-0 z-10 border-r border-gray-200 bg-banex-50 py-1.5 pr-3 pl-1 sm:static sm:border-r-0 sm:bg-transparent sm:pl-0">
-                      Total
-                    </td>
+                    <td className="py-1.5 pr-3">Total</td>
                     <td className="py-1.5 pr-3">{totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
                     <td className="py-1.5 pr-3">{totalCajasPlan.toLocaleString('es')}</td>
                     <td className="py-1.5 pr-3">{totalCajasProducidas.toLocaleString('es')}</td>
@@ -238,6 +234,55 @@ export default function PlanPage() {
                 </tfoot>
               )}
             </table>
+          </div>
+
+          <div className="mb-4 flex flex-col gap-3 sm:hidden">
+            {plan.items.length === 0 ? (
+              <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+                Este plan todavía no tiene referencias. Agrega una abajo.
+              </p>
+            ) : (
+              <>
+                {plan.items.map((item) => (
+                  <PlanItemCard
+                    key={item.id}
+                    item={item}
+                    cajasPallet={catalogoDe(item.referencia)?.cajas_pallet ?? null}
+                    cajasProducidas={producidoMap.get(item.referencia) ?? 0}
+                    onChanged={refetch}
+                  />
+                ))}
+                <div className="rounded-xl border border-banex-100 bg-banex-50/50 p-3 shadow-sm">
+                  <p className="mb-2 font-semibold text-banex-800">Total</p>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+                    <dt className="text-gray-500">Pallets plan</dt>
+                    <dd className="text-right font-medium text-banex-800">
+                      {totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}
+                    </dd>
+                    <dt className="text-gray-500">Cajas plan</dt>
+                    <dd className="text-right font-medium text-banex-800">{totalCajasPlan.toLocaleString('es')}</dd>
+                    <dt className="text-gray-500">Cajas producidas</dt>
+                    <dd className="text-right font-medium text-banex-800">
+                      {totalCajasProducidas.toLocaleString('es')}
+                    </dd>
+                    <dt className="text-gray-500">Pallets producidos</dt>
+                    <dd className="text-right font-medium text-banex-800">
+                      {totalPalletsProducidos.toLocaleString('es', { maximumFractionDigits: 2 })}
+                    </dd>
+                    <dt className="text-gray-500">Faltante/Sobrante cajas</dt>
+                    <dd className={`text-right font-medium ${totalFaltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                      {totalFaltanteCajas > 0 ? `Faltan ${totalFaltanteCajas}` : `Cumplido (+${-totalFaltanteCajas})`}
+                    </dd>
+                    <dt className="text-gray-500">Faltante/Sobrante pallets</dt>
+                    <dd className={`text-right font-medium ${totalFaltantePallets > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                      {totalFaltantePallets > 0
+                        ? `Faltan ${totalFaltantePallets.toFixed(2)}`
+                        : `Cumplido (+${(-totalFaltantePallets).toFixed(2)})`}
+                    </dd>
+                  </dl>
+                </div>
+              </>
+            )}
           </div>
 
           <AddPlanItemForm planId={plan.id} existentes={planReferencias} onAdded={refetch} />
@@ -313,9 +358,7 @@ function PlanItemRow({
 
   return (
     <tr className="border-b border-gray-100">
-      <td className="sticky left-0 z-10 border-r border-gray-200 bg-white py-1.5 pr-3 pl-1 font-medium text-gray-900 sm:static sm:border-r-0 sm:bg-transparent sm:pl-0">
-        {item.referencia}
-      </td>
+      <td className="py-1.5 pr-3 font-medium text-gray-900">{item.referencia}</td>
       <td className="py-1.5 pr-3">
         {editing ? (
           <input
@@ -384,6 +427,142 @@ function PlanItemRow({
         )}
       </td>
     </tr>
+  )
+}
+
+function PlanItemCard({
+  item,
+  cajasPallet,
+  cajasProducidas,
+  onChanged,
+}: {
+  item: PlanItem
+  cajasPallet: number | null
+  cajasProducidas: number
+  onChanged: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draftPallets, setDraftPallets] = useState(item.pallets_plan)
+  const [busy, setBusy] = useState(false)
+
+  const palletsProducidos = cajasPallet ? cajasProducidas / cajasPallet : null
+  const faltanteCajas = item.cajas_plan - cajasProducidas
+  const faltantePallets = cajasPallet ? item.pallets_plan - cajasProducidas / cajasPallet : null
+  const cajasPlanMostrado = editing ? (cajasPallet ? Math.round(draftPallets * cajasPallet) : null) : item.cajas_plan
+
+  async function save() {
+    setBusy(true)
+    const cajasCalculadas = cajasPallet ? Math.round(draftPallets * cajasPallet) : 0
+    const { error } = await supabase
+      .from('plan_items')
+      .update({ pallets_plan: draftPallets, cajas_plan: cajasCalculadas })
+      .eq('id', item.id)
+    setBusy(false)
+    if (error) {
+      alert(`No se pudo guardar: ${error.message}`)
+      return
+    }
+    setEditing(false)
+    onChanged()
+  }
+
+  async function remove() {
+    if (!confirm(`¿Quitar "${item.referencia}" del plan?`)) return
+    setBusy(true)
+    const { error } = await supabase.from('plan_items').delete().eq('id', item.id)
+    setBusy(false)
+    if (error) {
+      alert(`No se pudo eliminar: ${error.message}`)
+      return
+    }
+    onChanged()
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-semibold text-gray-900">{item.referencia}</span>
+        <div className="flex gap-2">
+          {editing ? (
+            <>
+              <button
+                onClick={save}
+                disabled={busy}
+                className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+              >
+                Guardar
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setDraftPallets(item.pallets_plan)
+                  setEditing(true)
+                }}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+              >
+                Editar
+              </button>
+              <button
+                onClick={remove}
+                disabled={busy}
+                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                Eliminar
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+        <dt className="text-gray-500">Pallets plan</dt>
+        <dd className="text-right">
+          {editing ? (
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={draftPallets}
+              onChange={(e) => setDraftPallets(Number(e.target.value))}
+              className="w-24 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-right text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15"
+            />
+          ) : (
+            item.pallets_plan
+          )}
+        </dd>
+
+        <dt className="text-gray-500">Cajas plan</dt>
+        <dd className="text-right text-gray-500">{cajasPlanMostrado ?? '—'}</dd>
+
+        <dt className="text-gray-500">Cajas producidas</dt>
+        <dd className="text-right">{cajasProducidas}</dd>
+
+        <dt className="text-gray-500">Pallets producidos</dt>
+        <dd className="text-right text-gray-500">{palletsProducidos !== null ? palletsProducidos.toFixed(2) : '—'}</dd>
+
+        <dt className="text-gray-500">Faltante/Sobrante cajas</dt>
+        <dd className={`text-right font-medium ${faltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+          {faltanteCajas > 0 ? `Faltan ${faltanteCajas}` : `Cumplido (+${-faltanteCajas})`}
+        </dd>
+
+        <dt className="text-gray-500">Faltante/Sobrante pallets</dt>
+        <dd className={`text-right font-medium ${faltantePallets !== null && faltantePallets > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+          {faltantePallets === null
+            ? '—'
+            : faltantePallets > 0
+              ? `Faltan ${faltantePallets.toFixed(2)}`
+              : `Cumplido (+${(-faltantePallets).toFixed(2)})`}
+        </dd>
+      </dl>
+    </div>
   )
 }
 
