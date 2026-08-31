@@ -29,6 +29,7 @@ export default function EntryPage() {
   // finca en vez de mostrar el selector de nuevo.
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string | null>(fincaConBorradorPendiente)
   const [savedCount, setSavedCount] = useState(0)
+  const [ultimoPendienteSync, setUltimoPendienteSync] = useState(false)
   const [ultimoResumen, setUltimoResumen] = useState<RegistroResumenCompartir | null>(null)
   const { registros } = useProducciones({})
   const { fincas } = useFincas()
@@ -39,8 +40,9 @@ export default function EntryPage() {
     if (esOperador && perfil?.finca) guardarFincaActual(perfil.finca)
   }, [esOperador, perfil?.finca])
 
-  function handleSaved(resumen: RegistroResumenCompartir) {
+  function handleSaved(resumen: RegistroResumenCompartir, pendienteSync: boolean) {
     setSavedCount((c) => c + 1)
+    setUltimoPendienteSync(pendienteSync)
     setUltimoResumen(resumen)
   }
 
@@ -127,11 +129,16 @@ export default function EntryPage() {
         </div>
       )}
 
-      {savedCount > 0 && (
-        <p className="mt-4 text-sm text-banex-700">
-          Registro guardado ({savedCount} en esta sesión). Puedes verlo en el Historial.
-        </p>
-      )}
+      {savedCount > 0 &&
+        (ultimoPendienteSync ? (
+          <p className="mt-4 text-sm text-amber-700">
+            📶 Sin conexión: el registro quedó guardado en el dispositivo y se enviará solo en cuanto vuelva la señal.
+          </p>
+        ) : (
+          <p className="mt-4 text-sm text-banex-700">
+            Registro guardado ({savedCount} en esta sesión). Puedes verlo en el Historial.
+          </p>
+        ))}
     </div>
   )
 }

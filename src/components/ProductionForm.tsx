@@ -7,6 +7,7 @@ import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import { leerBorrador, guardarBorrador } from '../lib/borradorRegistro'
+import { agregarACola, enviarRegistroPendiente, esErrorDeRed } from '../lib/colaRegistros'
 import SectionHeading from './SectionHeading'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import {
@@ -91,7 +92,7 @@ export default function ProductionForm({
   onSaved,
 }: {
   finca: string
-  onSaved: (resumen: RegistroResumenCompartir) => void
+  onSaved: (resumen: RegistroResumenCompartir, pendienteSync: boolean) => void
 }) {
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
   const { fincas } = useFincas()
@@ -226,8 +227,9 @@ export default function ProductionForm({
 
     setSaving(true)
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user
 
     if (!user) {
       setError('No hay sesión activa.')
@@ -235,51 +237,29 @@ export default function ProductionForm({
       return
     }
 
-    const { data: registro, error: headerError } = await supabase
-      .from('producciones')
-      .insert({ ...header, notas: header.notas || null, user_id: user.id })
-      .select('id')
-      .single()
-
-    if (headerError || !registro) {
-      setError(headerError?.message ?? 'No se pudo crear el registro.')
-      setSaving(false)
-      return
-    }
-
-    const { error: itemsError } = await supabase.from('produccion_items').insert(
-      items.map((item) => ({
-        produccion_id: registro.id,
+    const registroId = crypto.randomUUID()
+    const registroPendiente = {
+      id: registroId,
+      userId: user.id,
+      header,
+      items: items.map((item) => ({
+        id: crypto.randomUUID(),
         referencia: item.referencia,
         cantidad_cajas: item.cantidad_cajas,
         peso_neto_kg: pesoDe(item.referencia) ?? 0,
         cajas_20kg: cajas20kgDe(item) ?? 0,
       })),
-    )
-
-    if (itemsError) {
-      setSaving(false)
-      setError(itemsError.message)
-      return
-    }
-
-    if (transportes.length > 0) {
-      const { error: transportesError } = await supabase.from('transportes').insert(
-        transportes.map((t) => ({
-          produccion_id: registro.id,
-          tipo: t.tipo,
-          hora_llegada: t.hora_llegada || null,
-          hora_salida: t.hora_salida || null,
-          placa: t.placa || null,
-          sello: t.tipo === 'Contenedor' ? t.sello || null : null,
-        })),
-      )
-
-      if (transportesError) {
-        setSaving(false)
-        setError(transportesError.message)
-        return
-      }
+      transportes: transportes.map((t) => ({
+        id: crypto.randomUUID(),
+        tipo: t.tipo,
+        hora_llegada: t.hora_llegada || null,
+        hora_salida: t.hora_salida || null,
+        placa: t.placa || null,
+        sello: t.tipo === 'Contenedor' ? t.sello || null : null,
+      })),
+      creadoEn: new Date().toISOString(),
+      intentos: 0,
+      ultimoError: null,
     }
 
     const resumen: RegistroResumenCompartir = {
@@ -322,11 +302,33 @@ export default function ProductionForm({
       notas: header.notas ?? '',
     }
 
-    setSaving(false)
-    setHeader({ ...emptyHeader, finca, fecha: header.fecha, semana: header.semana })
-    setItems([emptyItem()])
-    setTransportes([])
-    onSaved(resumen)
+    function guardarYLimpiar(pendienteSync: boolean) {
+      setHeader({ ...emptyHeader, finca, fecha: header.fecha, semana: header.semana })
+      setItems([emptyItem()])
+      setTransportes([])
+      onSaved(resumen, pendienteSync)
+    }
+
+    if (!navigator.onLine) {
+      agregarACola({ ...registroPendiente, resumen })
+      setSaving(false)
+      guardarYLimpiar(true)
+      return
+    }
+
+    try {
+      await enviarRegistroPendiente({ ...registroPendiente, resumen })
+      setSaving(false)
+      guardarYLimpiar(false)
+    } catch (err) {
+      setSaving(false)
+      if (esErrorDeRed(err)) {
+        agregarACola({ ...registroPendiente, resumen })
+        guardarYLimpiar(true)
+      } else {
+        setError(err instanceof Error ? err.message : 'No se pudo guardar el registro.')
+      }
+    }
   }
 
   return (

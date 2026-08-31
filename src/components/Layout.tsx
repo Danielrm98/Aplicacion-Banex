@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { usePerfil } from '../lib/usePerfil'
+import { useColaSincronizacion } from '../lib/useColaSincronizacion'
 import banexLogo from '../assets/banex-logo.jpg'
 
 const navItems = [
@@ -15,6 +16,7 @@ const navItems = [
 export default function Layout() {
   const { perfil } = usePerfil()
   const items = perfil?.rol === 'operador' ? navItems.filter((item) => item.to !== '/catalogo') : navItems
+  const { pendientes, sincronizando, sincronizarAhora } = useColaSincronizacion()
 
   return (
     <div className="min-h-svh pb-14 sm:pb-0">
@@ -54,6 +56,20 @@ export default function Layout() {
           </button>
         </div>
       </header>
+
+      {pendientes > 0 && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-800 sm:text-sm">
+          📶 {pendientes} registro{pendientes === 1 ? '' : 's'} pendiente{pendientes === 1 ? '' : 's'} de sincronizar
+          (sin conexión al guardar).{' '}
+          <button
+            onClick={sincronizarAhora}
+            disabled={sincronizando}
+            className="font-medium underline underline-offset-2 hover:text-amber-950 disabled:opacity-60"
+          >
+            {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
+          </button>
+        </div>
+      )}
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
