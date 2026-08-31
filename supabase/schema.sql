@@ -225,6 +225,43 @@ create policy "Solo el admin elimina especificaciones"
   using (bucket_id = 'especificaciones' and public.es_admin(auth.uid()));
 
 -- ============================================================
+-- Lluvia reportada manualmente por finca y día (más confiable que el
+-- pronóstico para lluvia convectiva muy localizada)
+-- ============================================================
+create table public.lluvia_reportada (
+  id uuid primary key default gen_random_uuid(),
+  finca text not null references public.fincas (nombre),
+  fecha date not null,
+  milimetros numeric not null check (milimetros >= 0),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (finca, fecha)
+);
+
+alter table public.lluvia_reportada enable row level security;
+
+create policy "Ver lluvia reportada según rol"
+  on public.lluvia_reportada for select
+  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+
+create policy "Insertar lluvia reportada según rol"
+  on public.lluvia_reportada for insert
+  with check (
+    auth.uid() = user_id
+    and (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
+  );
+
+create policy "Actualizar lluvia reportada según rol"
+  on public.lluvia_reportada for update
+  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
+  with check (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+
+create policy "Eliminar lluvia reportada según rol"
+  on public.lluvia_reportada for delete
+  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+
+-- ============================================================
 -- Cabecera de producción: un registro por día + finca
 -- ============================================================
 create table public.producciones (

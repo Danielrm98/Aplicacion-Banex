@@ -11,3 +11,12 @@ export function fechaLocalHoy(): string {
   const dia = String(ahora.getDate()).padStart(2, '0')
   return `${anio}-${mes}-${dia}`
 }
+
+export function fechaLocalAyer(): string {
+  const ahora = new Date()
+  ahora.setDate(ahora.getDate() - 1)
+  const anio = ahora.getFullYear()
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0')
+  const dia = String(ahora.getDate()).padStart(2, '0')
+  return `${anio}-${mes}-${dia}`
+}
