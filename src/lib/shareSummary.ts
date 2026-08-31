@@ -141,6 +141,7 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
     lineas.push(`*${it.referencia}:* ${it.cajas}${cajas20kg}`)
   }
   lineas.push(`*TOTAL CAJAS:* ${r.totalCajas} = ${r.totalCajas20kg.toFixed(2)} (20K)`)
+  if (r.pesoNetoRacimo !== null) lineas.push(`*PESO NETO RACIMO:* ${r.pesoNetoRacimo.toFixed(2)} kg`)
   if (r.ratio !== null) lineas.push(`*RATIO:* ${r.ratio.toFixed(2)}`)
   if (r.merma !== null) lineas.push(`*MERMA:* ${r.merma.toFixed(2)}%`)
 
