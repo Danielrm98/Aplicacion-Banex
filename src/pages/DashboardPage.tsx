@@ -2,9 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import FiltersBar from '../components/FiltersBar'
 import StatTile from '../components/StatTile'
 import ProductionOverTimeChart from '../components/charts/ProductionOverTimeChart'
-import ProductionByFarmChart from '../components/charts/ProductionByFarmChart'
-import CajasPorFincaSemanaChart from '../components/charts/CajasPorFincaSemanaChart'
-import RacimosPorEdadChart from '../components/charts/RacimosPorEdadChart'
+import PorFincaSemanaChart from '../components/charts/PorFincaSemanaChart'
 import SingleLineChart from '../components/charts/SingleLineChart'
 import { chartColors } from '../components/charts/chartTheme'
 import ReportesDataTable from '../components/ReportesDataTable'
@@ -13,12 +11,10 @@ import { useProducciones, type Filtros } from '../lib/useProducciones'
 import {
   flattenItems,
   porFecha,
-  porFinca,
   cajasPorFincaYSemana,
   totales,
   resumenPorRegistro,
-  racimosPorEdad,
-  racimosPorFinca,
+  racimosPorFincaYSemana,
   racimosPorSemana,
   totalRacimosCosechados,
   ratioMermaPorFinca,
@@ -39,17 +35,15 @@ export default function DashboardPage() {
 
   const filas = useMemo(() => flattenItems(registros), [registros])
   const serieFecha = useMemo(() => porFecha(filas), [filas])
-  const serieFinca = useMemo(() => porFinca(filas), [filas])
   const resumen = useMemo(() => totales(filas), [filas])
 
   const resumenes = useMemo(() => resumenPorRegistro(registros), [registros])
-  const serieRacimosEdad = useMemo(() => racimosPorEdad(resumenes), [resumenes])
-  const serieRacimosFinca = useMemo(() => racimosPorFinca(resumenes), [resumenes])
   const totalRacimos = useMemo(() => totalRacimosCosechados(resumenes), [resumenes])
   const tablaRatioMerma = useMemo(() => ratioMermaPorFinca(resumenes), [resumenes])
 
   const resumenesTendencia = useMemo(() => resumenPorRegistro(registrosTendencia), [registrosTendencia])
   const serieRacimosSemana = useMemo(() => racimosPorSemana(resumenesTendencia), [resumenesTendencia])
+  const serieRacimosFincaSemana = useMemo(() => racimosPorFincaYSemana(resumenesTendencia), [resumenesTendencia])
   const serieRatioMerma = useMemo(() => ratioMermaPorSemana(resumenesTendencia), [resumenesTendencia])
 
   const filasTendencia = useMemo(() => flattenItems(registrosTendencia), [registrosTendencia])
@@ -89,26 +83,19 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ChartCard title="Producción por día">
-              <ProductionOverTimeChart data={serieFecha} />
-            </ChartCard>
-            <ChartCard title="Cajas producidas por finca">
-              <ProductionByFarmChart data={serieFinca} />
-            </ChartCard>
+            <div className="lg:col-span-2">
+              <ChartCard title="Producción por día">
+                <ProductionOverTimeChart data={serieFecha} />
+              </ChartCard>
+            </div>
             <div className="lg:col-span-2">
               <ChartCard
                 title="Cajas producidas por finca — semana a semana"
                 subtitle="Historial completo por finca — no cambia con el filtro de Semana/Día"
               >
-                <CajasPorFincaSemanaChart data={serieCajasFincaSemana} />
+                <PorFincaSemanaChart data={serieCajasFincaSemana} seriesName="cajas" />
               </ChartCard>
             </div>
-            <ChartCard title="Racimos cosechados por edad (semana)">
-              <RacimosPorEdadChart data={serieRacimosEdad} />
-            </ChartCard>
-            <ChartCard title="Racimos cosechados por finca">
-              <ProductionByFarmChart data={serieRacimosFinca} seriesName="racimos" barName="Racimos cosechados" />
-            </ChartCard>
             <div className="lg:col-span-2">
               <ChartCard
                 title="Racimos cosechados por semana"
@@ -121,6 +108,14 @@ export default function DashboardPage() {
                   seriesName="racimos"
                   xLabelFormatter={(v) => `S${v}`}
                 />
+              </ChartCard>
+            </div>
+            <div className="lg:col-span-2">
+              <ChartCard
+                title="Racimos cosechados por finca — semana a semana"
+                subtitle="Historial completo por finca — no cambia con el filtro de Semana/Día"
+              >
+                <PorFincaSemanaChart data={serieRacimosFincaSemana} seriesName="racimos" />
               </ChartCard>
             </div>
 
