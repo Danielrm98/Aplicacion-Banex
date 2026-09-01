@@ -8,6 +8,7 @@ import { chartColors } from '../components/charts/chartTheme'
 import ReportesDataTable from '../components/ReportesDataTable'
 import TabButton from '../components/TabButton'
 import { useProducciones, type Filtros } from '../lib/useProducciones'
+import { usePerfil } from '../lib/usePerfil'
 import {
   flattenItems,
   porFecha,
@@ -23,6 +24,8 @@ import {
 } from '../lib/aggregations'
 
 export default function DashboardPage() {
+  const { perfil } = usePerfil()
+  const esAdmin = perfil?.rol === 'admin'
   const [vista, setVista] = useState<'resumen' | 'tabla'>('resumen')
   const [filtros, setFiltros] = useState<Filtros>({})
   const { registros, loading, error } = useProducciones(filtros)
@@ -61,9 +64,11 @@ export default function DashboardPage() {
         <TabButton active={vista === 'resumen'} onClick={() => setVista('resumen')}>
           Resumen
         </TabButton>
-        <TabButton active={vista === 'tabla'} onClick={() => setVista('tabla')}>
-          Tabla de datos
-        </TabButton>
+        {esAdmin && (
+          <TabButton active={vista === 'tabla'} onClick={() => setVista('tabla')}>
+            Tabla de datos
+          </TabButton>
+        )}
       </div>
 
       <FiltersBar filtros={filtros} onChange={setFiltros} />
@@ -72,7 +77,7 @@ export default function DashboardPage() {
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
       ) : error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
-      ) : vista === 'tabla' ? (
+      ) : vista === 'tabla' && esAdmin ? (
         <ReportesDataTable filas={filasCompletas} />
       ) : (
         <>
