@@ -111,7 +111,7 @@ export default function EntryPage() {
           )}
           <div>
             <h1 className="text-xl font-bold text-banex-900 sm:text-2xl">{fincaActiva}</h1>
-            <p className="text-sm text-gray-500">Captura los datos de un lote de cajas de banano.</p>
+            <p className="text-sm text-gray-500">Registra la información de producción completa.</p>
           </div>
         </div>
         <ExportButtons registros={registros} />
