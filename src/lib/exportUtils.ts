@@ -89,12 +89,17 @@ export async function exportFilaCompletaToExcel(
   resumenes: ResumenDiaFinca[],
   filename = 'reportes_banano.xlsx',
 ) {
+  // Del más reciente al más antiguo, sin depender del orden en que hayan
+  // llegado los datos.
+  const resumenesOrdenados = [...resumenes].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  const filasOrdenadas = [...filas].sort((a, b) => b.fecha.localeCompare(a.fecha))
+
   const workbook = new ExcelJS.Workbook()
 
   const sheetResumen = workbook.addWorksheet('Resumen por día y finca')
   sheetResumen.columns = columnasResumen.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheetResumen.getRow(1).font = { bold: true }
-  for (const r of resumenes) {
+  for (const r of resumenesOrdenados) {
     sheetResumen.addRow({
       ...r,
       ratio: r.ratio !== null ? Number(r.ratio.toFixed(2)) : '',
@@ -108,7 +113,7 @@ export async function exportFilaCompletaToExcel(
   sheet.columns = columnasCompletas.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheet.getRow(1).font = { bold: true }
 
-  for (const f of filas) {
+  for (const f of filasOrdenadas) {
     sheet.addRow({
       ...f,
       ratio: f.ratio !== null ? Number(f.ratio.toFixed(2)) : '',
@@ -122,6 +127,8 @@ export async function exportFilaCompletaToExcel(
 }
 
 export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_banano.pdf') {
+  const filasOrdenadas = [...filas].sort((a, b) => b.fecha.localeCompare(a.fecha))
+
   const doc = new jsPDF({ orientation: 'landscape' })
   doc.setFontSize(14)
   doc.text('Producción de cajas de banano', 14, 15)
@@ -129,7 +136,7 @@ export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_bana
   autoTable(doc, {
     startY: 22,
     head: [columns.map((c) => c.header)],
-    body: filas.map((f) => columns.map((c) => String(f[c.key] ?? ''))),
+    body: filasOrdenadas.map((f) => columns.map((c) => String(f[c.key] ?? ''))),
     styles: { fontSize: 8 },
     headStyles: { fillColor: [21, 128, 61] },
   })
