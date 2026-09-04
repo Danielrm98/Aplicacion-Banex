@@ -99,7 +99,12 @@ export default function ProductionForm({
   const [header, setHeader] = useState<ProduccionHeaderInput>(() => {
     const fecha = fechaLocalHoy()
     const borrador = leerBorrador(finca)
-    if (borrador) return { ...borrador.header, finca }
+    // La fecha siempre se sincroniza con la del celular al abrir el
+    // formulario, aunque haya un borrador guardado de otro día — si no, un
+    // borrador viejo (por ejemplo de una recarga de página) podía dejar
+    // fechada una entrada varios días atrás sin que el operario lo notara.
+    // El campo sigue siendo editable por si de verdad necesita otra fecha.
+    if (borrador) return { ...borrador.header, finca, fecha, semana: getIsoWeek(fecha) }
     return { ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) }
   })
   const [items, setItems] = useState<ItemDraft[]>(() => {
