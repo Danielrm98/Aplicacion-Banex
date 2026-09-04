@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { usePerfil } from '../lib/usePerfil'
 import {
   CAJA_20KG_KG,
   CANASTILLA_KG,
@@ -79,6 +80,9 @@ interface Props {
 }
 
 export default function ProductionList({ registros, referencias, fincas, onChanged, showDatalist = true }: Props) {
+  const { perfil } = usePerfil()
+  const esAdmin = perfil?.rol === 'admin'
+
   return (
     <div className="flex flex-col gap-4">
       {registros.length === 0 ? (
@@ -91,6 +95,7 @@ export default function ProductionList({ registros, referencias, fincas, onChang
             referencias={referencias}
             fincas={fincas}
             onChanged={onChanged}
+            esAdmin={esAdmin}
           />
         ))
       )}
@@ -111,11 +116,13 @@ function RegistroCard({
   referencias,
   fincas,
   onChanged,
+  esAdmin,
 }: {
   registro: Produccion
   referencias: Referencia[]
   fincas: Finca[]
   onChanged: () => void
+  esAdmin: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -536,7 +543,7 @@ function RegistroCard({
                 </thead>
                 <tbody>
                   {registro.items.map((item) => (
-                    <ItemRow key={item.id} item={item} referencias={referencias} onChanged={onChanged} />
+                    <ItemRow key={item.id} item={item} referencias={referencias} onChanged={onChanged} esAdmin={esAdmin} />
                   ))}
                 </tbody>
               </table>
@@ -559,7 +566,7 @@ function RegistroCard({
                   </thead>
                   <tbody>
                     {registro.transportes.map((t) => (
-                      <TransporteRow key={t.id} transporte={t} onChanged={onChanged} />
+                      <TransporteRow key={t.id} transporte={t} onChanged={onChanged} esAdmin={esAdmin} />
                     ))}
                   </tbody>
                 </table>
@@ -567,15 +574,17 @@ function RegistroCard({
             </Seccion>
           )}
 
-          <div className="flex justify-end border-t border-gray-100 pt-4">
-            <button
-              onClick={removeRegistro}
-              disabled={busy}
-              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              Eliminar registro
-            </button>
-          </div>
+          {esAdmin && (
+            <div className="flex justify-end border-t border-gray-100 pt-4">
+              <button
+                onClick={removeRegistro}
+                disabled={busy}
+                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                Eliminar registro
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -610,10 +619,12 @@ function ItemRow({
   item,
   referencias,
   onChanged,
+  esAdmin,
 }: {
   item: ProduccionItem
   referencias: Referencia[]
   onChanged: () => void
+  esAdmin: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item)
@@ -684,13 +695,15 @@ function ItemRow({
           >
             Editar
           </button>
-          <button
-            onClick={remove}
-            disabled={busy}
-            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
+          {esAdmin && (
+            <button
+              onClick={remove}
+              disabled={busy}
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          )}
         </td>
       </tr>
     )
@@ -735,7 +748,15 @@ function ItemRow({
   )
 }
 
-function TransporteRow({ transporte, onChanged }: { transporte: Transporte; onChanged: () => void }) {
+function TransporteRow({
+  transporte,
+  onChanged,
+  esAdmin,
+}: {
+  transporte: Transporte
+  onChanged: () => void
+  esAdmin: boolean
+}) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(transporte)
   const [busy, setBusy] = useState(false)
@@ -792,13 +813,15 @@ function TransporteRow({ transporte, onChanged }: { transporte: Transporte; onCh
           >
             Editar
           </button>
-          <button
-            onClick={remove}
-            disabled={busy}
-            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
+          {esAdmin && (
+            <button
+              onClick={remove}
+              disabled={busy}
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          )}
         </td>
       </tr>
     )

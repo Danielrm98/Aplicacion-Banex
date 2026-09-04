@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { getIsoWeek } from '../lib/isoWeek'
 import { diaSemana } from '../lib/diaSemana'
@@ -6,6 +7,7 @@ import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
+import { usePerfil } from '../lib/usePerfil'
 import { leerBorrador, guardarBorrador } from '../lib/borradorRegistro'
 import { agregarACola, enviarRegistroPendiente, esErrorDeRed } from '../lib/colaRegistros'
 import SectionHeading from './SectionHeading'
@@ -96,6 +98,8 @@ export default function ProductionForm({
 }) {
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
   const { fincas } = useFincas()
+  const { perfil } = usePerfil()
+  const esAdmin = perfil?.rol === 'admin'
   const [header, setHeader] = useState<ProduccionHeaderInput>(() => {
     const fecha = fechaLocalHoy()
     const borrador = leerBorrador(finca)
@@ -120,7 +124,16 @@ export default function ProductionForm({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const { registros: registrosSemana } = useProducciones({ semana: header.semana, finca: header.finca })
+  const { registros: registrosSemana, refetch: refetchSemana } = useProducciones({
+    semana: header.semana,
+    finca: header.finca,
+  })
+
+  // Ya existe un registro guardado para esta finca en esta fecha: los
+  // operadores deben editarlo en Historial en vez de crear uno nuevo. Los
+  // administradores no tienen esta restricción.
+  const registroExistente = registrosSemana.find((r) => r.fecha === header.fecha) ?? null
+  const bloqueadoPorDuplicado = !esAdmin && registroExistente !== null
 
   useEffect(() => {
     guardarBorrador(finca, {
@@ -199,6 +212,11 @@ export default function ProductionForm({
 
     if (!header.finca) {
       setError('Selecciona una finca.')
+      return
+    }
+
+    if (bloqueadoPorDuplicado) {
+      setError('Ya existe un registro guardado para esta finca en esta fecha. Edítalo desde Historial en vez de crear uno nuevo.')
       return
     }
 
@@ -325,6 +343,7 @@ export default function ProductionForm({
       await enviarRegistroPendiente({ ...registroPendiente, resumen })
       setSaving(false)
       guardarYLimpiar(false)
+      refetchSemana()
     } catch (err) {
       setSaving(false)
       if (esErrorDeRed(err)) {
@@ -338,6 +357,19 @@ export default function ProductionForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {bloqueadoPorDuplicado && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-medium">Ya existe un registro guardado para esta finca en esta fecha.</p>
+          <p className="mt-0.5">
+            No se puede crear un segundo registro el mismo día — edita el que ya está guardado desde{' '}
+            <Link to="/registros" className="font-medium underline underline-offset-2 hover:text-amber-950">
+              Historial
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Fecha">
           <input
@@ -752,10 +784,10 @@ export default function ProductionForm({
       <div>
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || bloqueadoPorDuplicado}
           className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50 disabled:hover:bg-banex-600 disabled:hover:shadow-sm"
         >
-          {saving ? 'Guardando...' : 'Guardar registro'}
+          {saving ? 'Guardando...' : bloqueadoPorDuplicado ? 'Ya existe un registro este día' : 'Guardar registro'}
         </button>
       </div>
     </form>

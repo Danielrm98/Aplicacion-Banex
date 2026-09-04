@@ -295,6 +295,19 @@ create index producciones_user_fecha_idx
 
 alter table public.producciones enable row level security;
 
+-- Un operador no puede crear un segundo registro para la misma finca y
+-- fecha si ya existe uno (debe editar el existente); el administrador no
+-- tiene esta restricción.
+create or replace function public.existe_produccion_mismo_dia(p_finca text, p_fecha date)
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.producciones
+    where finca = p_finca and fecha = p_fecha
+  );
+$$;
+
 create policy "Ver producciones según rol"
   on public.producciones for select
   using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
@@ -303,7 +316,13 @@ create policy "Insertar producciones según rol"
   on public.producciones for insert
   with check (
     auth.uid() = user_id
-    and (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
+    and (
+      public.es_admin(auth.uid())
+      or (
+        finca = public.finca_de(auth.uid())
+        and not public.existe_produccion_mismo_dia(finca, fecha)
+      )
+    )
   );
 
 create policy "Actualizar producciones según rol"
@@ -311,9 +330,11 @@ create policy "Actualizar producciones según rol"
   using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
   with check (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
 
+-- Eliminar registros (o sus líneas) queda reservado al administrador; los
+-- operadores solo pueden editar lo ya ingresado.
 create policy "Eliminar producciones según rol"
   on public.producciones for delete
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()));
 
 -- ============================================================
 -- Detalle: una fila por referencia dentro de un registro
@@ -366,11 +387,7 @@ create policy "Actualizar items según rol"
 
 create policy "Eliminar items según rol"
   on public.produccion_items for delete
-  using (exists (
-    select 1 from public.producciones p
-    where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
-  ));
+  using (public.es_admin(auth.uid()));
 
 -- ============================================================
 -- Transporte: llegadas/salidas de camiones o contenedores por registro
@@ -422,11 +439,7 @@ create policy "Actualizar transportes según rol"
 
 create policy "Eliminar transportes según rol"
   on public.transportes for delete
-  using (exists (
-    select 1 from public.producciones p
-    where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
-  ));
+  using (public.es_admin(auth.uid()));
 
 -- ============================================================
 -- Plan semanal por finca: metas de cajas por referencia
