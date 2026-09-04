@@ -89,10 +89,10 @@ export async function exportFilaCompletaToExcel(
   resumenes: ResumenDiaFinca[],
   filename = 'reportes_banano.xlsx',
 ) {
-  // Del más reciente al más antiguo, sin depender del orden en que hayan
-  // llegado los datos.
-  const resumenesOrdenados = [...resumenes].sort((a, b) => b.fecha.localeCompare(a.fecha))
-  const filasOrdenadas = [...filas].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  // Del más antiguo al más reciente, para que los registros nuevos se vayan
+  // agregando hacia abajo y no arriba de los días anteriores.
+  const resumenesOrdenados = [...resumenes].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  const filasOrdenadas = [...filas].sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const workbook = new ExcelJS.Workbook()
 
@@ -127,7 +127,7 @@ export async function exportFilaCompletaToExcel(
 }
 
 export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_banano.pdf') {
-  const filasOrdenadas = [...filas].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  const filasOrdenadas = [...filas].sort((a, b) => a.fecha.localeCompare(b.fecha))
 
   const doc = new jsPDF({ orientation: 'landscape' })
   doc.setFontSize(14)
