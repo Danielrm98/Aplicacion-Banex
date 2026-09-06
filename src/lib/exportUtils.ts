@@ -84,6 +84,12 @@ const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: num
   { header: 'Notas', key: 'notas', width: 24 },
 ]
 
+// En el Excel, "Miércoles" y "Sábado" van sin tilde (a pedido); el resto de
+// la app conserva la ortografía normal.
+function diaSinTilde(dia: string): string {
+  return dia.replace('Miércoles', 'Miercoles').replace('Sábado', 'Sabado')
+}
+
 export async function exportFilaCompletaToExcel(
   filas: FilaCompleta[],
   resumenes: ResumenDiaFinca[],
@@ -91,8 +97,12 @@ export async function exportFilaCompletaToExcel(
 ) {
   // Del más antiguo al más reciente, para que los registros nuevos se vayan
   // agregando hacia abajo y no arriba de los días anteriores.
-  const resumenesOrdenados = [...resumenes].sort((a, b) => a.fecha.localeCompare(b.fecha))
-  const filasOrdenadas = [...filas].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  const resumenesOrdenados = [...resumenes]
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map((r) => ({ ...r, dia: diaSinTilde(r.dia) }))
+  const filasOrdenadas = [...filas]
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .map((f) => ({ ...f, dia: diaSinTilde(f.dia) }))
 
   const workbook = new ExcelJS.Workbook()
 
