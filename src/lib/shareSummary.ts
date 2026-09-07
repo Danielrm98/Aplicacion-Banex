@@ -160,11 +160,13 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
         contenedor ? `*No. CONT.:* ${contenedor.numeroContenedor || contenedor.placa}` : null,
       ].filter(Boolean)
       lineas.push(partes.join(' Y '))
+      lineas.push(`*LLEGANDO A LAS:* ${camion?.horaLlegada || contenedor?.horaLlegada || ''}`)
       lineas.push(`*SALIENDO A LAS:* ${camion?.horaSalida || contenedor?.horaSalida || ''}`)
     }
 
     for (const t of otros) {
       lineas.push(`*${t.tipo.toUpperCase()} CON PLACA:* ${t.placa}`)
+      lineas.push(`*LLEGANDO A LAS:* ${t.horaLlegada || ''}`)
       lineas.push(`*SALIENDO A LAS:* ${t.horaSalida || ''}`)
     }
   }
