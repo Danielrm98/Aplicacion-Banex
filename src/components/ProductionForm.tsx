@@ -372,7 +372,7 @@ export default function ProductionForm({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Fecha">
           <input
             type="date"
@@ -405,15 +405,6 @@ export default function ProductionForm({
             step="1"
             value={header.semana || ''}
             onChange={(e) => updateHeader('semana', Number(e.target.value))}
-            className={inputClass}
-          />
-        </Field>
-
-        <Field label="Notas (opcional)">
-          <input
-            type="text"
-            value={header.notas ?? ''}
-            onChange={(e) => updateHeader('notas', e.target.value)}
             className={inputClass}
           />
         </Field>
@@ -779,6 +770,17 @@ export default function ProductionForm({
         >
           + Agregar unidad de transporte
         </button>
+      </div>
+
+      <div>
+        <SectionHeading>Observaciones</SectionHeading>
+        <textarea
+          value={header.notas ?? ''}
+          onChange={(e) => updateHeader('notas', e.target.value)}
+          rows={3}
+          placeholder="Agrega cualquier comentario sobre este registro (opcional)"
+          className={inputClass}
+        />
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
