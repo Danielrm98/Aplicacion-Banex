@@ -14,7 +14,7 @@ export default function ExportButtons({ registros }: { registros: Produccion[] }
   async function handleExcel() {
     setExporting(true)
     try {
-      await exportFilaCompletaToExcel(filasCompletas, resumenes)
+      await exportFilaCompletaToExcel(filasCompletas, resumenes, registros)
     } finally {
       setExporting(false)
     }

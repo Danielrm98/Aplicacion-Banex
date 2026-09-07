@@ -2,6 +2,8 @@ import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { FilaCompleta, FilaProduccion, ResumenDiaFinca } from './aggregations'
+import type { Produccion } from '../types/produccion'
+import { diaSemana } from './diaSemana'
 
 const columns: { header: string; key: keyof FilaProduccion; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
@@ -90,9 +92,85 @@ function diaSinTilde(dia: string): string {
   return dia.replace('Miércoles', 'Miercoles').replace('Sábado', 'Sabado')
 }
 
+// Orden fijo pedido para la hoja de Transporte (no alfabético). Una finca
+// que no esté en esta lista se ubica al final, sin romper el reporte.
+const ORDEN_FINCAS_TRANSPORTE = [
+  'TAMACARA',
+  'FLORIDA',
+  'LAS DELICIAS',
+  'DILIA ESTHER',
+  'GOLONDRINA NUEVA',
+  'GOLONDRINA VIEJA',
+  'GLORIA MERCEDES',
+  'LUCILA MARINA',
+  'ESMERALDA',
+  'LA MARIA',
+  'TROPICANA',
+  'COSTANERA',
+  'RAQUELITA',
+  'MILADY',
+  'MACONDO',
+]
+
+function posicionFinca(finca: string): number {
+  const idx = ORDEN_FINCAS_TRANSPORTE.indexOf(finca.toUpperCase())
+  return idx === -1 ? ORDEN_FINCAS_TRANSPORTE.length : idx
+}
+
+function agregarHojaTransporte(workbook: ExcelJS.Workbook, registros: Produccion[]) {
+  const registrosOrdenados = [...registros].sort((a, b) => {
+    const porFecha = a.fecha.localeCompare(b.fecha)
+    return porFecha !== 0 ? porFecha : posicionFinca(a.finca) - posicionFinca(b.finca)
+  })
+
+  const maxUnidades = registrosOrdenados.reduce((max, r) => Math.max(max, r.transportes.length), 0)
+
+  const columnasTransporte: { header: string; key: string; width?: number }[] = [
+    { header: 'Año', key: 'anio', width: 8 },
+    { header: 'Semana', key: 'semana', width: 10 },
+    { header: 'Día', key: 'dia', width: 12 },
+    { header: 'Finca', key: 'finca', width: 20 },
+    { header: 'Terminación de proceso', key: 'terminacion', width: 18 },
+  ]
+  for (let i = 1; i <= maxUnidades; i++) {
+    columnasTransporte.push({ header: `Llegada unidad #${i}`, key: `llegada${i}`, width: 14 })
+    columnasTransporte.push({ header: `Salida unidad #${i}`, key: `salida${i}`, width: 14 })
+  }
+
+  const sheet = workbook.addWorksheet('Transporte')
+  sheet.columns = columnasTransporte.map((c) => ({ header: c.header, key: c.key, width: c.width }))
+
+  for (const r of registrosOrdenados) {
+    const fila: Record<string, string | number> = {
+      anio: Number(r.fecha.slice(0, 4)),
+      semana: r.semana,
+      dia: diaSinTilde(diaSemana(r.fecha)).toUpperCase(),
+      finca: r.finca,
+      terminacion: r.hora_finalizacion ?? '',
+    }
+    const unidadesOrdenadas = [...r.transportes].sort((a, b) =>
+      (a.hora_llegada ?? '99:99').localeCompare(b.hora_llegada ?? '99:99'),
+    )
+    unidadesOrdenadas.forEach((t, i) => {
+      fila[`llegada${i + 1}`] = t.hora_llegada ?? ''
+      fila[`salida${i + 1}`] = t.hora_salida ?? ''
+    })
+    sheet.addRow(fila)
+  }
+
+  sheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
+  })
+  const ultimaCelda = sheet.getCell(1, columnasTransporte.length).address
+  sheet.autoFilter = `A1:${ultimaCelda}`
+}
+
 export async function exportFilaCompletaToExcel(
   filas: FilaCompleta[],
   resumenes: ResumenDiaFinca[],
+  registros: Produccion[],
   filename = 'reportes_banano.xlsx',
 ) {
   // Del más antiguo al más reciente, para que los registros nuevos se vayan
@@ -131,6 +209,8 @@ export async function exportFilaCompletaToExcel(
       pesoNetoRacimo: f.pesoNetoRacimo !== null ? Number(f.pesoNetoRacimo.toFixed(2)) : '',
     })
   }
+
+  agregarHojaTransporte(workbook, registros)
 
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
