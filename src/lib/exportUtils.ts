@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable'
 import type { FilaCompleta, FilaProduccion, ResumenDiaFinca } from './aggregations'
 import type { Produccion } from '../types/produccion'
 import { diaSemana } from './diaSemana'
+import { posicionFinca } from './ordenFincas'
 
 const columns: { header: string; key: keyof FilaProduccion; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
@@ -90,31 +91,6 @@ const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: num
 // la app conserva la ortografía normal.
 function diaSinTilde(dia: string): string {
   return dia.replace('Miércoles', 'Miercoles').replace('Sábado', 'Sabado')
-}
-
-// Orden fijo pedido para la hoja de Transporte (no alfabético). Una finca
-// que no esté en esta lista se ubica al final, sin romper el reporte.
-const ORDEN_FINCAS_TRANSPORTE = [
-  'TAMACARA',
-  'FLORIDA',
-  'LAS DELICIAS',
-  'DILIA ESTHER',
-  'GOLONDRINA NUEVA',
-  'GOLONDRINA VIEJA',
-  'GLORIA MERCEDES',
-  'LUCILA MARINA',
-  'ESMERALDA',
-  'LA MARIA',
-  'TROPICANA',
-  'COSTANERA',
-  'RAQUELITA',
-  'MILADY',
-  'MACONDO',
-]
-
-function posicionFinca(finca: string): number {
-  const idx = ORDEN_FINCAS_TRANSPORTE.indexOf(finca.toUpperCase())
-  return idx === -1 ? ORDEN_FINCAS_TRANSPORTE.length : idx
 }
 
 function agregarHojaTransporte(workbook: ExcelJS.Workbook, registros: Produccion[]) {

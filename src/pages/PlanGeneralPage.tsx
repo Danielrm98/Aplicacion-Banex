@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../lib/AuthContext'
@@ -7,6 +7,7 @@ import { useFincas } from '../lib/useFincas'
 import { useReferencias } from '../lib/useReferencias'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
+import { posicionFinca } from '../lib/ordenFincas'
 import type { PlanSemana } from '../types/plan'
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
@@ -14,7 +15,11 @@ const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 export default function PlanGeneralPage() {
   const { perfil } = usePerfil()
   const { session } = useAuth()
-  const { fincas } = useFincas()
+  const { fincas: fincasSinOrdenar } = useFincas()
+  const fincas = useMemo(
+    () => [...fincasSinOrdenar].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
+    [fincasSinOrdenar],
+  )
   const { referencias } = useReferencias()
 
   const [semana, setSemana] = useState(() => getIsoWeek(fechaLocalHoy()))
