@@ -150,12 +150,14 @@ export async function exportFilaCompletaToExcel(
   filename = 'reportes_banano.xlsx',
 ) {
   // Del más antiguo al más reciente, para que los registros nuevos se vayan
-  // agregando hacia abajo y no arriba de los días anteriores.
+  // agregando hacia abajo y no arriba de los días anteriores; dentro de un
+  // mismo día, siempre en el orden de finca fijo (sin importar el orden en
+  // que se hayan registrado desde la aplicación).
   const resumenesOrdenados = [...resumenes]
-    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca))
     .map((r) => ({ ...r, dia: diaSinTilde(r.dia) }))
   const filasOrdenadas = [...filas]
-    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca))
     .map((f) => ({ ...f, dia: diaSinTilde(f.dia) }))
 
   const workbook = new ExcelJS.Workbook()
@@ -193,7 +195,9 @@ export async function exportFilaCompletaToExcel(
 }
 
 export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_banano.pdf') {
-  const filasOrdenadas = [...filas].sort((a, b) => a.fecha.localeCompare(b.fecha))
+  const filasOrdenadas = [...filas].sort(
+    (a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca),
+  )
 
   const doc = new jsPDF({ orientation: 'landscape' })
   doc.setFontSize(14)
