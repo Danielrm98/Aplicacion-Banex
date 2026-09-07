@@ -185,11 +185,13 @@ export default function ProductionForm({
   }
 
   function pesoDe(referencia: string) {
-    return referencias.find((r) => r.marca === referencia)?.peso_neto_kg ?? null
+    const limpia = referencia.replace(/\s/g, '')
+    return referencias.find((r) => r.marca === limpia)?.peso_neto_kg ?? null
   }
 
   function factorDe(referencia: string) {
-    return referencias.find((r) => r.marca === referencia)?.factor_conversion ?? null
+    const limpia = referencia.replace(/\s/g, '')
+    return referencias.find((r) => r.marca === limpia)?.factor_conversion ?? null
   }
 
   function cajas20kgDe(item: ItemDraft) {
@@ -267,7 +269,7 @@ export default function ProductionForm({
       header,
       items: items.map((item) => ({
         id: crypto.randomUUID(),
-        referencia: item.referencia,
+        referencia: item.referencia.replace(/\s/g, ''),
         cantidad_cajas: item.cantidad_cajas,
         peso_neto_kg: pesoDe(item.referencia) ?? 0,
         cajas_20kg: cajas20kgDe(item) ?? 0,
@@ -571,7 +573,7 @@ export default function ProductionForm({
                         list="referencias-catalogo"
                         autoComplete="off"
                         value={item.referencia}
-                        onChange={(e) => updateItem(item.key, 'referencia', e.target.value)}
+                        onChange={(e) => updateItem(item.key, 'referencia', e.target.value.replace(/\s/g, ''))}
                         className={inputClass}
                         placeholder={loadingReferencias ? 'Cargando...' : 'Escribe o elige una referencia'}
                       />

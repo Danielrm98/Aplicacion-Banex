@@ -631,7 +631,8 @@ function ItemRow({
   const [busy, setBusy] = useState(false)
 
   function catalogoDe(referencia: string) {
-    return referencias.find((r) => r.marca === referencia) ?? null
+    const limpia = referencia.replace(/\s/g, '')
+    return referencias.find((r) => r.marca === limpia) ?? null
   }
 
   function cajas20kgDe() {
@@ -650,7 +651,7 @@ function ItemRow({
     const { error } = await supabase
       .from('produccion_items')
       .update({
-        referencia: draft.referencia,
+        referencia: ref.marca,
         cantidad_cajas: draft.cantidad_cajas,
         peso_neto_kg: ref.peso_neto_kg,
         cajas_20kg: draft.cantidad_cajas * ref.factor_conversion,
@@ -717,7 +718,7 @@ function ItemRow({
           list="referencias-catalogo"
           autoComplete="off"
           value={draft.referencia}
-          onChange={(e) => setDraft((d) => ({ ...d, referencia: e.target.value }))}
+          onChange={(e) => setDraft((d) => ({ ...d, referencia: e.target.value.replace(/\s/g, '') }))}
           className={cellInput}
         />
       </td>
