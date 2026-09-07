@@ -7,15 +7,18 @@ import banexLogo from '../assets/banex-logo.jpg'
 const navItems = [
   { to: '/', label: 'Registrar', end: true },
   { to: '/plan', label: 'Plan' },
+  { to: '/plan-general', label: 'Plan general' },
   { to: '/registros', label: 'Historial' },
   { to: '/reportes', label: 'Reportes' },
   { to: '/especificaciones', label: 'Especificaciones' },
   { to: '/catalogo', label: 'Catálogo' },
 ]
 
+const SOLO_ADMIN = ['/catalogo', '/plan-general']
+
 export default function Layout() {
   const { perfil } = usePerfil()
-  const items = perfil?.rol === 'operador' ? navItems.filter((item) => item.to !== '/catalogo') : navItems
+  const items = perfil?.rol === 'operador' ? navItems.filter((item) => !SOLO_ADMIN.includes(item.to)) : navItems
   const { pendientes, sincronizando, sincronizarAhora } = useColaSincronizacion()
 
   return (

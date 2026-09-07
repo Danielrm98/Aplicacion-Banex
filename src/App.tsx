@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage'
 import CatalogPage from './pages/CatalogPage'
 import EspecificacionesPage from './pages/EspecificacionesPage'
 import PlanPage from './pages/PlanPage'
+import PlanGeneralPage from './pages/PlanGeneralPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { session, loading } = useAuth()
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="/catalogo" element={<CatalogPage />} />
         <Route path="/especificaciones" element={<EspecificacionesPage />} />
         <Route path="/plan" element={<PlanPage />} />
+        <Route path="/plan-general" element={<PlanGeneralPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
