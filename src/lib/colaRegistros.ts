@@ -17,6 +17,7 @@ export interface TransportePendiente {
   hora_salida: string | null
   placa: string | null
   sello: string | null
+  numero_contenedor: string | null
 }
 
 export interface RegistroPendiente {

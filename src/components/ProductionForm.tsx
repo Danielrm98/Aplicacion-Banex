@@ -41,6 +41,7 @@ interface TransporteDraft {
   hora_salida: string
   placa: string
   sello: string
+  numero_contenedor: string
 }
 
 const initialFecha = fechaLocalHoy()
@@ -86,6 +87,7 @@ function emptyTransporte(): TransporteDraft {
     hora_salida: '',
     placa: '',
     sello: '',
+    numero_contenedor: '',
   }
 }
 
@@ -118,7 +120,8 @@ export default function ProductionForm({
   })
   const [transportes, setTransportes] = useState<TransporteDraft[]>(() => {
     const borrador = leerBorrador(finca)
-    if (borrador) return borrador.transportes.map((t) => ({ ...t, key: transporteKeySeq++ }))
+    if (borrador)
+      return borrador.transportes.map((t) => ({ ...t, numero_contenedor: t.numero_contenedor ?? '', key: transporteKeySeq++ }))
     return []
   })
   const [error, setError] = useState<string | null>(null)
@@ -281,6 +284,7 @@ export default function ProductionForm({
         hora_salida: t.hora_salida || null,
         placa: t.placa || null,
         sello: t.tipo === 'Contenedor' ? t.sello || null : null,
+        numero_contenedor: t.tipo === 'Contenedor' ? t.numero_contenedor || null : null,
       })),
       creadoEn: new Date().toISOString(),
       intentos: 0,
@@ -321,6 +325,7 @@ export default function ProductionForm({
         tipo: t.tipo,
         placa: t.placa,
         sello: t.sello,
+        numeroContenedor: t.numero_contenedor,
         horaLlegada: t.hora_llegada,
         horaSalida: t.hora_salida,
       })),
@@ -690,7 +695,7 @@ export default function ProductionForm({
           <div className="flex flex-col gap-3">
             {transportes.map((t, idx) => (
               <div key={t.key} className="rounded-xl border border-gray-100 bg-gray-50/40 p-3 transition-colors hover:border-banex-200">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
                   <Field label="Tipo de unidad">
                     <select
                       required
@@ -716,6 +721,17 @@ export default function ProductionForm({
                       onChange={(e) => updateTransporte(t.key, 'placa', e.target.value.toUpperCase())}
                       className={inputClass}
                       placeholder="Ej. ABC123"
+                    />
+                  </Field>
+
+                  <Field label="Número de contenedor">
+                    <input
+                      type="text"
+                      value={t.numero_contenedor}
+                      onChange={(e) => updateTransporte(t.key, 'numero_contenedor', e.target.value.toUpperCase())}
+                      disabled={t.tipo !== 'Contenedor'}
+                      className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-400`}
+                      placeholder={t.tipo === 'Contenedor' ? 'Ej. MSCU1234567' : 'Solo contenedores'}
                     />
                   </Field>
 

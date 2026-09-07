@@ -400,6 +400,7 @@ create table public.transportes (
   hora_salida time,
   placa text,
   sello text,
+  numero_contenedor text,
   created_at timestamptz not null default now()
 );
 

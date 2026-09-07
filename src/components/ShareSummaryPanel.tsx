@@ -176,6 +176,7 @@ export default function ShareSummaryPanel({
                         <div className="grid grid-cols-2 gap-1.5">
                           <Casilla label="Tipo" valor={t.tipo || '—'} compacto />
                           <Casilla label="Placa" valor={t.placa || '—'} compacto />
+                          <Casilla label="No. contenedor" valor={t.numeroContenedor || '—'} compacto />
                           <Casilla label="Sello" valor={t.sello || '—'} compacto />
                           <Casilla label="Hora llegada" valor={t.horaLlegada || '—'} compacto />
                           <Casilla label="Hora salida" valor={t.horaSalida || '—'} compacto />

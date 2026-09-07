@@ -553,11 +553,12 @@ function RegistroCard({
           {registro.transportes.length > 0 && (
             <Seccion titulo="Transporte">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px] border-collapse text-sm">
+                <table className="w-full min-w-[600px] border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left text-gray-500">
                       <th className="py-1.5 pr-3 font-medium">Tipo</th>
                       <th className="py-1.5 pr-3 font-medium">Placa</th>
+                      <th className="py-1.5 pr-3 font-medium">No. contenedor</th>
                       <th className="py-1.5 pr-3 font-medium">Sello</th>
                       <th className="py-1.5 pr-3 font-medium">Hora llegada</th>
                       <th className="py-1.5 pr-3 font-medium">Hora salida</th>
@@ -772,6 +773,7 @@ function TransporteRow({
         hora_salida: draft.hora_salida || null,
         placa: draft.placa || null,
         sello: draft.tipo === 'Contenedor' ? draft.sello || null : null,
+        numero_contenedor: draft.tipo === 'Contenedor' ? draft.numero_contenedor || null : null,
       })
       .eq('id', transporte.id)
 
@@ -801,6 +803,7 @@ function TransporteRow({
       <tr className="border-b border-gray-100">
         <td className="py-1.5 pr-3">{transporte.tipo}</td>
         <td className="py-1.5 pr-3">{transporte.placa ?? '—'}</td>
+        <td className="py-1.5 pr-3">{transporte.numero_contenedor ?? '—'}</td>
         <td className="py-1.5 pr-3">{transporte.sello ?? '—'}</td>
         <td className="py-1.5 pr-3">{transporte.hora_llegada ?? '—'}</td>
         <td className="py-1.5 pr-3">{transporte.hora_salida ?? '—'}</td>
@@ -849,6 +852,15 @@ function TransporteRow({
           value={draft.placa ?? ''}
           onChange={(e) => setDraft((d) => ({ ...d, placa: e.target.value.toUpperCase() }))}
           className={cellInput}
+        />
+      </td>
+      <td className="py-1.5 pr-3">
+        <input
+          type="text"
+          value={draft.numero_contenedor ?? ''}
+          onChange={(e) => setDraft((d) => ({ ...d, numero_contenedor: e.target.value.toUpperCase() }))}
+          disabled={draft.tipo !== 'Contenedor'}
+          className={`${cellInput} disabled:bg-gray-100 disabled:text-gray-400`}
         />
       </td>
       <td className="py-1.5 pr-3">

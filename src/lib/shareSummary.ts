@@ -17,6 +17,7 @@ export interface TransporteResumen {
   tipo: string
   placa: string
   sello: string
+  numeroContenedor: string
   horaLlegada: string
   horaSalida: string
 }
@@ -101,6 +102,7 @@ export function resumenDesdeProduccion(
       tipo: t.tipo,
       placa: t.placa ?? '',
       sello: t.sello ?? '',
+      numeroContenedor: t.numero_contenedor ?? '',
       horaLlegada: t.hora_llegada ?? '',
       horaSalida: t.hora_salida ?? '',
     })),
@@ -155,7 +157,7 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
       const contenedor = contenedores[i]
       const partes = [
         camion ? `*CABEZOTE CON PLACA:* ${camion.placa}` : null,
-        contenedor ? `*No. CONT.:* ${contenedor.placa}` : null,
+        contenedor ? `*No. CONT.:* ${contenedor.numeroContenedor || contenedor.placa}` : null,
       ].filter(Boolean)
       lineas.push(partes.join(' Y '))
       lineas.push(`*SALIENDO A LAS:* ${camion?.horaSalida || contenedor?.horaSalida || ''}`)

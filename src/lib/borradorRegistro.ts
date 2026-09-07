@@ -11,6 +11,7 @@ interface TransporteBorrador {
   hora_salida: string
   placa: string
   sello: string
+  numero_contenedor: string
 }
 
 export interface BorradorRegistro {
