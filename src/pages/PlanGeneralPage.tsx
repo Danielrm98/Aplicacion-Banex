@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../lib/AuthContext'
@@ -32,6 +32,7 @@ export default function PlanGeneralPage() {
   const [columnas, setColumnas] = useState<string[]>([])
   const [celdas, setCeldas] = useState<Record<string, Record<string, string>>>({})
   const [nuevaReferencia, setNuevaReferencia] = useState('')
+  const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
   const cargarPlanes = useCallback(async () => {
     setLoading(true)
@@ -58,14 +59,29 @@ export default function PlanGeneralPage() {
   useEffect(() => {
     const cols = new Set<string>()
     const grid: Record<string, Record<string, string>> = {}
+    // Cuándo se agregó cada referencia por primera vez, para mantener el
+    // orden en que se fueron agregando (hacia la derecha) en vez de
+    // reordenar alfabéticamente cada vez que se guarda.
+    const primeraVez: Record<string, string> = {}
     for (const p of planes) {
       grid[p.finca] = {}
       for (const it of p.items) {
         cols.add(it.referencia)
         grid[p.finca][it.referencia] = String(it.pallets_plan)
+        if (!primeraVez[it.referencia] || it.created_at < primeraVez[it.referencia]) {
+          primeraVez[it.referencia] = it.created_at
+        }
       }
     }
-    setColumnas(Array.from(cols).sort())
+    setColumnas((prev) => {
+      // Conserva el orden de las columnas que el propio usuario ya tenía
+      // en pantalla (incluye las que acaba de agregar y aún no guarda) y
+      // solo agrega al final las que vienen nuevas desde la base de datos.
+      const nuevas = Array.from(cols)
+        .filter((c) => !prev.includes(c))
+        .sort((a, b) => (primeraVez[a] ?? '').localeCompare(primeraVez[b] ?? ''))
+      return [...prev.filter((c) => cols.has(c)), ...nuevas]
+    })
     setCeldas(grid)
   }, [planes])
 
@@ -75,6 +91,45 @@ export default function PlanGeneralPage() {
 
   function setCelda(finca: string, referencia: string, valor: string) {
     setCeldas((prev) => ({ ...prev, [finca]: { ...prev[finca], [referencia]: valor } }))
+  }
+
+  function claveCelda(finca: string, referencia: string) {
+    return `${finca}__${referencia}`
+  }
+
+  function enfocarCelda(filaIdx: number, colIdx: number) {
+    const finca = fincas[filaIdx]?.nombre
+    const referencia = columnas[colIdx]
+    if (!finca || !referencia) return
+    const input = inputRefs.current.get(claveCelda(finca, referencia))
+    if (!input) return
+    input.focus()
+    input.select()
+    input.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }
+
+  // Las flechas del teclado se mueven entre casillas, como en una hoja de
+  // cálculo, en vez de solo mover el cursor dentro del número o depender
+  // de la barra de desplazamiento.
+  function onKeyDownCelda(e: KeyboardEvent<HTMLInputElement>, filaIdx: number, colIdx: number) {
+    switch (e.key) {
+      case 'ArrowRight':
+        e.preventDefault()
+        enfocarCelda(filaIdx, colIdx + 1)
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        enfocarCelda(filaIdx, colIdx - 1)
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        enfocarCelda(filaIdx + 1, colIdx)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        enfocarCelda(filaIdx - 1, colIdx)
+        break
+    }
   }
 
   function totalFilaPallets(finca: string) {
@@ -96,7 +151,7 @@ export default function PlanGeneralPage() {
       return
     }
     setError(null)
-    if (!columnas.includes(marca)) setColumnas((prev) => [...prev, marca].sort())
+    if (!columnas.includes(marca)) setColumnas((prev) => [...prev, marca])
     setNuevaReferencia('')
   }
 
@@ -255,12 +310,12 @@ export default function PlanGeneralPage() {
                     </td>
                   </tr>
                 ) : (
-                  fincas.map((f) => (
+                  fincas.map((f, filaIdx) => (
                     <tr key={f.nombre} className="border-b border-gray-100">
                       <td className="sticky left-0 z-10 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
                         {f.nombre}
                       </td>
-                      {columnas.map((ref) => {
+                      {columnas.map((ref, colIdx) => {
                         const cat = catalogoDe(ref)
                         const valor = celdas[f.nombre]?.[ref] ?? ''
                         const pallets = Number(valor) || 0
@@ -273,6 +328,12 @@ export default function PlanGeneralPage() {
                               step="0.1"
                               value={valor}
                               onChange={(e) => setCelda(f.nombre, ref, e.target.value)}
+                              onKeyDown={(e) => onKeyDownCelda(e, filaIdx, colIdx)}
+                              ref={(el) => {
+                                const clave = claveCelda(f.nombre, ref)
+                                if (el) inputRefs.current.set(clave, el)
+                                else inputRefs.current.delete(clave)
+                              }}
                               className="w-20 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-center text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15"
                             />
                             {cajas !== null && <div className="mt-0.5 text-[10px] text-gray-400">{cajas} cajas</div>}
