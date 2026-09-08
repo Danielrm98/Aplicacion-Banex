@@ -165,6 +165,8 @@ create table public.perfiles (
   usuario text not null unique,
   nombre text,
   rol text not null default 'operador' check (rol in ('admin', 'operador')),
+  -- Ya no se usa para el control de acceso (ver perfil_fincas abajo, que
+  -- permite varias fincas por operador); se conserva solo por compatibilidad.
   finca text references public.fincas (nombre),
   created_at timestamptz not null default now()
 );
@@ -178,13 +180,6 @@ as $$
   select coalesce((select rol = 'admin' from public.perfiles where user_id = uid), false);
 $$;
 
-create or replace function public.finca_de(uid uuid)
-returns text
-language sql stable security definer set search_path = public
-as $$
-  select finca from public.perfiles where user_id = uid;
-$$;
-
 create policy "Cada quien ve su perfil, el admin ve todos"
   on public.perfiles for select
   using (auth.uid() = user_id or public.es_admin(auth.uid()));
@@ -193,6 +188,35 @@ create policy "Solo el admin asigna rol y finca"
   on public.perfiles for update
   using (public.es_admin(auth.uid()))
   with check (public.es_admin(auth.uid()));
+
+-- Un operador puede tener varias fincas asignadas (una fila por finca).
+create table public.perfil_fincas (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  finca text not null references public.fincas (nombre),
+  created_at timestamptz not null default now(),
+  primary key (user_id, finca)
+);
+
+alter table public.perfil_fincas enable row level security;
+
+create policy "Cada quien ve sus fincas asignadas, el admin ve todas"
+  on public.perfil_fincas for select
+  using (auth.uid() = user_id or public.es_admin(auth.uid()));
+
+create policy "Solo el admin asigna fincas"
+  on public.perfil_fincas for insert
+  with check (public.es_admin(auth.uid()));
+
+create policy "Solo el admin quita fincas"
+  on public.perfil_fincas for delete
+  using (public.es_admin(auth.uid()));
+
+create or replace function public.fincas_de(uid uuid)
+returns text[]
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(array_agg(finca), array[]::text[]) from public.perfil_fincas where user_id = uid;
+$$;
 
 -- El primer usuario que se registre (el dueño de la cuenta) queda como admin.
 insert into public.perfiles (user_id, usuario, nombre, rol, finca)
@@ -243,23 +267,23 @@ alter table public.lluvia_reportada enable row level security;
 
 create policy "Ver lluvia reportada según rol"
   on public.lluvia_reportada for select
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 create policy "Insertar lluvia reportada según rol"
   on public.lluvia_reportada for insert
   with check (
     auth.uid() = user_id
-    and (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
+    and (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
   );
 
 create policy "Actualizar lluvia reportada según rol"
   on public.lluvia_reportada for update
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
-  with check (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
+  with check (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 create policy "Eliminar lluvia reportada según rol"
   on public.lluvia_reportada for delete
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 -- ============================================================
 -- Cabecera de producción: un registro por día + finca
@@ -310,7 +334,7 @@ $$;
 
 create policy "Ver producciones según rol"
   on public.producciones for select
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 create policy "Insertar producciones según rol"
   on public.producciones for insert
@@ -319,7 +343,7 @@ create policy "Insertar producciones según rol"
     and (
       public.es_admin(auth.uid())
       or (
-        finca = public.finca_de(auth.uid())
+        finca = any (public.fincas_de(auth.uid()))
         and not public.existe_produccion_mismo_dia(finca, fecha)
       )
     )
@@ -327,8 +351,8 @@ create policy "Insertar producciones según rol"
 
 create policy "Actualizar producciones según rol"
   on public.producciones for update
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
-  with check (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
+  with check (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 -- Eliminar registros (o sus líneas) queda reservado al administrador; los
 -- operadores solo pueden editar lo ya ingresado.
@@ -361,7 +385,7 @@ create policy "Ver items según rol"
   using (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Insertar items según rol"
@@ -369,7 +393,7 @@ create policy "Insertar items según rol"
   with check (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Actualizar items según rol"
@@ -377,12 +401,12 @@ create policy "Actualizar items según rol"
   using (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ))
   with check (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Eliminar items según rol"
@@ -414,7 +438,7 @@ create policy "Ver transportes según rol"
   using (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Insertar transportes según rol"
@@ -422,7 +446,7 @@ create policy "Insertar transportes según rol"
   with check (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Actualizar transportes según rol"
@@ -430,12 +454,12 @@ create policy "Actualizar transportes según rol"
   using (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ))
   with check (exists (
     select 1 from public.producciones p
     where p.id = produccion_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Eliminar transportes según rol"
@@ -459,23 +483,23 @@ alter table public.planes_semana enable row level security;
 
 create policy "Ver planes según rol"
   on public.planes_semana for select
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 create policy "Crear planes según rol"
   on public.planes_semana for insert
   with check (
     auth.uid() = user_id
-    and (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
+    and (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
   );
 
 create policy "Actualizar planes según rol"
   on public.planes_semana for update
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()))
-  with check (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
+  with check (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 create policy "Eliminar planes según rol"
   on public.planes_semana for delete
-  using (public.es_admin(auth.uid()) or finca = public.finca_de(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 -- ============================================================
 -- Detalle del plan: cajas meta por referencia
@@ -500,7 +524,7 @@ create policy "Ver items de plan según rol"
   using (exists (
     select 1 from public.planes_semana p
     where p.id = plan_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Insertar items de plan según rol"
@@ -508,7 +532,7 @@ create policy "Insertar items de plan según rol"
   with check (exists (
     select 1 from public.planes_semana p
     where p.id = plan_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Actualizar items de plan según rol"
@@ -516,12 +540,12 @@ create policy "Actualizar items de plan según rol"
   using (exists (
     select 1 from public.planes_semana p
     where p.id = plan_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ))
   with check (exists (
     select 1 from public.planes_semana p
     where p.id = plan_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));
 
 create policy "Eliminar items de plan según rol"
@@ -529,5 +553,5 @@ create policy "Eliminar items de plan según rol"
   using (exists (
     select 1 from public.planes_semana p
     where p.id = plan_id
-      and (public.es_admin(auth.uid()) or p.finca = public.finca_de(auth.uid()))
+      and (public.es_admin(auth.uid()) or p.finca = any (public.fincas_de(auth.uid())))
   ));

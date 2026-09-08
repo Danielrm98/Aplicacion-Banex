@@ -78,9 +78,14 @@ Deno.serve(async (req) => {
       return respuesta({ error: 'La contraseña debe tener al menos 6 caracteres.' }, 400)
     }
     const rol = body.rol === 'admin' ? 'admin' : 'operador'
-    const finca = rol === 'admin' ? null : typeof body.finca === 'string' && body.finca ? body.finca : null
-    if (rol === 'operador' && !finca) {
-      return respuesta({ error: 'Selecciona la finca del nuevo usuario.' }, 400)
+    const fincas =
+      rol === 'admin'
+        ? []
+        : Array.isArray(body.fincas)
+          ? body.fincas.filter((f): f is string => typeof f === 'string' && f.length > 0)
+          : []
+    if (rol === 'operador' && fincas.length === 0) {
+      return respuesta({ error: 'Selecciona al menos una finca para el nuevo usuario.' }, 400)
     }
     const nombre = typeof body.nombre === 'string' && body.nombre.trim() ? body.nombre.trim() : null
 
@@ -99,14 +104,24 @@ Deno.serve(async (req) => {
 
     const { error: perfilError } = await admin
       .from('perfiles')
-      .insert({ user_id: created.user.id, usuario, nombre, rol, finca })
+      .insert({ user_id: created.user.id, usuario, nombre, rol, finca: fincas[0] ?? null })
 
     if (perfilError) {
       await admin.auth.admin.deleteUser(created.user.id)
       return respuesta({ error: `No se pudo guardar el perfil: ${perfilError.message}` }, 400)
     }
 
-    return respuesta({ usuario, nombre, rol, finca })
+    if (fincas.length > 0) {
+      const { error: fincasError } = await admin
+        .from('perfil_fincas')
+        .insert(fincas.map((finca) => ({ user_id: created.user.id, finca })))
+      if (fincasError) {
+        await admin.auth.admin.deleteUser(created.user.id)
+        return respuesta({ error: `No se pudieron asignar las fincas: ${fincasError.message}` }, 400)
+      }
+    }
+
+    return respuesta({ usuario, nombre, rol, fincas })
   }
 
   if (accion === 'resetear_password') {

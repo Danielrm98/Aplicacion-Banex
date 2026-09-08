@@ -16,9 +16,9 @@ export function crearUsuario(input: {
   password: string
   nombre: string | null
   rol: 'admin' | 'operador'
-  finca: string | null
+  fincas: string[]
 }) {
-  return invocar<{ usuario: string; nombre: string | null; rol: string; finca: string | null }>({
+  return invocar<{ usuario: string; nombre: string | null; rol: string; fincas: string[] }>({
     accion: 'crear',
     ...input,
   })

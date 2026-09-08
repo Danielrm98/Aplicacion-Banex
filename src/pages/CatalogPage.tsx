@@ -10,7 +10,7 @@ import { useDraftState } from '../lib/useDraftState'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
 import type { Finca } from '../types/finca'
-import type { Perfil } from '../types/perfil'
+import type { Perfil, PerfilConFincas } from '../types/perfil'
 import SectionHeading from '../components/SectionHeading'
 import TabButton from '../components/TabButton'
 
@@ -617,10 +617,10 @@ interface DraftUsuario {
   usuario: string
   nombre: string
   rol: Perfil['rol']
-  finca: string
+  fincas: string[]
 }
 
-const draftUsuarioInicial: DraftUsuario = { usuario: '', nombre: '', rol: 'operador', finca: '' }
+const draftUsuarioInicial: DraftUsuario = { usuario: '', nombre: '', rol: 'operador', fincas: [] }
 
 function UsuariosTab() {
   const { fincas } = useFincas()
@@ -642,8 +642,8 @@ function UsuariosTab() {
     setFormError(null)
     setCreado(null)
 
-    if (draft.rol === 'operador' && !draft.finca) {
-      setFormError('Selecciona la finca del nuevo usuario.')
+    if (draft.rol === 'operador' && draft.fincas.length === 0) {
+      setFormError('Selecciona al menos una finca para el nuevo usuario.')
       return
     }
 
@@ -654,7 +654,7 @@ function UsuariosTab() {
         password,
         nombre: draft.nombre.trim() || null,
         rol: draft.rol,
-        finca: draft.rol === 'operador' ? draft.finca : null,
+        fincas: draft.rol === 'operador' ? draft.fincas : [],
       })
       setCreado({ usuario: draft.usuario.trim().toLowerCase(), password })
       limpiarDraft()
@@ -712,21 +712,14 @@ function UsuariosTab() {
               <option value="admin">Administrador (ve todo)</option>
             </select>
           </Field>
-          <Field label="Finca asignada">
-            <select
-              value={draft.finca}
-              onChange={(e) => actualizarDraft('finca', e.target.value)}
-              disabled={draft.rol === 'admin'}
-              className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
-            >
-              <option value="">Selecciona una finca</option>
-              {fincas.map((f) => (
-                <option key={f.nombre} value={f.nombre}>
-                  {f.nombre}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {draft.rol === 'operador' && (
+            <div className="sm:col-span-2 lg:col-span-5">
+              <span className="mb-1 block text-sm font-medium text-gray-700">
+                Fincas asignadas (puede ingresar a todas con el mismo usuario)
+              </span>
+              <SelectorFincas fincas={fincas} seleccionadas={draft.fincas} onChange={(f) => actualizarDraft('fincas', f)} />
+            </div>
+          )}
 
           {formError && <p className="text-sm text-red-600 sm:col-span-2 lg:col-span-5">{formError}</p>}
 
@@ -785,31 +778,65 @@ function PerfilRow({
   fincas,
   onChanged,
 }: {
-  perfil: Perfil
+  perfil: PerfilConFincas
   fincas: Finca[]
   onChanged: () => void
 }) {
   const [draftRol, setDraftRol] = useState<Perfil['rol']>(perfil.rol)
-  const [draftFinca, setDraftFinca] = useState(perfil.finca ?? '')
+  const [draftFincas, setDraftFincas] = useState<string[]>(perfil.fincas)
+  const [editandoFincas, setEditandoFincas] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const dirty = draftRol !== perfil.rol || (draftFinca || null) !== perfil.finca
+  const mismasFincas =
+    draftFincas.length === perfil.fincas.length && draftFincas.every((f) => perfil.fincas.includes(f))
+  const dirty = draftRol !== perfil.rol || !mismasFincas
 
   async function guardar() {
-    if (draftRol === 'operador' && !draftFinca) {
-      alert('Selecciona la finca para este usuario.')
+    if (draftRol === 'operador' && draftFincas.length === 0) {
+      alert('Selecciona al menos una finca para este usuario.')
       return
     }
     setBusy(true)
-    const { error } = await supabase
+    const fincasFinales = draftRol === 'admin' ? [] : draftFincas
+
+    const { error: rolError } = await supabase
       .from('perfiles')
-      .update({ rol: draftRol, finca: draftRol === 'admin' ? null : draftFinca })
+      .update({ rol: draftRol, finca: fincasFinales[0] ?? null })
       .eq('user_id', perfil.user_id)
-    setBusy(false)
-    if (error) {
-      alert(`No se pudo guardar: ${error.message}`)
+    if (rolError) {
+      setBusy(false)
+      alert(`No se pudo guardar: ${rolError.message}`)
       return
     }
+
+    const aQuitar = perfil.fincas.filter((f) => !fincasFinales.includes(f))
+    const aAgregar = fincasFinales.filter((f) => !perfil.fincas.includes(f))
+
+    if (aQuitar.length > 0) {
+      const { error } = await supabase
+        .from('perfil_fincas')
+        .delete()
+        .eq('user_id', perfil.user_id)
+        .in('finca', aQuitar)
+      if (error) {
+        setBusy(false)
+        alert(`No se pudieron quitar las fincas: ${error.message}`)
+        return
+      }
+    }
+    if (aAgregar.length > 0) {
+      const { error } = await supabase
+        .from('perfil_fincas')
+        .insert(aAgregar.map((finca) => ({ user_id: perfil.user_id, finca })))
+      if (error) {
+        setBusy(false)
+        alert(`No se pudieron agregar las fincas: ${error.message}`)
+        return
+      }
+    }
+
+    setBusy(false)
+    setEditandoFincas(false)
     onChanged()
   }
 
@@ -845,60 +872,113 @@ function PerfilRow({
   }
 
   return (
-    <tr className="border-b border-gray-100">
-      <td className="py-1.5 pr-3 font-medium text-gray-900">{perfil.usuario}</td>
-      <td className="py-1.5 pr-3 text-gray-500">{perfil.nombre ?? '—'}</td>
-      <td className="py-1.5 pr-3">
-        <select
-          value={draftRol}
-          onChange={(e) => setDraftRol(e.target.value as Perfil['rol'])}
-          className={`${inputClass} w-36`}
-        >
-          <option value="operador">Operador</option>
-          <option value="admin">Administrador</option>
-        </select>
-      </td>
-      <td className="py-1.5 pr-3">
-        <select
-          value={draftFinca}
-          onChange={(e) => setDraftFinca(e.target.value)}
-          disabled={draftRol === 'admin'}
-          className={`${inputClass} w-40 disabled:cursor-not-allowed disabled:opacity-60`}
-        >
-          <option value="">{draftRol === 'admin' ? 'Todas' : 'Selecciona una finca'}</option>
-          {fincas.map((f) => (
-            <option key={f.nombre} value={f.nombre}>
-              {f.nombre}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td className="py-1.5 pr-3 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={guardar}
-            disabled={!dirty || busy}
-            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+    <>
+      <tr className="border-b border-gray-100">
+        <td className="py-1.5 pr-3 font-medium text-gray-900">{perfil.usuario}</td>
+        <td className="py-1.5 pr-3 text-gray-500">{perfil.nombre ?? '—'}</td>
+        <td className="py-1.5 pr-3">
+          <select
+            value={draftRol}
+            onChange={(e) => setDraftRol(e.target.value as Perfil['rol'])}
+            className={`${inputClass} w-36`}
           >
-            Guardar
-          </button>
-          <button
-            onClick={resetear}
-            disabled={busy}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
-          >
-            Resetear clave
-          </button>
-          <button
-            onClick={eliminar}
-            disabled={busy}
-            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
-        </div>
-      </td>
-    </tr>
+            <option value="operador">Operador</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </td>
+        <td className="py-1.5 pr-3">
+          {draftRol === 'admin' ? (
+            <span className="text-xs text-gray-500">Todas</span>
+          ) : (
+            <div>
+              <div className="mb-1 flex flex-wrap gap-1">
+                {draftFincas.length === 0 ? (
+                  <span className="text-xs text-gray-400">Sin fincas</span>
+                ) : (
+                  draftFincas.map((f) => (
+                    <span
+                      key={f}
+                      className="rounded-full bg-banex-50 px-2 py-0.5 text-[11px] font-medium text-banex-700"
+                    >
+                      {f}
+                    </span>
+                  ))
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditandoFincas((v) => !v)}
+                className="text-[11px] font-medium text-banex-600 underline underline-offset-2 hover:text-banex-800"
+              >
+                {editandoFincas ? 'Ocultar' : 'Editar fincas'}
+              </button>
+            </div>
+          )}
+        </td>
+        <td className="py-1.5 pr-3 whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={guardar}
+              disabled={!dirty || busy}
+              className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Guardar
+            </button>
+            <button
+              onClick={resetear}
+              disabled={busy}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
+            >
+              Resetear clave
+            </button>
+            <button
+              onClick={eliminar}
+              disabled={busy}
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          </div>
+        </td>
+      </tr>
+      {editandoFincas && draftRol === 'operador' && (
+        <tr className="border-b border-gray-100 bg-gray-50/60">
+          <td colSpan={5} className="px-3 py-3">
+            <SelectorFincas fincas={fincas} seleccionadas={draftFincas} onChange={setDraftFincas} />
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function SelectorFincas({
+  fincas,
+  seleccionadas,
+  onChange,
+}: {
+  fincas: Finca[]
+  seleccionadas: string[]
+  onChange: (fincas: string[]) => void
+}) {
+  function toggle(nombre: string) {
+    onChange(seleccionadas.includes(nombre) ? seleccionadas.filter((f) => f !== nombre) : [...seleccionadas, nombre])
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg border border-gray-200 bg-white p-3 sm:grid-cols-3 lg:grid-cols-4">
+      {fincas.map((f) => (
+        <label key={f.nombre} className="flex items-center gap-1.5 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={seleccionadas.includes(f.nombre)}
+            onChange={() => toggle(f.nombre)}
+            className="h-4 w-4 rounded border-gray-300 text-banex-600 focus:ring-banex-500/40"
+          />
+          {f.nombre}
+        </label>
+      ))}
+    </div>
   )
 }
 

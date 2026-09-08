@@ -16,23 +16,31 @@ import SectionHeading from '../components/SectionHeading'
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanPage() {
-  const { fincas } = useFincas()
-  const { perfil } = usePerfil()
+  const { fincas: todasLasFincas } = useFincas()
+  const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
+  const fincasDisponibles = esOperador
+    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
+    : todasLasFincas
+  // Con una sola finca asignada, el operador la ve fija (como siempre); con
+  // varias, puede elegir entre las suyas igual que un administrador.
+  const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
   const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
   const [semana, setSemana] = useState<number>(() => getIsoWeek(fechaLocalHoy()))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
 
   useEffect(() => {
-    if (esOperador) {
-      if (perfil?.finca && finca !== perfil.finca) setFinca(perfil.finca)
+    if (fincaUnicaOperador) {
+      if (finca !== fincaUnicaOperador) setFinca(fincaUnicaOperador)
       return
     }
-    if (fincas.length === 0) return
-    if (finca && fincas.some((f) => f.nombre === finca)) return
+    if (fincasDisponibles.length === 0) return
+    if (finca && fincasDisponibles.some((f) => f.nombre === finca)) return
     const guardada = obtenerFincaActual()
-    setFinca(guardada && fincas.some((f) => f.nombre === guardada) ? guardada : fincas[0].nombre)
-  }, [fincas, finca, esOperador, perfil?.finca])
+    setFinca(
+      guardada && fincasDisponibles.some((f) => f.nombre === guardada) ? guardada : fincasDisponibles[0].nombre,
+    )
+  }, [fincasDisponibles, finca, fincaUnicaOperador])
 
   const { referencias } = useReferencias()
   const { registros } = useProducciones({ semana, finca })
@@ -107,14 +115,14 @@ export default function PlanPage() {
           <span className="mb-1 block text-gray-600">Finca</span>
           <select
             value={finca}
-            disabled={esOperador}
+            disabled={!!fincaUnicaOperador}
             onChange={(e) => setFinca(e.target.value)}
             className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {esOperador ? (
+            {fincaUnicaOperador ? (
               <option value={finca}>{finca}</option>
             ) : (
-              fincas.map((f) => (
+              fincasDisponibles.map((f) => (
                 <option key={f.nombre} value={f.nombre}>
                   {f.nombre}
                 </option>

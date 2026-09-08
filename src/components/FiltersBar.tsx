@@ -11,15 +11,21 @@ interface Props {
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function FiltersBar({ filtros, onChange }: Props) {
-  const { fincas } = useFincas()
-  const { perfil } = usePerfil()
+  const { fincas: todasLasFincas } = useFincas()
+  const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
+  const fincasDisponibles = esOperador
+    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
+    : todasLasFincas
+  // Con una sola finca asignada, el filtro queda fijo en ella (como antes);
+  // con varias, el operador puede elegir entre las suyas o ver todas juntas.
+  const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   useEffect(() => {
-    if (esOperador && perfil?.finca && filtros.finca !== perfil.finca) {
-      onChange({ ...filtros, finca: perfil.finca })
+    if (fincaUnicaOperador && filtros.finca !== fincaUnicaOperador) {
+      onChange({ ...filtros, finca: fincaUnicaOperador })
     }
-  }, [esOperador, perfil?.finca, filtros, onChange])
+  }, [fincaUnicaOperador, filtros, onChange])
 
   return (
     <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -53,16 +59,16 @@ export default function FiltersBar({ filtros, onChange }: Props) {
         <span className="mb-1 block text-gray-600">Finca</span>
         <select
           value={filtros.finca ?? ''}
-          disabled={esOperador}
+          disabled={!!fincaUnicaOperador}
           onChange={(e) => onChange({ ...filtros, finca: e.target.value || undefined })}
           className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {esOperador ? (
-            <option value={perfil?.finca ?? ''}>{perfil?.finca}</option>
+          {fincaUnicaOperador ? (
+            <option value={fincaUnicaOperador}>{fincaUnicaOperador}</option>
           ) : (
             <>
-              <option value="">Todas las fincas</option>
-              {fincas.map((f) => (
+              <option value="">{esOperador ? 'Todas mis fincas' : 'Todas las fincas'}</option>
+              {fincasDisponibles.map((f) => (
                 <option key={f.nombre} value={f.nombre}>
                   {f.nombre}
                 </option>
@@ -72,9 +78,9 @@ export default function FiltersBar({ filtros, onChange }: Props) {
         </select>
       </label>
 
-      {(filtros.semana || filtros.fecha || (!esOperador && filtros.finca)) && (
+      {(filtros.semana || filtros.fecha || (!fincaUnicaOperador && filtros.finca)) && (
         <button
-          onClick={() => onChange(esOperador ? { finca: perfil?.finca ?? undefined } : {})}
+          onClick={() => onChange(fincaUnicaOperador ? { finca: fincaUnicaOperador } : {})}
           className="rounded-lg px-2 py-1.5 text-sm font-medium text-banex-700 transition-colors hover:bg-banex-50"
         >
           Limpiar filtros

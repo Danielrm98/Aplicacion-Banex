@@ -21,8 +21,12 @@ function fincaConBorradorPendiente(): string | null {
 }
 
 export default function EntryPage() {
-  const { perfil, loading: loadingPerfil } = usePerfil()
+  const { perfil, fincas: fincasAsignadas, loading: loadingPerfil } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
+  // Si el operador tiene una sola finca asignada, se salta el selector y
+  // entra directo a ella (como siempre); con varias, elige igual que un
+  // administrador, pero solo entre las suyas.
+  const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   // Si el navegador recargó la página (por ejemplo al volver de otra pestaña
   // en el celular) y había un registro sin guardar, vuelve directo a esa
@@ -32,13 +36,14 @@ export default function EntryPage() {
   const [ultimoPendienteSync, setUltimoPendienteSync] = useState(false)
   const [ultimoResumen, setUltimoResumen] = useState<RegistroResumenCompartir | null>(null)
   const { registros } = useProducciones({})
-  const { fincas } = useFincas()
+  const { fincas: todasLasFincas } = useFincas()
+  const fincas = esOperador ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
 
-  const fincaActiva = esOperador ? (perfil?.finca ?? null) : fincaSeleccionada
+  const fincaActiva = fincaUnicaOperador ?? fincaSeleccionada
 
   useEffect(() => {
-    if (esOperador && perfil?.finca) guardarFincaActual(perfil.finca)
-  }, [esOperador, perfil?.finca])
+    if (fincaUnicaOperador) guardarFincaActual(fincaUnicaOperador)
+  }, [fincaUnicaOperador])
 
   function handleSaved(resumen: RegistroResumenCompartir, pendienteSync: boolean) {
     setSavedCount((c) => c + 1)
@@ -60,7 +65,7 @@ export default function EntryPage() {
     return <p className="py-16 text-center text-sm text-gray-500">Cargando...</p>
   }
 
-  if (esOperador && !perfil?.finca) {
+  if (esOperador && fincasAsignadas.length === 0) {
     return (
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <p className="text-sm text-gray-500">
@@ -101,7 +106,7 @@ export default function EntryPage() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {!esOperador && (
+          {!fincaUnicaOperador && (
             <button
               onClick={volverAFincas}
               className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
