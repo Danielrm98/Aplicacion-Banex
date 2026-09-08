@@ -9,7 +9,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (en vez de 'autoUpdate'): el aviso de UpdatePrompt.tsx es
+      // quien decide cuándo activar la versión nueva, en vez de que el
+      // navegador la active solo en silencio (que a veces no pasaba a
+      // tiempo y dejaba la app en blanco tras un despliegue).
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['banex-logo.jpg'],
       manifest: {
         name: 'ApproBan',

@@ -3,6 +3,7 @@ import { Navigate, Route, HashRouter, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import Layout from './components/Layout'
 import InstallBanner from './components/InstallBanner'
+import UpdatePrompt from './components/UpdatePrompt'
 import LoginPage from './pages/LoginPage'
 import EntryPage from './pages/EntryPage'
 import RecordsPage from './pages/RecordsPage'
@@ -59,6 +60,7 @@ export default function App() {
   return (
     <AuthProvider>
       <HashRouter>
+        <UpdatePrompt />
         <InstallBanner />
         <AppRoutes />
       </HashRouter>
