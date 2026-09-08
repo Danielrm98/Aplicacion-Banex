@@ -42,6 +42,7 @@ interface HeaderDraft {
   grado_semana_11: number | null
   grado_semana_12: number | null
   racimos_recusados: number
+  promedio_manos: number | null
   canastillas: number
   notas: string
 }
@@ -66,6 +67,7 @@ function headerDraftDe(registro: Produccion): HeaderDraft {
     grado_semana_11: registro.grado_semana_11,
     grado_semana_12: registro.grado_semana_12,
     racimos_recusados: registro.racimos_recusados,
+    promedio_manos: registro.promedio_manos,
     canastillas: registro.canastillas,
     notas: registro.notas ?? '',
   }
@@ -194,6 +196,7 @@ function RegistroCard({
         grado_semana_11: headerDraft.grado_semana_11,
         grado_semana_12: headerDraft.grado_semana_12,
         racimos_recusados: headerDraft.racimos_recusados,
+        promedio_manos: headerDraft.promedio_manos,
         canastillas: headerDraft.canastillas,
         notas: headerDraft.notas || null,
       })
@@ -409,6 +412,21 @@ function RegistroCard({
                       className={`${smallInput} bg-gray-50`}
                     />
                   </MiniField>
+                  <MiniField label="Promedio de manos">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      value={headerDraft.promedio_manos ?? ''}
+                      onChange={(e) =>
+                        setHeaderDraft((d) => ({
+                          ...d,
+                          promedio_manos: e.target.value === '' ? null : Number(e.target.value),
+                        }))
+                      }
+                      className={smallInput}
+                    />
+                  </MiniField>
                 </div>
               </Seccion>
 
@@ -492,6 +510,10 @@ function RegistroCard({
                   <span>
                     <span className="text-gray-400">Peso neto de racimo: </span>
                     {pesoNetoRacimo !== null ? `${pesoNetoRacimo.toFixed(2)} kg` : '—'}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Promedio de manos: </span>
+                    {registro.promedio_manos !== null ? registro.promedio_manos.toFixed(1) : '—'}
                   </span>
                   <span>
                     <span className="text-gray-400">Ratio: </span>

@@ -212,6 +212,7 @@ export interface ResumenDiaFinca {
   racimosRecusados: number
   racimosProcesados: number
   gradoPromedio: number | null
+  promedioManos: number | null
   canastillas: number
   kilosCanastillas: number
   pesoNetoRacimo: number | null
@@ -264,6 +265,7 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
       racimosRecusados: r.racimos_recusados,
       racimosProcesados,
       gradoPromedio,
+      promedioManos: r.promedio_manos,
       canastillas: r.canastillas,
       kilosCanastillas,
       pesoNetoRacimo,

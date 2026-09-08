@@ -58,6 +58,7 @@ export interface Produccion {
   grado_semana_11: number | null
   grado_semana_12: number | null
   racimos_recusados: number
+  promedio_manos: number | null
   canastillas: number
   notas: string | null
   created_at: string
@@ -87,6 +88,7 @@ export type ProduccionHeaderInput = Pick<
   | 'grado_semana_11'
   | 'grado_semana_12'
   | 'racimos_recusados'
+  | 'promedio_manos'
   | 'canastillas'
   | 'notas'
 >

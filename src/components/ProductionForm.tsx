@@ -65,6 +65,7 @@ const emptyHeader: ProduccionHeaderInput = {
   grado_semana_11: null,
   grado_semana_12: null,
   racimos_recusados: 0,
+  promedio_manos: null,
   canastillas: 0,
   notas: '',
 }
@@ -518,6 +519,16 @@ export default function ProductionForm({
               disabled
               value={totalRacimosProcesados}
               className={`${inputClass} bg-gray-50 font-medium`}
+            />
+          </Field>
+          <Field label="Promedio de manos">
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={header.promedio_manos ?? ''}
+              onChange={(e) => updateHeader('promedio_manos', e.target.value === '' ? null : Number(e.target.value))}
+              className={inputClass}
             />
           </Field>
         </div>
