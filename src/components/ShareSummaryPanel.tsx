@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { domToBlob } from 'modern-screenshot'
 import banexLogo from '../assets/banex-logo.jpg'
 import { mensajeWhatsapp, type RegistroResumenCompartir } from '../lib/shareSummary'
@@ -12,43 +12,66 @@ export default function ShareSummaryPanel({
   onClose: () => void
 }) {
   const capturaRef = useRef<HTMLDivElement>(null)
-  const [generandoImagen, setGenerandoImagen] = useState(false)
+  const [imagenLista, setImagenLista] = useState<{ blob: Blob; file: File } | null>(null)
   const [imagenError, setImagenError] = useState<string | null>(null)
 
   const mensaje = mensajeWhatsapp(resumen)
+
+  // La imagen se genera apenas se abre el panel (no al hacer clic) para que
+  // "Compartir como imagen" pueda llamar a navigator.share() de inmediato:
+  // esa API exige que se invoque dentro del mismo gesto del usuario (clic), y
+  // generar la captura de pantalla toma más tiempo del que el navegador
+  // considera "gesto activo", lo que producía el error "Must be handling a
+  // user gesture to perform a share request".
+  useEffect(() => {
+    let cancelado = false
+    async function generar() {
+      if (!capturaRef.current) return
+      setImagenError(null)
+      try {
+        // Se fija el ancho/alto explícitos (en vez de dejar que la librería
+        // los infiera) porque en algunos navegadores móviles la medición
+        // implícita no respeta el ancho fijo de 840px de la casilla y la
+        // captura sale recortada al ancho de la pantalla del celular.
+        const { scrollWidth, scrollHeight } = capturaRef.current
+        const blob = await domToBlob(capturaRef.current, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          width: scrollWidth,
+          height: scrollHeight,
+          style: { width: `${scrollWidth}px`, maxWidth: 'none' },
+        })
+        if (cancelado) return
+
+        const nombreArchivo = `registro_${resumen.finca}_${resumen.fecha}.png`.replace(/\s+/g, '_')
+        const file = new File([blob], nombreArchivo, { type: 'image/png' })
+        setImagenLista({ blob, file })
+      } catch (err) {
+        if (!cancelado) setImagenError(err instanceof Error ? err.message : 'No se pudo generar la imagen.')
+      }
+    }
+    generar()
+    return () => {
+      cancelado = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function compartirWhatsapp() {
     window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank')
   }
 
   async function compartirImagen() {
-    if (!capturaRef.current) return
+    if (!imagenLista) return
     setImagenError(null)
-    setGenerandoImagen(true)
     try {
-      // Se fija el ancho/alto explícitos (en vez de dejar que la librería los
-      // infiera) porque en algunos navegadores móviles la medición implícita
-      // no respeta el ancho fijo de 840px de la casilla y la captura sale
-      // recortada al ancho de la pantalla del celular.
-      const { scrollWidth, scrollHeight } = capturaRef.current
-      const blob = await domToBlob(capturaRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        width: scrollWidth,
-        height: scrollHeight,
-        style: { width: `${scrollWidth}px`, maxWidth: 'none' },
-      })
-
-      const nombreArchivo = `registro_${resumen.finca}_${resumen.fecha}.png`.replace(/\s+/g, '_')
-      const file = new File([blob], nombreArchivo, { type: 'image/png' })
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Registro ApproBan', text: mensaje })
+      if (navigator.canShare?.({ files: [imagenLista.file] })) {
+        await navigator.share({ files: [imagenLista.file], title: 'Registro ApproBan', text: mensaje })
       } else {
-        const url = URL.createObjectURL(blob)
+        const url = URL.createObjectURL(imagenLista.blob)
         const link = document.createElement('a')
         link.href = url
-        link.download = nombreArchivo
+        link.download = imagenLista.file.name
         link.click()
         URL.revokeObjectURL(url)
       }
@@ -56,10 +79,8 @@ export default function ShareSummaryPanel({
       if (err instanceof DOMException && err.name === 'AbortError') {
         // el usuario canceló el cuadro de compartir, no es un error real
       } else {
-        setImagenError(err instanceof Error ? err.message : 'No se pudo generar la imagen.')
+        setImagenError(err instanceof Error ? err.message : 'No se pudo compartir la imagen.')
       }
-    } finally {
-      setGenerandoImagen(false)
     }
   }
 
@@ -207,10 +228,10 @@ export default function ShareSummaryPanel({
           </button>
           <button
             onClick={compartirImagen}
-            disabled={generandoImagen}
+            disabled={!imagenLista}
             className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
           >
-            {generandoImagen ? 'Generando imagen...' : 'Compartir como imagen'}
+            {imagenLista ? 'Compartir como imagen' : 'Generando imagen...'}
           </button>
           {imagenError && <p className="text-xs text-red-600">{imagenError}</p>}
           <p className="mt-1 text-xs text-gray-400">

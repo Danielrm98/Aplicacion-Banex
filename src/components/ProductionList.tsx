@@ -15,6 +15,10 @@ import type { Finca } from '../types/finca'
 import { resumenDesdeProduccion } from '../lib/shareSummary'
 import ShareSummaryPanel from './ShareSummaryPanel'
 
+function horaRegistro(createdAt: string): string {
+  return new Date(createdAt).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })
+}
+
 function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
 }
@@ -218,6 +222,7 @@ function RegistroCard({
           <span className="font-medium text-gray-900">{registro.fecha}</span>
           <span className="text-gray-500">Semana {registro.semana}</span>
           <span className="text-gray-500">{registro.finca}</span>
+          <span className="text-gray-500">Registrado: {horaRegistro(registro.created_at)}</span>
           <span className="text-gray-500">{totalCajas.toLocaleString('es')} cajas</span>
           <span className="text-gray-500">{totalCajas20kg.toLocaleString('es', { maximumFractionDigits: 2 })} cajas 20kg</span>
         </div>
