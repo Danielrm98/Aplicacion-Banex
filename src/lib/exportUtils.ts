@@ -94,6 +94,14 @@ function diaSinTilde(dia: string): string {
   return dia.replace('Miércoles', 'Miercoles').replace('Sábado', 'Sabado')
 }
 
+// "18:00:00" -> "18:00", "06:00:00" -> "6:00" (sin segundos ni cero a la
+// izquierda en la hora).
+function horaCorta(hora: string | null): string {
+  if (!hora) return ''
+  const [h, m] = hora.split(':')
+  return `${Number(h)}:${m}`
+}
+
 function agregarHojaTransporte(workbook: ExcelJS.Workbook, registros: Produccion[]) {
   const registrosOrdenados = [...registros].sort((a, b) => {
     const porFecha = a.fecha.localeCompare(b.fecha)
@@ -123,14 +131,14 @@ function agregarHojaTransporte(workbook: ExcelJS.Workbook, registros: Produccion
       semana: r.semana,
       dia: diaSinTilde(diaSemana(r.fecha)).toUpperCase(),
       finca: r.finca,
-      terminacion: r.hora_finalizacion ?? '',
+      terminacion: horaCorta(r.hora_finalizacion),
     }
     const unidadesOrdenadas = [...r.transportes].sort((a, b) =>
       (a.hora_llegada ?? '99:99').localeCompare(b.hora_llegada ?? '99:99'),
     )
     unidadesOrdenadas.forEach((t, i) => {
-      fila[`llegada${i + 1}`] = t.hora_llegada ?? ''
-      fila[`salida${i + 1}`] = t.hora_salida ?? ''
+      fila[`llegada${i + 1}`] = horaCorta(t.hora_llegada)
+      fila[`salida${i + 1}`] = horaCorta(t.hora_salida)
     })
     sheet.addRow(fila)
   }
