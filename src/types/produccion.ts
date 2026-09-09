@@ -8,6 +8,15 @@ export interface Referencia {
   especificacion_pdf_path: string | null
 }
 
+// Especificación (PDF) de una marca que todavía no está registrada como
+// referencia del catálogo de producción.
+export interface EspecificacionMarca {
+  marca: string
+  pdf_path: string
+  created_at: string
+  updated_at: string
+}
+
 export interface ProduccionItem {
   id: string
   produccion_id: string

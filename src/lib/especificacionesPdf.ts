@@ -38,3 +38,32 @@ export async function urlEspecificacionPdf(ruta: string): Promise<string> {
   if (error) throw error
   return data.signedUrl
 }
+
+/**
+ * Sube el PDF de especificaciones de una marca que todavía no está
+ * registrada como referencia del catálogo de producción (por ejemplo,
+ * porque la especificación cambió de versión antes de que se defina o se
+ * necesite crear la referencia productiva).
+ */
+export async function agregarEspecificacionMarca(marca: string, file: File): Promise<string> {
+  const ruta = rutaPara(marca)
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(ruta, file, { upsert: true, contentType: 'application/pdf' })
+  if (uploadError) throw uploadError
+
+  const { error: upsertError } = await supabase
+    .from('especificaciones_marcas')
+    .upsert({ marca, pdf_path: ruta, updated_at: new Date().toISOString() })
+  if (upsertError) throw upsertError
+
+  return ruta
+}
+
+export async function eliminarEspecificacionMarca(marca: string, ruta: string): Promise<void> {
+  const { error: removeError } = await supabase.storage.from(BUCKET).remove([ruta])
+  if (removeError) throw removeError
+
+  const { error: deleteError } = await supabase.from('especificaciones_marcas').delete().eq('marca', marca)
+  if (deleteError) throw deleteError
+}
