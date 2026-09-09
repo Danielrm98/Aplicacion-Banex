@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import { usePerfil } from '../lib/usePerfil'
 import { useColaSincronizacion } from '../lib/useColaSincronizacion'
 import banexLogo from '../assets/banex-logo.jpg'
+import TextSizeControl from './TextSizeControl'
 
 const navItems = [
   { to: '/', label: 'Registrar', end: true },
@@ -51,12 +52,15 @@ export default function Layout() {
             ))}
           </nav>
 
-          <button
-            onClick={() => supabase.auth.signOut()}
-            className="shrink-0 text-xs text-banex-100 hover:text-white sm:text-sm"
-          >
-            Cerrar sesión
-          </button>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <TextSizeControl />
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="shrink-0 text-xs text-banex-100 hover:text-white sm:text-sm"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </header>
 
@@ -85,7 +89,7 @@ export default function Layout() {
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `flex-1 border-t-2 py-2.5 text-center text-xs font-medium ${
+              `min-w-0 flex-1 break-words border-t-2 px-0.5 py-2.5 text-center text-xs font-medium ${
                 isActive ? 'border-banex-600 text-banex-700' : 'border-transparent text-gray-500'
               }`
             }
