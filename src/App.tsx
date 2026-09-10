@@ -12,6 +12,7 @@ import CatalogPage from './pages/CatalogPage'
 import EspecificacionesPage from './pages/EspecificacionesPage'
 import PlanPage from './pages/PlanPage'
 import PlanGeneralPage from './pages/PlanGeneralPage'
+import VentaCanastillasPage from './pages/VentaCanastillasPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { session, loading } = useAuth()
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/especificaciones" element={<EspecificacionesPage />} />
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/plan-general" element={<PlanGeneralPage />} />
+        <Route path="/venta-canastillas" element={<VentaCanastillasPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

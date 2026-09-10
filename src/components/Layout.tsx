@@ -9,6 +9,7 @@ const navItems = [
   { to: '/', label: 'Registrar', end: true },
   { to: '/plan', label: 'Plan' },
   { to: '/plan-general', label: 'Plan general' },
+  { to: '/venta-canastillas', label: 'Venta canastillas' },
   { to: '/registros', label: 'Historial' },
   { to: '/reportes', label: 'Reportes' },
   { to: '/especificaciones', label: 'Especificaciones' },
