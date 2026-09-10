@@ -16,6 +16,14 @@ const columns: { header: string; key: keyof FilaProduccion; width?: number }[] =
   { header: 'Cajas 20kg', key: 'cajas_20kg', width: 12 },
 ]
 
+// Aplica filtro en el encabezado y deja fijas la fila 1 y las columnas hasta
+// donde se muestra la finca, para que se mantengan visibles al desplazarse.
+function fijarEncabezadoYFiltro(sheet: ExcelJS.Worksheet, columnas: { header: string }[]) {
+  const indiceFinca = columnas.findIndex((c) => c.header === 'Finca') + 1
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columnas.length } }
+  sheet.views = [{ state: 'frozen', xSplit: indiceFinca, ySplit: 1 }]
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -31,6 +39,7 @@ export async function exportToExcel(filas: FilaProduccion[], filename = 'producc
 
   sheet.columns = columns.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheet.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheet, columns)
 
   for (const f of filas) {
     sheet.addRow(f)
@@ -148,8 +157,7 @@ function agregarHojaTransporte(workbook: ExcelJS.Workbook, registros: Produccion
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E79' } }
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
   })
-  const ultimaCelda = sheet.getCell(1, columnasTransporte.length).address
-  sheet.autoFilter = `A1:${ultimaCelda}`
+  fijarEncabezadoYFiltro(sheet, columnasTransporte)
 }
 
 export async function exportFilaCompletaToExcel(
@@ -174,6 +182,7 @@ export async function exportFilaCompletaToExcel(
   const sheetResumen = workbook.addWorksheet('Resumen por día y finca')
   sheetResumen.columns = columnasResumen.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheetResumen.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheetResumen, columnasResumen)
   for (const r of resumenesOrdenados) {
     sheetResumen.addRow({
       ...r,
@@ -188,6 +197,7 @@ export async function exportFilaCompletaToExcel(
   const sheet = workbook.addWorksheet('Reportes')
   sheet.columns = columnasCompletas.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheet.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheet, columnasCompletas)
 
   for (const f of filasOrdenadas) {
     sheet.addRow({
