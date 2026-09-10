@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { leerCola, sincronizarCola } from './colaRegistros'
+import { leerColaVentas, sincronizarColaVentas } from './colaCanastillas'
+
+async function contarPendientes(): Promise<number> {
+  return leerCola().length + (await leerColaVentas()).length
+}
 
 export function useColaSincronizacion() {
   const [pendientes, setPendientes] = useState(() => leerCola().length)
@@ -11,18 +16,18 @@ export function useColaSincronizacion() {
     enCursoRef.current = true
     setSincronizando(true)
     try {
-      await sincronizarCola()
+      await Promise.all([sincronizarCola(), sincronizarColaVentas()])
     } catch {
-      // sincronizarCola ya maneja sus propios errores por registro; esto
-      // solo cubre un fallo inesperado para no dejar el spinner colgado.
+      // cada cola ya maneja sus propios errores por elemento; esto solo
+      // cubre un fallo inesperado para no dejar el spinner colgado.
     }
-    setPendientes(leerCola().length)
+    setPendientes(await contarPendientes())
     setSincronizando(false)
     enCursoRef.current = false
   }
 
   useEffect(() => {
-    setPendientes(leerCola().length)
+    contarPendientes().then(setPendientes)
     if (navigator.onLine) sincronizarAhora()
 
     window.addEventListener('online', sincronizarAhora)
@@ -30,8 +35,8 @@ export function useColaSincronizacion() {
     // siempre llega (por ejemplo si la pestaña estaba en segundo plano). Este
     // intervalo reintenta la sincronización aunque ese evento se pierda.
     const intervalo = setInterval(() => {
-      if (navigator.onLine && leerCola().length > 0) sincronizarAhora()
-      else setPendientes(leerCola().length)
+      if (navigator.onLine) sincronizarAhora()
+      else contarPendientes().then(setPendientes)
     }, 15000)
     return () => {
       window.removeEventListener('online', sincronizarAhora)

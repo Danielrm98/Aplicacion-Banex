@@ -5,6 +5,8 @@ import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import { useVentasCanastillas } from '../lib/useVentasCanastillas'
 import { subirFacturaCanastilla, eliminarFacturaCanastilla, urlFacturaCanastilla } from '../lib/facturasCanastillas'
+import { agregarVentaACola } from '../lib/colaCanastillas'
+import { esErrorDeRed } from '../lib/colaRegistros'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual } from '../lib/fincaActual'
@@ -266,10 +268,12 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
   const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [guardadoSinConexion, setGuardadoSinConexion] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setGuardadoSinConexion(false)
 
     const cantidadVendida = cantidad || 0
     const cantidadObsequio = obsequio || 0
@@ -282,10 +286,46 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       return
     }
 
+    // getSession() lee la sesión guardada en el dispositivo sin llamar a la
+    // red (a diferencia de getUser()), así que funciona sin conexión.
     const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      data: { session },
+    } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
+
+    function limpiarFormulario() {
+      setCantidad('')
+      setObsequio('')
+      setNotas('')
+      setArchivo(null)
+      const input = document.getElementById('factura-input') as HTMLInputElement | null
+      if (input) input.value = ''
+    }
+
+    const ventaPendiente = {
+      id: crypto.randomUUID(),
+      userId: user.id,
+      finca,
+      fecha,
+      semana: getIsoWeek(fecha),
+      cantidad: cantidadVendida,
+      cantidadObsequio,
+      notas: notas || null,
+      foto: archivo,
+      fotoNombre: archivo.name,
+      fotoTipo: archivo.type || 'image/jpeg',
+      creadoEn: new Date().toISOString(),
+      intentos: 0,
+      ultimoError: null,
+    }
+
+    if (!navigator.onLine) {
+      await agregarVentaACola(ventaPendiente)
+      limpiarFormulario()
+      setGuardadoSinConexion(true)
+      return
+    }
 
     setSaving(true)
     try {
@@ -302,15 +342,16 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       })
       if (insertError) throw insertError
 
-      setCantidad('')
-      setObsequio('')
-      setNotas('')
-      setArchivo(null)
-      const input = document.getElementById('factura-input') as HTMLInputElement | null
-      if (input) input.value = ''
+      limpiarFormulario()
       onGuardado()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la venta.')
+      if (esErrorDeRed(err)) {
+        await agregarVentaACola(ventaPendiente)
+        limpiarFormulario()
+        setGuardadoSinConexion(true)
+      } else {
+        setError(err instanceof Error ? err.message : 'No se pudo guardar la venta.')
+      }
     } finally {
       setSaving(false)
     }
@@ -386,6 +427,11 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {guardadoSinConexion && (
+        <p className="mt-2 text-sm text-amber-700">
+          📶 Sin conexión: la salida quedó guardada en el dispositivo y se enviará sola en cuanto vuelva la señal.
+        </p>
+      )}
     </form>
   )
 }
