@@ -49,6 +49,8 @@ export async function exportToExcel(filas: FilaProduccion[], filename = 'producc
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
 }
 
+// Desde "Racimos cosechados" hasta "Notas" se quitó porque esa información
+// ya aparece igual en el libro "Resumen por día y finca" (queda repetida).
 const columnasCompletas: { header: string; key: keyof FilaCompleta; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
   { header: 'Día', key: 'dia', width: 12 },
@@ -59,16 +61,6 @@ const columnasCompletas: { header: string; key: keyof FilaCompleta; width?: numb
   { header: 'Cajas', key: 'cantidadCajas', width: 10 },
   { header: 'Peso neto (kg)', key: 'pesoNetoKg', width: 14 },
   { header: 'Cajas 20kg', key: 'cajas20kg', width: 12 },
-  { header: 'Racimos cosechados', key: 'racimosCosechados', width: 16 },
-  { header: 'Racimos recusados', key: 'racimosRecusados', width: 16 },
-  { header: 'Racimos procesados', key: 'racimosProcesados', width: 16 },
-  { header: 'Canastillas', key: 'canastillas', width: 12 },
-  { header: 'Kilos canastillas', key: 'kilosCanastillas', width: 16 },
-  { header: 'Peso neto racimo (kg)', key: 'pesoNetoRacimo', width: 18 },
-  { header: 'Ratio', key: 'ratio', width: 10 },
-  { header: 'Merma (%)', key: 'merma', width: 12 },
-  { header: 'Transporte', key: 'transporte', width: 30 },
-  { header: 'Notas', key: 'notas', width: 24 },
 ]
 
 const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: number }[] = [
@@ -201,12 +193,7 @@ export async function exportFilaCompletaToExcel(
   fijarEncabezadoYFiltro(sheet, columnasCompletas)
 
   for (const f of filasOrdenadas) {
-    sheet.addRow({
-      ...f,
-      ratio: f.ratio !== null ? Number(f.ratio.toFixed(2)) : '',
-      merma: f.merma !== null ? Number(f.merma.toFixed(1)) : '',
-      pesoNetoRacimo: f.pesoNetoRacimo !== null ? Number(f.pesoNetoRacimo.toFixed(2)) : '',
-    })
+    sheet.addRow(f)
   }
 
   agregarHojaTransporte(workbook, registros)
