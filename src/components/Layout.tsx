@@ -17,10 +17,15 @@ const navItems = [
 ]
 
 const SOLO_ADMIN = ['/catalogo', '/plan-general']
+// En el celular, la barra inferior ya tenía demasiados menús y se veían
+// apilados; "Especificaciones" se saca de ahí y se deja como acceso directo
+// arriba, junto al logo.
+const MOVIDOS_ARRIBA_EN_MOVIL = ['/especificaciones']
 
 export default function Layout() {
   const { perfil } = usePerfil()
   const items = perfil?.rol === 'operador' ? navItems.filter((item) => !SOLO_ADMIN.includes(item.to)) : navItems
+  const itemsBarraInferior = items.filter((item) => !MOVIDOS_ARRIBA_EN_MOVIL.includes(item.to))
   const { pendientes, sincronizando, sincronizarAhora } = useColaSincronizacion()
 
   return (
@@ -53,6 +58,19 @@ export default function Layout() {
             ))}
           </nav>
 
+          <NavLink
+            to="/especificaciones"
+            title="Especificaciones"
+            aria-label="Especificaciones"
+            className={({ isActive }) =>
+              `flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base sm:hidden ${
+                isActive ? 'bg-white text-banex-800 shadow-sm' : 'bg-black/10 text-banex-50'
+              }`
+            }
+          >
+            📄
+          </NavLink>
+
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <TextSizeControl />
             <button
@@ -84,7 +102,7 @@ export default function Layout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] sm:hidden">
-        {items.map((item) => (
+        {itemsBarraInferior.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
