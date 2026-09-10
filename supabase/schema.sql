@@ -497,8 +497,9 @@ create policy "Eliminar transportes según rol"
 
 -- ============================================================
 -- Venta de canastillas: las canastillas producidas se venden a
--- terceros; se registra cada venta con la foto de la factura de
--- entrega, para comparar contra lo producido.
+-- terceros (o se obsequian al personal operativo); se registra cada
+-- salida con la foto de la factura de entrega, para comparar contra
+-- lo producido.
 -- ============================================================
 create table public.ventas_canastillas (
   id uuid primary key default gen_random_uuid(),
@@ -506,10 +507,12 @@ create table public.ventas_canastillas (
   finca text not null references public.fincas (nombre),
   fecha date not null,
   semana integer not null check (semana between 1 and 53),
-  cantidad integer not null check (cantidad > 0),
+  cantidad integer not null default 0 check (cantidad >= 0),
+  cantidad_obsequio integer not null default 0 check (cantidad_obsequio >= 0),
   factura_path text not null,
   notas text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  check (cantidad > 0 or cantidad_obsequio > 0)
 );
 
 create index ventas_canastillas_finca_fecha_idx

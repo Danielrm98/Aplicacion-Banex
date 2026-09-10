@@ -61,7 +61,11 @@ export default function VentaCanastillasPage() {
     () => ventas.filter((v) => v.fecha >= FECHA_INICIO_ACUMULADO).reduce((sum, v) => sum + v.cantidad, 0),
     [ventas],
   )
-  const disponible = totalProducidoHistorico - totalVendidoHistorico
+  const totalObsequioHistorico = useMemo(
+    () => ventas.filter((v) => v.fecha >= FECHA_INICIO_ACUMULADO).reduce((sum, v) => sum + (v.cantidad_obsequio ?? 0), 0),
+    [ventas],
+  )
+  const disponible = totalProducidoHistorico - totalVendidoHistorico - totalObsequioHistorico
 
   const producidoEstaSemana = useMemo(
     () =>
@@ -77,6 +81,13 @@ export default function VentaCanastillasPage() {
         .reduce((sum, v) => sum + v.cantidad, 0),
     [ventas, semana, anio],
   )
+  const obsequioEstaSemana = useMemo(
+    () =>
+      ventas
+        .filter((v) => v.semana === semana && v.fecha.slice(0, 4) === String(anio))
+        .reduce((sum, v) => sum + (v.cantidad_obsequio ?? 0), 0),
+    [ventas, semana, anio],
+  )
 
   const ventasFiltradas = useMemo(
     () =>
@@ -90,8 +101,8 @@ export default function VentaCanastillasPage() {
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Venta de canastillas</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Las canastillas producidas se venden a terceros. Registra cada venta con la foto de la factura de entrega y
-        lleva el control de cuántas quedan disponibles.
+        Las canastillas producidas se venden a terceros, y otras se obsequian al personal operativo. Registra cada
+        salida con la foto de la factura de entrega y lleva el control de cuántas quedan disponibles.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -164,7 +175,7 @@ export default function VentaCanastillasPage() {
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <ResumenTarjeta
               titulo="Producidas esta semana"
               valor={producidoEstaSemana}
@@ -176,9 +187,14 @@ export default function VentaCanastillasPage() {
               detalle={`Semana ${semana}/${anio}`}
             />
             <ResumenTarjeta
+              titulo="Obsequio esta semana"
+              valor={obsequioEstaSemana}
+              detalle={`Semana ${semana}/${anio}`}
+            />
+            <ResumenTarjeta
               titulo="Disponible (acumulado)"
               valor={disponible}
-              detalle={`${totalProducidoHistorico.toLocaleString('es')} producidas − ${totalVendidoHistorico.toLocaleString('es')} vendidas, desde semana 37/2026`}
+              detalle={`${totalProducidoHistorico.toLocaleString('es')} producidas − ${totalVendidoHistorico.toLocaleString('es')} vendidas − ${totalObsequioHistorico.toLocaleString('es')} obsequio, desde semana 37/2026`}
               destacado
               alerta={disponible < 0}
             />
@@ -187,14 +203,14 @@ export default function VentaCanastillasPage() {
           <RegistrarVentaForm finca={finca} onGuardado={refetch} />
 
           <div className="mt-6">
-            <SectionHeading>Ventas registradas</SectionHeading>
+            <SectionHeading>Salidas registradas</SectionHeading>
             {loading ? (
               <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
             ) : error ? (
               <p className="py-8 text-center text-sm text-red-600">{error}</p>
             ) : ventasFiltradas.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-500">
-                No hay ventas registradas para estos filtros.
+                No hay salidas registradas para estos filtros.
               </p>
             ) : (
               <div className="flex flex-col gap-2">
@@ -245,6 +261,7 @@ function ResumenTarjeta({
 function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: () => void }) {
   const [fecha, setFecha] = useState(fechaLocalHoy())
   const [cantidad, setCantidad] = useState<number | ''>('')
+  const [obsequio, setObsequio] = useState<number | ''>('')
   const [notas, setNotas] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -254,8 +271,10 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
     e.preventDefault()
     setError(null)
 
-    if (!cantidad || cantidad <= 0) {
-      setError('Ingresa una cantidad de canastillas mayor a 0.')
+    const cantidadVendida = cantidad || 0
+    const cantidadObsequio = obsequio || 0
+    if (cantidadVendida <= 0 && cantidadObsequio <= 0) {
+      setError('Ingresa una cantidad vendida o de obsequio mayor a 0.')
       return
     }
     if (!archivo) {
@@ -276,13 +295,15 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         finca,
         fecha,
         semana: getIsoWeek(fecha),
-        cantidad,
+        cantidad: cantidadVendida,
+        cantidad_obsequio: cantidadObsequio,
         factura_path: rutaFactura,
         notas: notas || null,
       })
       if (insertError) throw insertError
 
       setCantidad('')
+      setObsequio('')
       setNotas('')
       setArchivo(null)
       const input = document.getElementById('factura-input') as HTMLInputElement | null
@@ -297,7 +318,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
 
   return (
     <form onSubmit={handleSubmit} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-      <SectionHeading>Registrar venta</SectionHeading>
+      <SectionHeading>Registrar salida</SectionHeading>
       <div className="flex flex-wrap items-end gap-3">
         <label className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Fecha</span>
@@ -314,10 +335,20 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
           <span className="mb-1 block text-sm font-medium text-gray-700">Cantidad vendida</span>
           <input
             type="number"
-            required
-            min={1}
+            min={0}
             value={cantidad}
             onChange={(e) => setCantidad(e.target.value === '' ? '' : Number(e.target.value))}
+            className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Obsequio (personal)</span>
+          <input
+            type="number"
+            min={0}
+            value={obsequio}
+            onChange={(e) => setObsequio(e.target.value === '' ? '' : Number(e.target.value))}
             className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>
@@ -351,7 +382,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
           disabled={saving}
           className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
         >
-          {saving ? 'Guardando...' : 'Registrar venta'}
+          {saving ? 'Guardando...' : 'Registrar salida'}
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -399,7 +430,12 @@ function VentaRow({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="font-medium text-gray-900">{venta.fecha}</span>
         <span className="text-gray-500">Semana {venta.semana}</span>
-        <span className="font-semibold text-banex-700">{venta.cantidad.toLocaleString('es')} canastillas</span>
+        {venta.cantidad > 0 && (
+          <span className="font-semibold text-banex-700">{venta.cantidad.toLocaleString('es')} vendidas</span>
+        )}
+        {venta.cantidad_obsequio > 0 && (
+          <span className="font-semibold text-amber-600">{venta.cantidad_obsequio.toLocaleString('es')} obsequio</span>
+        )}
         {venta.notas && <span className="text-gray-500">{venta.notas}</span>}
       </div>
       <div className="flex gap-2">

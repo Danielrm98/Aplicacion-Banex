@@ -5,6 +5,7 @@ export interface VentaCanastilla {
   fecha: string
   semana: number
   cantidad: number
+  cantidad_obsequio: number
   factura_path: string
   notas: string | null
   created_at: string
