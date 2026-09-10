@@ -134,6 +134,7 @@ function RegistroCard({
   const [expanded, setExpanded] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [editingHeader, setEditingHeader] = useState(false)
+  const [agregandoItem, setAgregandoItem] = useState(false)
   const [headerDraft, setHeaderDraft] = useState<HeaderDraft>(() => headerDraftDe(registro))
   const [headerError, setHeaderError] = useState<string | null>(null)
   const racimosSource = editingHeader ? headerDraft : registro
@@ -572,9 +573,28 @@ function RegistroCard({
                   {registro.items.map((item) => (
                     <ItemRow key={item.id} item={item} referencias={referencias} onChanged={onChanged} esAdmin={esAdmin} />
                   ))}
+                  {esAdmin && agregandoItem && (
+                    <NuevaReferenciaRow
+                      produccionId={registro.id}
+                      referencias={referencias}
+                      onAdded={() => {
+                        setAgregandoItem(false)
+                        onChanged()
+                      }}
+                      onCancel={() => setAgregandoItem(false)}
+                    />
+                  )}
                 </tbody>
               </table>
             </div>
+            {esAdmin && !agregandoItem && (
+              <button
+                onClick={() => setAgregandoItem(true)}
+                className="mt-2 rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
+              >
+                + Agregar referencia
+              </button>
+            )}
           </Seccion>
 
           {registro.transportes.length > 0 && (
@@ -774,6 +794,109 @@ function ItemRow({
         </button>
       </td>
     </tr>
+  )
+}
+
+function NuevaReferenciaRow({
+  produccionId,
+  referencias,
+  onAdded,
+  onCancel,
+}: {
+  produccionId: string
+  referencias: Referencia[]
+  onAdded: () => void
+  onCancel: () => void
+}) {
+  const [referencia, setReferencia] = useState('')
+  const [cantidadCajas, setCantidadCajas] = useState(1)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function catalogoDe(valor: string) {
+    const limpia = valor.replace(/\s/g, '')
+    return referencias.find((r) => r.marca === limpia) ?? null
+  }
+
+  const ref = catalogoDe(referencia)
+  const cajas20kg = ref ? cantidadCajas * ref.factor_conversion : null
+
+  async function guardar() {
+    if (!ref) {
+      setError(`"${referencia}" no es una referencia del catálogo. Elige una de la lista.`)
+      return
+    }
+    if (!cantidadCajas || cantidadCajas <= 0) {
+      setError('Ingresa una cantidad de cajas mayor a 0.')
+      return
+    }
+
+    setBusy(true)
+    setError(null)
+    const { error: insertError } = await supabase.from('produccion_items').insert({
+      produccion_id: produccionId,
+      referencia: ref.marca,
+      cantidad_cajas: cantidadCajas,
+      peso_neto_kg: ref.peso_neto_kg,
+      cajas_20kg: cantidadCajas * ref.factor_conversion,
+    })
+    setBusy(false)
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+    onAdded()
+  }
+
+  return (
+    <>
+      <tr className="border-b border-gray-100 bg-banex-50/40">
+        <td className="py-1.5 pr-3">
+          <input
+            type="text"
+            list="referencias-catalogo"
+            autoComplete="off"
+            placeholder="Referencia"
+            value={referencia}
+            onChange={(e) => setReferencia(e.target.value.replace(/\s/g, ''))}
+            className={cellInput}
+          />
+        </td>
+        <td className="py-1.5 pr-3">
+          <input
+            type="number"
+            min={1}
+            value={cantidadCajas}
+            onChange={(e) => setCantidadCajas(Number(e.target.value))}
+            className={cellInput}
+          />
+        </td>
+        <td className="py-1.5 pr-3 text-gray-500">{ref?.peso_neto_kg ?? '—'}</td>
+        <td className="py-1.5 pr-3 text-gray-500">{cajas20kg !== null ? cajas20kg.toFixed(2) : '—'}</td>
+        <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
+          <button
+            onClick={guardar}
+            disabled={busy}
+            className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+          >
+            Guardar
+          </button>
+          <button
+            onClick={onCancel}
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+        </td>
+      </tr>
+      {error && (
+        <tr>
+          <td colSpan={5} className="pb-1.5 text-xs text-red-600">
+            {error}
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
