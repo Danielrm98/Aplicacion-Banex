@@ -13,6 +13,11 @@ import SectionHeading from '../components/SectionHeading'
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
+// Las canastillas de semanas anteriores a esta ya se vendieron por fuera de
+// la aplicación, así que el acumulado arranca aquí para no dejarlas como
+// pendientes por vender. Lunes de la semana ISO 37 de 2026.
+const FECHA_INICIO_ACUMULADO = '2026-09-07'
+
 export default function VentaCanastillasPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
@@ -46,10 +51,16 @@ export default function VentaCanastillasPage() {
   const { ventas, loading, error, refetch } = useVentasCanastillas({ finca })
 
   const totalProducidoHistorico = useMemo(
-    () => produccionesFinca.reduce((sum, r) => sum + r.canastillas, 0),
+    () =>
+      produccionesFinca
+        .filter((r) => r.fecha >= FECHA_INICIO_ACUMULADO)
+        .reduce((sum, r) => sum + r.canastillas, 0),
     [produccionesFinca],
   )
-  const totalVendidoHistorico = useMemo(() => ventas.reduce((sum, v) => sum + v.cantidad, 0), [ventas])
+  const totalVendidoHistorico = useMemo(
+    () => ventas.filter((v) => v.fecha >= FECHA_INICIO_ACUMULADO).reduce((sum, v) => sum + v.cantidad, 0),
+    [ventas],
+  )
   const disponible = totalProducidoHistorico - totalVendidoHistorico
 
   const producidoEstaSemana = useMemo(
@@ -167,7 +178,7 @@ export default function VentaCanastillasPage() {
             <ResumenTarjeta
               titulo="Disponible (acumulado)"
               valor={disponible}
-              detalle={`${totalProducidoHistorico.toLocaleString('es')} producidas − ${totalVendidoHistorico.toLocaleString('es')} vendidas, histórico`}
+              detalle={`${totalProducidoHistorico.toLocaleString('es')} producidas − ${totalVendidoHistorico.toLocaleString('es')} vendidas, desde semana 37/2026`}
               destacado
               alerta={disponible < 0}
             />
