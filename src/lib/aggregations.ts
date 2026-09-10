@@ -214,6 +214,7 @@ export interface ResumenDiaFinca {
   gradoPromedio: number | null
   promedioManos: number | null
   canastillas: number
+  canastillasVendidas: number
   kilosCanastillas: number
   pesoNetoRacimo: number | null
   ratio: number | null
@@ -225,8 +226,13 @@ export interface ResumenDiaFinca {
 /**
  * Un registro (producciones) ya es un único día + finca, así que esto
  * produce una fila por registro sin repetir por cada referencia/línea.
+ * `ventasPorFincaFecha` (clave "finca|fecha") permite cruzar cuántas
+ * canastillas se vendieron ese mismo día, si se conocen.
  */
-export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
+export function resumenPorDiaFinca(
+  registros: Produccion[],
+  ventasPorFincaFecha?: Map<string, number>,
+): ResumenDiaFinca[] {
   return registros.map((r) => {
     const cajas20kgTotal = r.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
     const kilosCajas20kg = cajas20kgTotal * CAJA_20KG_KG
@@ -267,6 +273,7 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
       gradoPromedio,
       promedioManos: r.promedio_manos,
       canastillas: r.canastillas,
+      canastillasVendidas: ventasPorFincaFecha?.get(`${r.finca}|${r.fecha}`) ?? 0,
       kilosCanastillas,
       pesoNetoRacimo,
       ratio,

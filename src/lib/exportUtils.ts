@@ -89,6 +89,7 @@ const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: num
   { header: 'Calibración promedio', key: 'gradoPromedio', width: 18 },
   { header: 'Promedio de manos', key: 'promedioManos', width: 16 },
   { header: 'Canastillas', key: 'canastillas', width: 12 },
+  { header: 'Canastillas vendidas', key: 'canastillasVendidas', width: 16 },
   { header: 'Kilos canastillas', key: 'kilosCanastillas', width: 16 },
   { header: 'Peso neto racimo (kg)', key: 'pesoNetoRacimo', width: 18 },
   { header: 'Ratio', key: 'ratio', width: 10 },

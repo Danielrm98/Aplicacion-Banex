@@ -1,14 +1,28 @@
 import { useMemo, useState } from 'react'
 import { exportFilaCompletaToExcel, exportToPdf } from '../lib/exportUtils'
 import { filaCompleta, flattenItems, resumenPorDiaFinca } from '../lib/aggregations'
+import { useVentasCanastillas } from '../lib/useVentasCanastillas'
 import type { Produccion } from '../types/produccion'
 
 export default function ExportButtons({ registros }: { registros: Produccion[] }) {
   const [exporting, setExporting] = useState(false)
   const disabled = exporting || registros.length === 0
 
+  const { ventas } = useVentasCanastillas({})
+  const ventasPorFincaFecha = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const v of ventas) {
+      const clave = `${v.finca}|${v.fecha}`
+      map.set(clave, (map.get(clave) ?? 0) + v.cantidad)
+    }
+    return map
+  }, [ventas])
+
   const filasCompletas = useMemo(() => filaCompleta(registros), [registros])
-  const resumenes = useMemo(() => resumenPorDiaFinca(registros), [registros])
+  const resumenes = useMemo(
+    () => resumenPorDiaFinca(registros, ventasPorFincaFecha),
+    [registros, ventasPorFincaFecha],
+  )
   const filas = useMemo(() => flattenItems(registros), [registros])
 
   async function handleExcel() {
