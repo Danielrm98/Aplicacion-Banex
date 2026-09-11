@@ -1,5 +1,6 @@
 import { CAJA_20KG_KG, CANASTILLA_KG, SEMANAS_RACIMO, type Produccion } from '../types/produccion'
 import { diaSemana } from './diaSemana'
+import { getIsoWeek } from './isoWeek'
 
 export interface FilaProduccion {
   fecha: string
@@ -221,19 +222,23 @@ export interface ResumenDiaFinca {
   merma: number | null
   transporte: string
   notas: string
+  // Al final para no correr el orden de las columnas ya asignadas en el
+  // Excel: las canastillas por repique son aparte de las producidas en
+  // proceso y no afectan el acumulado disponible, solo se informan.
+  canastillasRepique: number
 }
 
 /**
  * Un registro (producciones) ya es un único día + finca, así que esto
  * produce una fila por registro sin repetir por cada referencia/línea.
  * `ventasPorFincaFecha` (clave "finca|fecha") permite cruzar cuántas
- * canastillas se vendieron ese mismo día, si se conocen.
+ * canastillas se vendieron (y por repique) ese mismo día, si se conocen.
  */
 export function resumenPorDiaFinca(
   registros: Produccion[],
-  ventasPorFincaFecha?: Map<string, number>,
+  ventasPorFincaFecha?: Map<string, { vendidas: number; repique: number }>,
 ): ResumenDiaFinca[] {
-  return registros.map((r) => {
+  const filas = registros.map((r) => {
     const cajas20kgTotal = r.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
     const kilosCajas20kg = cajas20kgTotal * CAJA_20KG_KG
     const kilosCanastillas = r.canastillas * CANASTILLA_KG
@@ -273,15 +278,57 @@ export function resumenPorDiaFinca(
       gradoPromedio,
       promedioManos: r.promedio_manos,
       canastillas: r.canastillas,
-      canastillasVendidas: ventasPorFincaFecha?.get(`${r.finca}|${r.fecha}`) ?? 0,
+      canastillasVendidas: ventasPorFincaFecha?.get(`${r.finca}|${r.fecha}`)?.vendidas ?? 0,
       kilosCanastillas,
       pesoNetoRacimo,
       ratio,
       merma,
       transporte,
       notas: r.notas ?? '',
+      canastillasRepique: ventasPorFincaFecha?.get(`${r.finca}|${r.fecha}`)?.repique ?? 0,
     }
   })
+
+  // Una venta (por repique, sobre todo) puede registrarse en un día/finca
+  // sin registro de producción ese mismo día; sin esto, esa venta quedaría
+  // invisible en el Excel en vez de aparecer con los campos de producción
+  // en blanco.
+  if (ventasPorFincaFecha) {
+    const cubiertas = new Set(filas.map((f) => `${f.finca}|${f.fecha}`))
+    for (const [clave, totales] of ventasPorFincaFecha.entries()) {
+      if (cubiertas.has(clave)) continue
+      const [finca, fecha] = clave.split('|')
+      filas.push({
+        fecha,
+        dia: diaSemana(fecha),
+        semana: getIsoWeek(fecha),
+        finca,
+        horaFinalizacion: '',
+        racimosSemana7: 0,
+        racimosSemana8: 0,
+        racimosSemana9: 0,
+        racimosSemana10: 0,
+        racimosSemana11: 0,
+        racimosSemana12: 0,
+        racimosCosechados: 0,
+        racimosRecusados: 0,
+        racimosProcesados: 0,
+        gradoPromedio: null,
+        promedioManos: null,
+        canastillas: 0,
+        canastillasVendidas: totales.vendidas,
+        kilosCanastillas: 0,
+        pesoNetoRacimo: null,
+        ratio: null,
+        merma: null,
+        transporte: '',
+        notas: '',
+        canastillasRepique: totales.repique,
+      })
+    }
+  }
+
+  return filas
 }
 
 export interface FilaCompleta extends ResumenDiaFinca {

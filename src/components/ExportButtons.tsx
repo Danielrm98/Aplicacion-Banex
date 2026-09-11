@@ -10,10 +10,13 @@ export default function ExportButtons({ registros }: { registros: Produccion[] }
 
   const { ventas } = useVentasCanastillas({})
   const ventasPorFincaFecha = useMemo(() => {
-    const map = new Map<string, number>()
+    const map = new Map<string, { vendidas: number; repique: number }>()
     for (const v of ventas) {
       const clave = `${v.finca}|${v.fecha}`
-      map.set(clave, (map.get(clave) ?? 0) + v.cantidad)
+      const acumulado = map.get(clave) ?? { vendidas: 0, repique: 0 }
+      acumulado.vendidas += v.cantidad
+      acumulado.repique += v.cantidad_repique ?? 0
+      map.set(clave, acumulado)
     }
     return map
   }, [ventas])

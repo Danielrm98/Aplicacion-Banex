@@ -509,10 +509,13 @@ create table public.ventas_canastillas (
   semana integer not null check (semana between 1 and 53),
   cantidad integer not null default 0 check (cantidad >= 0),
   cantidad_obsequio integer not null default 0 check (cantidad_obsequio >= 0),
+  -- Aparte de las producidas en proceso; no se descuenta del acumulado
+  -- disponible, solo se informa (misma factura de la venta normal).
+  cantidad_repique integer not null default 0 check (cantidad_repique >= 0),
   factura_path text not null,
   notas text,
   created_at timestamptz not null default now(),
-  check (cantidad > 0 or cantidad_obsequio > 0)
+  check (cantidad > 0 or cantidad_obsequio > 0 or cantidad_repique > 0)
 );
 
 create index ventas_canastillas_finca_fecha_idx

@@ -17,6 +17,7 @@ export interface VentaPendiente {
   semana: number
   cantidad: number
   cantidadObsequio: number
+  cantidadRepique: number
   notas: string | null
   foto: Blob
   fotoNombre: string
@@ -99,6 +100,7 @@ export async function enviarVentaPendiente(venta: VentaPendiente): Promise<void>
     semana: venta.semana,
     cantidad: venta.cantidad,
     cantidad_obsequio: venta.cantidadObsequio,
+    cantidad_repique: venta.cantidadRepique,
     factura_path: rutaFactura,
     notas: venta.notas,
   })

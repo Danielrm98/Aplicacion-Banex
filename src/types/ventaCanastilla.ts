@@ -6,6 +6,7 @@ export interface VentaCanastilla {
   semana: number
   cantidad: number
   cantidad_obsequio: number
+  cantidad_repique: number
   factura_path: string
   notas: string | null
   created_at: string

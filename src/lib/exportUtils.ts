@@ -88,6 +88,10 @@ const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: num
   { header: 'Merma (%)', key: 'merma', width: 12 },
   { header: 'Transporte', key: 'transporte', width: 30 },
   { header: 'Notas', key: 'notas', width: 24 },
+  // Al final a propósito, para no correr el orden de las columnas ya
+  // asignadas: las canastillas por repique son aparte de las producidas en
+  // proceso y no se descuentan del acumulado, solo se informan.
+  { header: 'Canastillas por repique', key: 'canastillasRepique', width: 20 },
 ]
 
 // En el Excel, "Miércoles" y "Sábado" van sin tilde (a pedido); el resto de

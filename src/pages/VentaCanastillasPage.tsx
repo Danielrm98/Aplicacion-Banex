@@ -90,6 +90,15 @@ export default function VentaCanastillasPage() {
         .reduce((sum, v) => sum + (v.cantidad_obsequio ?? 0), 0),
     [ventas, semana, anio],
   )
+  // El repique es aparte de lo producido en proceso: se informa, pero no
+  // entra en la cuenta de "Disponible (acumulado)".
+  const repiqueEstaSemana = useMemo(
+    () =>
+      ventas
+        .filter((v) => v.semana === semana && v.fecha.slice(0, 4) === String(anio))
+        .reduce((sum, v) => sum + (v.cantidad_repique ?? 0), 0),
+    [ventas, semana, anio],
+  )
 
   const ventasFiltradas = useMemo(
     () =>
@@ -104,7 +113,8 @@ export default function VentaCanastillasPage() {
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Venta de canastillas</h1>
       <p className="mb-6 text-sm text-gray-500">
         Las canastillas producidas se venden a terceros, y otras se obsequian al personal operativo. Registra cada
-        salida con la foto de la factura de entrega y lleva el control de cuántas quedan disponibles.
+        salida con la foto de la factura de entrega y lleva el control de cuántas quedan disponibles. Las canastillas
+        por repique son aparte de las producidas en proceso y no se descuentan del acumulado.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -177,7 +187,7 @@ export default function VentaCanastillasPage() {
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <ResumenTarjeta
               titulo="Producidas esta semana"
               valor={producidoEstaSemana}
@@ -192,6 +202,11 @@ export default function VentaCanastillasPage() {
               titulo="Obsequio esta semana"
               valor={obsequioEstaSemana}
               detalle={`Semana ${semana}/${anio}`}
+            />
+            <ResumenTarjeta
+              titulo="Repique esta semana"
+              valor={repiqueEstaSemana}
+              detalle="Aparte de lo producido; no se descuenta"
             />
             <ResumenTarjeta
               titulo="Disponible (acumulado)"
@@ -264,6 +279,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
   const [fecha, setFecha] = useState(fechaLocalHoy())
   const [cantidad, setCantidad] = useState<number | ''>('')
   const [obsequio, setObsequio] = useState<number | ''>('')
+  const [repique, setRepique] = useState<number | ''>('')
   const [notas, setNotas] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
@@ -277,8 +293,9 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
 
     const cantidadVendida = cantidad || 0
     const cantidadObsequio = obsequio || 0
-    if (cantidadVendida <= 0 && cantidadObsequio <= 0) {
-      setError('Ingresa una cantidad vendida o de obsequio mayor a 0.')
+    const cantidadRepique = repique || 0
+    if (cantidadVendida <= 0 && cantidadObsequio <= 0 && cantidadRepique <= 0) {
+      setError('Ingresa una cantidad vendida, de obsequio o por repique mayor a 0.')
       return
     }
     if (!archivo) {
@@ -297,6 +314,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
     function limpiarFormulario() {
       setCantidad('')
       setObsequio('')
+      setRepique('')
       setNotas('')
       setArchivo(null)
       const input = document.getElementById('factura-input') as HTMLInputElement | null
@@ -311,6 +329,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       semana: getIsoWeek(fecha),
       cantidad: cantidadVendida,
       cantidadObsequio,
+      cantidadRepique,
       notas: notas || null,
       foto: archivo,
       fotoNombre: archivo.name,
@@ -337,6 +356,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         semana: getIsoWeek(fecha),
         cantidad: cantidadVendida,
         cantidad_obsequio: cantidadObsequio,
+        cantidad_repique: cantidadRepique,
         factura_path: rutaFactura,
         notas: notas || null,
       })
@@ -390,6 +410,17 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             min={0}
             value={obsequio}
             onChange={(e) => setObsequio(e.target.value === '' ? '' : Number(e.target.value))}
+            className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Canastillas por repique</span>
+          <input
+            type="number"
+            min={0}
+            value={repique}
+            onChange={(e) => setRepique(e.target.value === '' ? '' : Number(e.target.value))}
             className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>
@@ -481,6 +512,9 @@ function VentaRow({
         )}
         {venta.cantidad_obsequio > 0 && (
           <span className="font-semibold text-amber-600">{venta.cantidad_obsequio.toLocaleString('es')} obsequio</span>
+        )}
+        {venta.cantidad_repique > 0 && (
+          <span className="font-semibold text-purple-600">{venta.cantidad_repique.toLocaleString('es')} repique</span>
         )}
         {venta.notas && <span className="text-gray-500">{venta.notas}</span>}
       </div>
