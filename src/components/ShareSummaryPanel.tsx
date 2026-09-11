@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { domToBlob } from 'modern-screenshot'
-import banexLogo from '../assets/banex-logo.jpg'
+import { BANEX_LOGO_URL } from '../lib/logo'
 import { mensajeWhatsapp, type RegistroResumenCompartir } from '../lib/shareSummary'
 import { diaSemana } from '../lib/diaSemana'
 
@@ -108,7 +108,7 @@ export default function ShareSummaryPanel({
           <div className="overflow-x-auto">
           <div ref={capturaRef} className="w-[840px] rounded-lg border border-gray-100 bg-white p-5">
           <div className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
-            <img src={banexLogo} alt="BANEX S.A." className="h-9 w-9 shrink-0 rounded-md object-contain" />
+            <img src={BANEX_LOGO_URL} alt="BANEX S.A." className="h-9 w-9 shrink-0 rounded-md object-contain" />
             <div>
               <p className="text-sm font-bold text-banex-900">ApproBan</p>
               <p className="text-xs text-gray-500">Registro de producción</p>

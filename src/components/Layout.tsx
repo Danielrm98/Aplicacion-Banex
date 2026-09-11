@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { usePerfil } from '../lib/usePerfil'
 import { useColaSincronizacion } from '../lib/useColaSincronizacion'
-import banexLogo from '../assets/banex-logo.jpg'
+import { BANEX_LOGO_URL } from '../lib/logo'
 import TextSizeControl from './TextSizeControl'
 
 const navItems = [
@@ -34,7 +34,7 @@ export default function Layout() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-2.5">
             <img
-              src={banexLogo}
+              src={BANEX_LOGO_URL}
               alt="BANEX S.A."
               className="h-9 w-9 shrink-0 rounded-md bg-white object-contain p-0.5 sm:h-10 sm:w-10"
             />
