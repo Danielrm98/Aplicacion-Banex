@@ -432,7 +432,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             type="file"
             required
             accept="image/*"
-            capture="environment"
             onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
             className="block w-56 text-sm text-gray-700 file:mr-2 file:rounded-lg file:border-0 file:bg-banex-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-banex-700 hover:file:bg-banex-100"
           />
