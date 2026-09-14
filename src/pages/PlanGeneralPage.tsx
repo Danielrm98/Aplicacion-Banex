@@ -5,10 +5,13 @@ import { useAuth } from '../lib/AuthContext'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useReferencias } from '../lib/useReferencias'
+import { useProducciones } from '../lib/useProducciones'
+import { flattenItems } from '../lib/aggregations'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { posicionFinca } from '../lib/ordenFincas'
 import type { PlanSemana } from '../types/plan'
+import type { Referencia } from '../types/produccion'
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
@@ -140,7 +143,31 @@ export default function PlanGeneralPage() {
     return fincas.reduce((sum, f) => sum + (Number(celdas[f.nombre]?.[referencia]) || 0), 0)
   }
 
+  function totalColumnaCajas(referencia: string) {
+    const cat = catalogoDe(referencia)
+    if (!cat) return 0
+    return fincas.reduce((sum, f) => {
+      const valor = celdas[f.nombre]?.[referencia]
+      if (!valor || valor.trim() === '') return sum
+      return sum + Math.round((Number(valor) || 0) * cat.cajas_pallet)
+    }, 0)
+  }
+
   const totalGeneral = columnas.reduce((sum, ref) => sum + totalColumnaPallets(ref), 0)
+
+  // Lo producido por todas las fincas juntas en esta semana/año, para poder
+  // comparar el plan general contra la producción real (igual que el plan
+  // por finca, pero sumando todas las fincas en vez de una sola).
+  const { registros: produccionesSemana } = useProducciones({ semana })
+  const producidoPorReferencia = useMemo(() => {
+    const delAnio = produccionesSemana.filter((r) => r.fecha.slice(0, 4) === String(anio))
+    const filas = flattenItems(delAnio)
+    const map = new Map<string, number>()
+    for (const f of filas) {
+      map.set(f.referencia, (map.get(f.referencia) ?? 0) + f.cantidad_cajas)
+    }
+    return map
+  }, [produccionesSemana, anio])
 
   function agregarColumna(e: FormEvent) {
     e.preventDefault()
@@ -365,6 +392,16 @@ export default function PlanGeneralPage() {
             </table>
           </div>
 
+          {columnas.length > 0 && (
+            <ResumenGlobalPorReferencia
+              columnas={columnas}
+              catalogoDe={catalogoDe}
+              totalColumnaCajas={totalColumnaCajas}
+              totalColumnaPallets={totalColumnaPallets}
+              producidoPorReferencia={producidoPorReferencia}
+            />
+          )}
+
           <form onSubmit={agregarColumna} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
             <div className="flex flex-wrap items-end gap-3">
               <label className="block">
@@ -394,6 +431,168 @@ export default function PlanGeneralPage() {
           </form>
         </>
       )}
+    </div>
+  )
+}
+
+function ResumenGlobalPorReferencia({
+  columnas,
+  catalogoDe,
+  totalColumnaCajas,
+  totalColumnaPallets,
+  producidoPorReferencia,
+}: {
+  columnas: string[]
+  catalogoDe: (marca: string) => Referencia | null
+  totalColumnaCajas: (referencia: string) => number
+  totalColumnaPallets: (referencia: string) => number
+  producidoPorReferencia: Map<string, number>
+}) {
+  const filas = columnas.map((ref) => {
+    const cat = catalogoDe(ref)
+    const cajasPlan = totalColumnaCajas(ref)
+    const palletsPlan = totalColumnaPallets(ref)
+    const cajasProducidas = producidoPorReferencia.get(ref) ?? 0
+    const palletsProducidos = cat && cat.cajas_pallet > 0 ? cajasProducidas / cat.cajas_pallet : null
+    return {
+      ref,
+      cajasPlan,
+      palletsPlan,
+      cajasProducidas,
+      palletsProducidos,
+      faltanteCajas: cajasPlan - cajasProducidas,
+      faltantePallets: palletsProducidos !== null ? palletsPlan - palletsProducidos : null,
+    }
+  })
+
+  const totalCajasPlan = filas.reduce((sum, f) => sum + f.cajasPlan, 0)
+  const totalPalletsPlan = filas.reduce((sum, f) => sum + f.palletsPlan, 0)
+  const totalCajasProducidas = filas.reduce((sum, f) => sum + f.cajasProducidas, 0)
+  const totalPalletsProducidos = filas.reduce((sum, f) => sum + (f.palletsProducidos ?? 0), 0)
+  const totalFaltanteCajas = totalCajasPlan - totalCajasProducidas
+  const totalFaltantePallets = totalPalletsPlan - totalPalletsProducidos
+
+  function textoFaltante(valor: number, decimales: number) {
+    return valor > 0 ? `Faltan ${valor.toFixed(decimales)}` : `Cumplido (+${(-valor).toFixed(decimales)})`
+  }
+
+  return (
+    <div className="mb-6">
+      <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-banex-600 uppercase">
+        <span className="h-3 w-0.5 shrink-0 rounded-full bg-banana-500" />
+        Resumen global por referencia (todas las fincas)
+      </h2>
+
+      <div className="hidden overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm sm:block">
+        <table className="w-full min-w-[820px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-gray-500">
+              <th className="py-1.5 pr-3 pl-4 font-medium">Referencia</th>
+              <th className="py-1.5 pr-3 font-medium">Pallets plan</th>
+              <th className="py-1.5 pr-3 font-medium">Cajas plan</th>
+              <th className="py-1.5 pr-3 font-medium">Cajas producidas</th>
+              <th className="py-1.5 pr-3 font-medium">Pallets producidos</th>
+              <th className="py-1.5 pr-3 font-medium">Faltante/Sobrante cajas</th>
+              <th className="py-1.5 pr-3 font-medium">Faltante/Sobrante pallets</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.map((f) => (
+              <tr key={f.ref} className="border-b border-gray-100">
+                <td className="py-1.5 pr-3 pl-4 font-medium text-gray-900">{f.ref}</td>
+                <td className="py-1.5 pr-3">{f.palletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
+                <td className="py-1.5 pr-3">{f.cajasPlan.toLocaleString('es')}</td>
+                <td className="py-1.5 pr-3">{f.cajasProducidas.toLocaleString('es')}</td>
+                <td className="py-1.5 pr-3 text-gray-500">
+                  {f.palletsProducidos !== null ? f.palletsProducidos.toFixed(2) : '—'}
+                </td>
+                <td className={`py-1.5 pr-3 font-medium ${f.faltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                  {textoFaltante(f.faltanteCajas, 0)}
+                </td>
+                <td
+                  className={`py-1.5 pr-3 font-medium ${
+                    f.faltantePallets !== null && f.faltantePallets > 0 ? 'text-red-600' : 'text-banex-700'
+                  }`}
+                >
+                  {f.faltantePallets === null ? '—' : textoFaltante(f.faltantePallets, 2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
+              <td className="py-1.5 pr-3 pl-4">Total</td>
+              <td className="py-1.5 pr-3">{totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
+              <td className="py-1.5 pr-3">{totalCajasPlan.toLocaleString('es')}</td>
+              <td className="py-1.5 pr-3">{totalCajasProducidas.toLocaleString('es')}</td>
+              <td className="py-1.5 pr-3">{totalPalletsProducidos.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
+              <td className={`py-1.5 pr-3 ${totalFaltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                {textoFaltante(totalFaltanteCajas, 0)}
+              </td>
+              <td className={`py-1.5 pr-3 ${totalFaltantePallets > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                {textoFaltante(totalFaltantePallets, 2)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:hidden">
+        {filas.map((f) => (
+          <div key={f.ref} className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+            <p className="mb-2 font-semibold text-gray-900">{f.ref}</p>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+              <dt className="text-gray-500">Pallets plan</dt>
+              <dd className="text-right">{f.palletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}</dd>
+              <dt className="text-gray-500">Cajas plan</dt>
+              <dd className="text-right text-gray-500">{f.cajasPlan.toLocaleString('es')}</dd>
+              <dt className="text-gray-500">Cajas producidas</dt>
+              <dd className="text-right">{f.cajasProducidas.toLocaleString('es')}</dd>
+              <dt className="text-gray-500">Pallets producidos</dt>
+              <dd className="text-right text-gray-500">
+                {f.palletsProducidos !== null ? f.palletsProducidos.toFixed(2) : '—'}
+              </dd>
+              <dt className="text-gray-500">Faltante/Sobrante cajas</dt>
+              <dd className={`text-right font-medium ${f.faltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+                {textoFaltante(f.faltanteCajas, 0)}
+              </dd>
+              <dt className="text-gray-500">Faltante/Sobrante pallets</dt>
+              <dd
+                className={`text-right font-medium ${
+                  f.faltantePallets !== null && f.faltantePallets > 0 ? 'text-red-600' : 'text-banex-700'
+                }`}
+              >
+                {f.faltantePallets === null ? '—' : textoFaltante(f.faltantePallets, 2)}
+              </dd>
+            </dl>
+          </div>
+        ))}
+        <div className="rounded-xl border border-banex-100 bg-banex-50/50 p-3 shadow-sm">
+          <p className="mb-2 font-semibold text-banex-800">Total</p>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+            <dt className="text-gray-500">Pallets plan</dt>
+            <dd className="text-right font-medium text-banex-800">
+              {totalPalletsPlan.toLocaleString('es', { maximumFractionDigits: 2 })}
+            </dd>
+            <dt className="text-gray-500">Cajas plan</dt>
+            <dd className="text-right font-medium text-banex-800">{totalCajasPlan.toLocaleString('es')}</dd>
+            <dt className="text-gray-500">Cajas producidas</dt>
+            <dd className="text-right font-medium text-banex-800">{totalCajasProducidas.toLocaleString('es')}</dd>
+            <dt className="text-gray-500">Pallets producidos</dt>
+            <dd className="text-right font-medium text-banex-800">
+              {totalPalletsProducidos.toLocaleString('es', { maximumFractionDigits: 2 })}
+            </dd>
+            <dt className="text-gray-500">Faltante/Sobrante cajas</dt>
+            <dd className={`text-right font-medium ${totalFaltanteCajas > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+              {textoFaltante(totalFaltanteCajas, 0)}
+            </dd>
+            <dt className="text-gray-500">Faltante/Sobrante pallets</dt>
+            <dd className={`text-right font-medium ${totalFaltantePallets > 0 ? 'text-red-600' : 'text-banex-700'}`}>
+              {textoFaltante(totalFaltantePallets, 2)}
+            </dd>
+          </dl>
+        </div>
+      </div>
     </div>
   )
 }
