@@ -37,6 +37,10 @@ export default defineConfig({
       workbox: {
         // El bundle principal supera el límite por defecto de Workbox (2 MiB).
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // Agrega los listeners de notificaciones push (push-sw.js) dentro
+        // del service worker que genera el plugin, ya que generateSW no
+        // deja escribir código propio directamente.
+        importScripts: ['push-sw.js'],
       },
     }),
   ],

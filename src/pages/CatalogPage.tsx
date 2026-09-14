@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
@@ -6,6 +6,12 @@ import { useFincas } from '../lib/useFincas'
 import { usePerfil } from '../lib/usePerfil'
 import { usePerfiles } from '../lib/usePerfiles'
 import { crearUsuario, eliminarUsuario, resetearPassword } from '../lib/adminUsuarios'
+import {
+  activarNotificaciones,
+  desactivarNotificaciones,
+  estaSuscrito,
+  notificacionesDisponibles,
+} from '../lib/pushNotifications'
 import { useDraftState } from '../lib/useDraftState'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
@@ -23,7 +29,7 @@ const emptyForm = {
 }
 
 export default function CatalogPage() {
-  const [vista, setVista] = useState<'referencias' | 'fincas' | 'usuarios'>('referencias')
+  const [vista, setVista] = useState<'referencias' | 'fincas' | 'usuarios' | 'notificaciones'>('referencias')
   const { perfil, loading } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
 
@@ -54,14 +60,21 @@ export default function CatalogPage() {
             Usuarios
           </TabButton>
         )}
+        {esAdmin && (
+          <TabButton active={vista === 'notificaciones'} onClick={() => setVista('notificaciones')}>
+            Notificaciones
+          </TabButton>
+        )}
       </div>
 
       {vista === 'referencias' ? (
         <ReferenciasTab />
       ) : vista === 'fincas' ? (
         <FincasTab />
+      ) : vista === 'usuarios' ? (
+        esAdmin ? <UsuariosTab /> : null
       ) : esAdmin ? (
-        <UsuariosTab />
+        <NotificacionesTab />
       ) : null}
     </div>
   )
@@ -991,5 +1004,88 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       <span className="mb-1 block text-sm font-medium text-gray-700">{label}</span>
       {children}
     </label>
+  )
+}
+
+function NotificacionesTab() {
+  const { perfil } = usePerfil()
+  const [suscrito, setSuscrito] = useState(false)
+  const [cargando, setCargando] = useState(true)
+  const [procesando, setProcesando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    estaSuscrito()
+      .then(setSuscrito)
+      .finally(() => setCargando(false))
+  }, [])
+
+  async function activar() {
+    if (!perfil) return
+    setError(null)
+    setProcesando(true)
+    try {
+      await activarNotificaciones(perfil.user_id)
+      setSuscrito(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo activar las notificaciones.')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  async function desactivar() {
+    setError(null)
+    setProcesando(true)
+    try {
+      await desactivarNotificaciones()
+      setSuscrito(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo desactivar las notificaciones.')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-6">
+      <SectionHeading>Notificaciones push</SectionHeading>
+      <p className="mb-4 text-sm text-gray-500">
+        Recibe una notificación en este dispositivo cada vez que una finca registre producción o una venta de
+        canastillas, aunque no tengas la aplicación abierta. En iPhone solo funciona si agregaste ApproBan a la
+        pantalla de inicio (no sirve desde Safari normal) y con iOS 16.4 o más reciente.
+      </p>
+
+      {cargando ? (
+        <p className="text-sm text-gray-500">Verificando...</p>
+      ) : !notificacionesDisponibles() ? (
+        <p className="text-sm text-amber-700">
+          Este navegador o dispositivo no soporta notificaciones push, o falta configurar la clave pública VAPID.
+        </p>
+      ) : suscrito ? (
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-banex-50 px-3 py-1 text-sm font-medium text-banex-700">
+            ✅ Activadas en este dispositivo
+          </span>
+          <button
+            onClick={desactivar}
+            disabled={procesando}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+          >
+            Desactivar
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={activar}
+          disabled={procesando}
+          className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
+        >
+          {procesando ? 'Activando...' : 'Activar notificaciones en este dispositivo'}
+        </button>
+      )}
+
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+    </div>
   )
 }
