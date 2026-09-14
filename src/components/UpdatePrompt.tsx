@@ -20,9 +20,14 @@ export default function UpdatePrompt() {
     onRegisteredSW(_url, registration) {
       if (!registration) return
       registrationRef.current = registration
-      // Revisión inmediata (no esperar al primer intervalo) y luego cada
-      // INTERVALO_REVISION_MS como respaldo.
-      registration.update()
+      // Revisión inmediata (no esperar al primer intervalo), reintentada
+      // unas cuantas veces en los primeros segundos: en el celular, justo
+      // al abrir la app la red/CPU puede seguir "despertando" y una sola
+      // revisión muy temprana a veces no alcanza a completarse a tiempo.
+      // Luego, cada INTERVALO_REVISION_MS como respaldo.
+      for (const espera of [0, 3000, 8000, 15000]) {
+        setTimeout(() => registration.update(), espera)
+      }
       setInterval(() => registration.update(), INTERVALO_REVISION_MS)
     },
   })
@@ -32,16 +37,24 @@ export default function UpdatePrompt() {
     // recién se vuelve a abrir desde el ícono) y no que quede minutos con la
     // pantalla activa; por eso se revisa apenas la pestaña/app vuelve a
     // primer plano, en vez de solo confiar en el intervalo periódico.
+    // "pageshow" cubre además el caso de que el navegador restaure la
+    // página desde su caché (bfcache) en vez de recargarla de verdad, algo
+    // más común en celular que en PC y que "focus" solo no siempre detecta.
+    function revisar() {
+      registrationRef.current?.update()
+    }
     function alVolverAVerse() {
-      if (document.visibilityState === 'visible') {
-        registrationRef.current?.update()
-      }
+      if (document.visibilityState === 'visible') revisar()
     }
     document.addEventListener('visibilitychange', alVolverAVerse)
-    window.addEventListener('focus', alVolverAVerse)
+    window.addEventListener('focus', revisar)
+    window.addEventListener('pageshow', revisar)
+    window.addEventListener('online', revisar)
     return () => {
       document.removeEventListener('visibilitychange', alVolverAVerse)
-      window.removeEventListener('focus', alVolverAVerse)
+      window.removeEventListener('focus', revisar)
+      window.removeEventListener('pageshow', revisar)
+      window.removeEventListener('online', revisar)
     }
   }, [])
 
