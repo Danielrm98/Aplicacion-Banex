@@ -33,6 +33,10 @@ export default function VentaCanastillasPage() {
   const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
   const [semana, setSemana] = useState<number>(() => getIsoWeek(fechaLocalHoy()))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
+  // Filtros de la lista "Salidas registradas", independientes de la semana/
+  // año de arriba (esos son solo para las tarjetas de resumen): por defecto
+  // se ven todas las salidas de la finca, sin necesidad de elegir semana.
+  const [filtroSemanaLista, setFiltroSemanaLista] = useState<number | ''>('')
   const [filtroFecha, setFiltroFecha] = useState('')
 
   useEffect(() => {
@@ -100,12 +104,15 @@ export default function VentaCanastillasPage() {
     [ventas, semana, anio],
   )
 
+  // A diferencia de las tarjetas (que sí son de una semana puntual), la
+  // lista de abajo muestra todas las salidas de la finca por defecto; estos
+  // dos filtros son opcionales y solo se aplican si se eligen.
   const ventasFiltradas = useMemo(
     () =>
       ventas.filter(
-        (v) => v.semana === semana && v.fecha.slice(0, 4) === String(anio) && (!filtroFecha || v.fecha === filtroFecha),
+        (v) => (filtroSemanaLista === '' || v.semana === filtroSemanaLista) && (!filtroFecha || v.fecha === filtroFecha),
       ),
-    [ventas, semana, anio, filtroFecha],
+    [ventas, filtroSemanaLista, filtroFecha],
   )
 
   return (
@@ -162,25 +169,6 @@ export default function VentaCanastillasPage() {
             className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>
-
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Día (para validar)</span>
-          <input
-            type="date"
-            value={filtroFecha}
-            onChange={(e) => setFiltroFecha(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
-          />
-        </label>
-
-        {filtroFecha && (
-          <button
-            onClick={() => setFiltroFecha('')}
-            className="rounded-lg px-2 py-1.5 text-sm font-medium text-banex-700 transition-colors hover:bg-banex-50"
-          >
-            Limpiar día
-          </button>
-        )}
       </div>
 
       {!finca ? (
@@ -221,13 +209,56 @@ export default function VentaCanastillasPage() {
 
           <div className="mt-6">
             <SectionHeading>Salidas registradas</SectionHeading>
+
+            <div className="mb-4 flex flex-wrap items-end gap-3">
+              <label className="text-sm">
+                <span className="mb-1 block text-gray-600">Semana</span>
+                <select
+                  value={filtroSemanaLista}
+                  onChange={(e) => setFiltroSemanaLista(e.target.value ? Number(e.target.value) : '')}
+                  className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+                >
+                  <option value="">Todas las semanas</option>
+                  {SEMANAS.map((s) => (
+                    <option key={s} value={s}>
+                      Semana {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="text-sm">
+                <span className="mb-1 block text-gray-600">Día</span>
+                <input
+                  type="date"
+                  value={filtroFecha}
+                  onChange={(e) => setFiltroFecha(e.target.value)}
+                  className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+                />
+              </label>
+
+              {(filtroSemanaLista !== '' || filtroFecha) && (
+                <button
+                  onClick={() => {
+                    setFiltroSemanaLista('')
+                    setFiltroFecha('')
+                  }}
+                  className="rounded-lg px-2 py-1.5 text-sm font-medium text-banex-700 transition-colors hover:bg-banex-50"
+                >
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+
             {loading ? (
               <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
             ) : error ? (
               <p className="py-8 text-center text-sm text-red-600">{error}</p>
             ) : ventasFiltradas.length === 0 ? (
               <p className="py-6 text-center text-sm text-gray-500">
-                No hay salidas registradas para estos filtros.
+                {filtroSemanaLista !== '' || filtroFecha
+                  ? 'No hay salidas registradas para estos filtros.'
+                  : 'Todavía no hay salidas registradas para esta finca.'}
               </p>
             ) : (
               <div className="flex flex-col gap-2">
