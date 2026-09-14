@@ -317,8 +317,10 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       setRepique('')
       setNotas('')
       setArchivo(null)
-      const input = document.getElementById('factura-input') as HTMLInputElement | null
-      if (input) input.value = ''
+      for (const id of ['factura-input-camara', 'factura-input-galeria']) {
+        const input = document.getElementById(id) as HTMLInputElement | null
+        if (input) input.value = ''
+      }
     }
 
     const ventaPendiente = {
@@ -425,17 +427,48 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
           />
         </label>
 
-        <label className="block">
+        <div className="block">
           <span className="mb-1 block text-sm font-medium text-gray-700">Foto de la factura</span>
+          {/* Dos botones explícitos (en vez de un solo input) porque en
+              Android el selector nativo del sistema no siempre ofrece la
+              cámara junto con la galería en el mismo menú (varía según el
+              fabricante/navegador); así queda igual de claro en Android que
+              en iOS, donde el sistema sí muestra ambas opciones juntas. */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => document.getElementById('factura-input-camara')?.click()}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+            >
+              📷 Tomar foto
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById('factura-input-galeria')?.click()}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+            >
+              🖼️ Elegir de galería
+            </button>
+          </div>
           <input
-            id="factura-input"
+            id="factura-input-camara"
             type="file"
-            required
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+            className="hidden"
+          />
+          <input
+            id="factura-input-galeria"
+            type="file"
             accept="image/*"
             onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
-            className="block w-56 text-sm text-gray-700 file:mr-2 file:rounded-lg file:border-0 file:bg-banex-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-banex-700 hover:file:bg-banex-100"
+            className="hidden"
           />
-        </label>
+          <p className="mt-1 text-xs text-gray-500">
+            {archivo ? `Seleccionada: ${archivo.name}` : 'Ninguna foto seleccionada.'}
+          </p>
+        </div>
 
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-sm font-medium text-gray-700">Notas (opcional)</span>
