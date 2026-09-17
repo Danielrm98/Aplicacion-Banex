@@ -426,7 +426,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Cantidad vendida</span>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Venta de canastillas del proceso</span>
           <input
             type="number"
             min={0}
@@ -448,7 +448,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Canastillas por repique</span>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Vendidas por repique</span>
           <input
             type="number"
             min={0}
