@@ -135,6 +135,7 @@ function RegistroCard({
   const [sharing, setSharing] = useState(false)
   const [editingHeader, setEditingHeader] = useState(false)
   const [agregandoItem, setAgregandoItem] = useState(false)
+  const [agregandoTransporte, setAgregandoTransporte] = useState(false)
   const [headerDraft, setHeaderDraft] = useState<HeaderDraft>(() => headerDraftDe(registro))
   const [headerError, setHeaderError] = useState<string | null>(null)
   const racimosSource = editingHeader ? headerDraft : registro
@@ -597,30 +598,53 @@ function RegistroCard({
             )}
           </Seccion>
 
-          {registro.transportes.length > 0 && (
-            <Seccion titulo="Transporte">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left text-gray-500">
-                      <th className="py-1.5 pr-3 font-medium">Tipo</th>
-                      <th className="py-1.5 pr-3 font-medium">Placa</th>
-                      <th className="py-1.5 pr-3 font-medium">No. contenedor</th>
-                      <th className="py-1.5 pr-3 font-medium">Sello</th>
-                      <th className="py-1.5 pr-3 font-medium">Hora llegada</th>
-                      <th className="py-1.5 pr-3 font-medium">Hora salida</th>
-                      <th className="py-1.5 pr-3 font-medium"></th>
+          <Seccion titulo="Transporte">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-gray-500">
+                    <th className="py-1.5 pr-3 font-medium">Tipo</th>
+                    <th className="py-1.5 pr-3 font-medium">Placa</th>
+                    <th className="py-1.5 pr-3 font-medium">No. contenedor</th>
+                    <th className="py-1.5 pr-3 font-medium">Sello</th>
+                    <th className="py-1.5 pr-3 font-medium">Hora llegada</th>
+                    <th className="py-1.5 pr-3 font-medium">Hora salida</th>
+                    <th className="py-1.5 pr-3 font-medium"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registro.transportes.map((t) => (
+                    <TransporteRow key={t.id} transporte={t} onChanged={onChanged} esAdmin={esAdmin} />
+                  ))}
+                  {registro.transportes.length === 0 && !agregandoTransporte && (
+                    <tr>
+                      <td colSpan={7} className="py-3 pr-3 text-sm text-gray-500">
+                        Sin unidades de transporte registradas.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {registro.transportes.map((t) => (
-                      <TransporteRow key={t.id} transporte={t} onChanged={onChanged} esAdmin={esAdmin} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Seccion>
-          )}
+                  )}
+                  {agregandoTransporte && (
+                    <NuevoTransporteRow
+                      produccionId={registro.id}
+                      onAgregado={() => {
+                        setAgregandoTransporte(false)
+                        onChanged()
+                      }}
+                      onCancelar={() => setAgregandoTransporte(false)}
+                    />
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {!agregandoTransporte && (
+              <button
+                onClick={() => setAgregandoTransporte(true)}
+                className="mt-2 rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
+              >
+                + Agregar unidad de transporte
+              </button>
+            )}
+          </Seccion>
 
           {esAdmin && (
             <div className="flex justify-end border-t border-gray-100 pt-4">
@@ -892,6 +916,138 @@ function NuevaReferenciaRow({
       {error && (
         <tr>
           <td colSpan={5} className="pb-1.5 text-xs text-red-600">
+            {error}
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function NuevoTransporteRow({
+  produccionId,
+  onAgregado,
+  onCancelar,
+}: {
+  produccionId: string
+  onAgregado: () => void
+  onCancelar: () => void
+}) {
+  const [draft, setDraft] = useState<{
+    tipo: Transporte['tipo']
+    placa: string
+    numero_contenedor: string
+    sello: string
+    hora_llegada: string
+    hora_salida: string
+  }>({
+    tipo: TIPOS_TRANSPORTE[0],
+    placa: '',
+    numero_contenedor: '',
+    sello: '',
+    hora_llegada: '',
+    hora_salida: '',
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function guardar() {
+    setBusy(true)
+    setError(null)
+    const { error: insertError } = await supabase.from('transportes').insert({
+      produccion_id: produccionId,
+      tipo: draft.tipo,
+      placa: draft.placa || null,
+      hora_llegada: draft.hora_llegada || null,
+      hora_salida: draft.hora_salida || null,
+      sello: draft.tipo === 'Contenedor' ? draft.sello || null : null,
+      numero_contenedor: draft.tipo === 'Contenedor' ? draft.numero_contenedor || null : null,
+    })
+    setBusy(false)
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+    onAgregado()
+  }
+
+  return (
+    <>
+      <tr className="border-b border-gray-100 bg-banex-50/40">
+        <td className="py-1.5 pr-3">
+          <select
+            value={draft.tipo}
+            onChange={(e) => setDraft((d) => ({ ...d, tipo: e.target.value as Transporte['tipo'] }))}
+            className={cellInput}
+          >
+            {TIPOS_TRANSPORTE.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {tipo}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="py-1.5 pr-3">
+          <input
+            type="text"
+            value={draft.placa}
+            onChange={(e) => setDraft((d) => ({ ...d, placa: e.target.value.toUpperCase() }))}
+            className={cellInput}
+          />
+        </td>
+        <td className="py-1.5 pr-3">
+          <input
+            type="text"
+            value={draft.numero_contenedor}
+            onChange={(e) => setDraft((d) => ({ ...d, numero_contenedor: e.target.value.toUpperCase() }))}
+            disabled={draft.tipo !== 'Contenedor'}
+            className={`${cellInput} disabled:bg-gray-100 disabled:text-gray-400`}
+          />
+        </td>
+        <td className="py-1.5 pr-3">
+          <input
+            type="text"
+            value={draft.sello}
+            onChange={(e) => setDraft((d) => ({ ...d, sello: e.target.value }))}
+            disabled={draft.tipo !== 'Contenedor'}
+            className={`${cellInput} disabled:bg-gray-100 disabled:text-gray-400`}
+          />
+        </td>
+        <td className="py-1.5 pr-3">
+          <input
+            type="time"
+            value={draft.hora_llegada}
+            onChange={(e) => setDraft((d) => ({ ...d, hora_llegada: e.target.value }))}
+            className={cellInput}
+          />
+        </td>
+        <td className="py-1.5 pr-3">
+          <input
+            type="time"
+            value={draft.hora_salida}
+            onChange={(e) => setDraft((d) => ({ ...d, hora_salida: e.target.value }))}
+            className={cellInput}
+          />
+        </td>
+        <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
+          <button
+            onClick={guardar}
+            disabled={busy}
+            className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+          >
+            Guardar
+          </button>
+          <button
+            onClick={onCancelar}
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+        </td>
+      </tr>
+      {error && (
+        <tr>
+          <td colSpan={7} className="pb-1.5 text-xs text-red-600">
             {error}
           </td>
         </tr>
