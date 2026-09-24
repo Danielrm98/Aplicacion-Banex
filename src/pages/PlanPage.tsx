@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { getIsoWeek } from '../lib/isoWeek'
 import { useReferencias } from '../lib/useReferencias'
@@ -90,6 +90,28 @@ export default function PlanPage() {
 
   const planReferencias = new Set(plan?.items.map((it) => it.referencia) ?? [])
   const adicionales = Array.from(producidoMap.entries()).filter(([ref]) => !planReferencias.has(ref))
+
+  // Una referencia producida fuera del plan se agrega sola como línea con meta
+  // en 0, para que la finca no tenga que hacerlo a mano cada vez.
+  const agregandoAutoRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!plan || adicionales.length === 0) return
+    const pendientes = adicionales
+      .map(([referencia]) => referencia)
+      .filter((referencia) => !agregandoAutoRef.current.has(referencia))
+    if (pendientes.length === 0) return
+
+    pendientes.forEach((referencia) => agregandoAutoRef.current.add(referencia))
+    supabase
+      .from('plan_items')
+      .insert(pendientes.map((referencia) => ({ plan_id: plan.id, referencia, pallets_plan: 0, cajas_plan: 0 })))
+      .then(({ error }) => {
+        pendientes.forEach((referencia) => agregandoAutoRef.current.delete(referencia))
+        if (!error) refetch()
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, adicionales.map(([ref]) => ref).join(',')])
+
   const totalPalletsPlan = plan?.items.reduce((sum, it) => sum + it.pallets_plan, 0) ?? 0
   const totalCajasPlan = plan?.items.reduce((sum, it) => sum + it.cajas_plan, 0) ?? 0
   const totalCajasProducidas = plan?.items.reduce((sum, it) => sum + (producidoMap.get(it.referencia) ?? 0), 0) ?? 0
@@ -298,15 +320,15 @@ export default function PlanPage() {
           {adicionales.length > 0 && (
             <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
               <h3 className="mb-2 text-sm font-semibold text-amber-900">Producido sin plan asignado</h3>
-              <div className="flex flex-col gap-2">
+              <p className="mb-2 text-xs text-amber-800">
+                Se están agregando solas a la tabla de arriba, con meta en 0 pallets/cajas.
+              </p>
+              <div className="flex flex-col gap-1.5">
                 {adicionales.map(([referencia, cajas]) => (
-                  <AdicionalRow
-                    key={referencia}
-                    planId={plan.id}
-                    referencia={referencia}
-                    cajas={cajas}
-                    onAdded={refetch}
-                  />
+                  <div key={referencia} className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
+                    <strong className="text-gray-900">{referencia}</strong>
+                    <span className="text-gray-500"> — {cajas} cajas producidas, no estaba en el plan</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -678,49 +700,6 @@ function AddPlanItemForm({
         ))}
       </datalist>
     </form>
-  )
-}
-
-function AdicionalRow({
-  planId,
-  referencia,
-  cajas,
-  onAdded,
-}: {
-  planId: string
-  referencia: string
-  cajas: number
-  onAdded: () => void
-}) {
-  const [busy, setBusy] = useState(false)
-
-  async function agregar() {
-    setBusy(true)
-    const { error } = await supabase
-      .from('plan_items')
-      .insert({ plan_id: planId, referencia, pallets_plan: 0, cajas_plan: 0 })
-    setBusy(false)
-    if (error) {
-      alert(`No se pudo agregar: ${error.message}`)
-      return
-    }
-    onAdded()
-  }
-
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
-      <span>
-        <strong className="text-gray-900">{referencia}</strong>
-        <span className="text-gray-500"> — {cajas} cajas producidas, no estaba en el plan</span>
-      </span>
-      <button
-        onClick={agregar}
-        disabled={busy}
-        className="rounded-md border border-amber-300 px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:opacity-50"
-      >
-        + Agregar al plan
-      </button>
-    </div>
   )
 }
 
