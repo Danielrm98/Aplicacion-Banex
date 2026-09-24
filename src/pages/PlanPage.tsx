@@ -43,7 +43,7 @@ export default function PlanPage() {
   }, [fincasDisponibles, finca, fincaUnicaOperador])
 
   const { referencias } = useReferencias()
-  const { registros } = useProducciones({ semana, finca })
+  const { registros, loading: prodLoading } = useProducciones({ semana, finca })
   const { plan, loading, error, refetch } = usePlan({ finca, semana, anio })
 
   const producidoMap = useMemo(() => {
@@ -92,10 +92,14 @@ export default function PlanPage() {
   const adicionales = Array.from(producidoMap.entries()).filter(([ref]) => !planReferencias.has(ref))
 
   // Una referencia producida fuera del plan se agrega sola como línea con meta
-  // en 0, para que la finca no tenga que hacerlo a mano cada vez.
+  // en 0, para que la finca no tenga que hacerlo a mano cada vez. Mientras el
+  // plan o la producción todavía están cargando (p. ej. justo después de
+  // cambiar de finca) `registros`/`plan` pueden traer datos de la selección
+  // anterior; sin este guard se insertaban referencias de OTRA finca por error.
   const agregandoAutoRef = useRef<Set<string>>(new Set())
   useEffect(() => {
-    if (!plan || adicionales.length === 0) return
+    if (!plan || loading || prodLoading || adicionales.length === 0) return
+    if (plan.finca !== finca || plan.semana !== semana || plan.anio !== anio) return
     const pendientes = adicionales
       .map(([referencia]) => referencia)
       .filter((referencia) => !agregandoAutoRef.current.has(referencia))
@@ -110,7 +114,7 @@ export default function PlanPage() {
         if (!error) refetch()
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, adicionales.map(([ref]) => ref).join(',')])
+  }, [plan, loading, prodLoading, finca, semana, anio, adicionales.map(([ref]) => ref).join(',')])
 
   const totalPalletsPlan = plan?.items.reduce((sum, it) => sum + it.pallets_plan, 0) ?? 0
   const totalCajasPlan = plan?.items.reduce((sum, it) => sum + it.cajas_plan, 0) ?? 0
