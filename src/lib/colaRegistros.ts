@@ -1,6 +1,9 @@
 import { supabase } from './supabaseClient'
+import { conLimite, ErrorTiempoAgotado } from './promesaConLimite'
 import type { ProduccionHeaderInput } from '../types/produccion'
 import type { RegistroResumenCompartir } from './shareSummary'
+
+export const LIMITE_ENVIO_MS = 12000
 
 export interface ItemPendiente {
   id: string
@@ -74,6 +77,7 @@ function marcarIntento(id: string, error: string) {
  * encolar para reintentar; lo segundo hay que mostrárselo al usuario.
  */
 export function esErrorDeRed(err: unknown): boolean {
+  if (err instanceof ErrorTiempoAgotado) return true
   if (typeof navigator !== 'undefined' && !navigator.onLine) return true
   if (err instanceof TypeError) return true
   if (err && typeof err === 'object' && 'message' in err) {
@@ -118,7 +122,7 @@ export async function sincronizarCola(): Promise<{ sincronizados: number; pendie
   for (const registro of leerCola()) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) break
     try {
-      await enviarRegistroPendiente(registro)
+      await conLimite(enviarRegistroPendiente(registro), LIMITE_ENVIO_MS)
       quitarDeCola(registro.id)
       sincronizados++
     } catch (err) {

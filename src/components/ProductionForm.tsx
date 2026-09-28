@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../lib/supabaseClient'
 import { getIsoWeek } from '../lib/isoWeek'
 import { diaSemana } from '../lib/diaSemana'
 import { fechaLocalHoy } from '../lib/fechaLocal'
@@ -8,8 +7,10 @@ import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import { usePerfil } from '../lib/usePerfil'
+import { useAuth } from '../lib/AuthContext'
 import { leerBorrador, guardarBorrador } from '../lib/borradorRegistro'
-import { agregarACola, enviarRegistroPendiente, esErrorDeRed } from '../lib/colaRegistros'
+import { agregarACola, enviarRegistroPendiente, esErrorDeRed, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
+import { conLimite } from '../lib/promesaConLimite'
 import SectionHeading from './SectionHeading'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import {
@@ -102,6 +103,7 @@ export default function ProductionForm({
   const { referencias, loading: loadingReferencias, error: referenciasError } = useReferencias()
   const { fincas } = useFincas()
   const { perfil } = usePerfil()
+  const { session } = useAuth()
   const esAdmin = perfil?.rol === 'admin'
   const [header, setHeader] = useState<ProduccionHeaderInput>(() => {
     const fecha = fechaLocalHoy()
@@ -255,9 +257,6 @@ export default function ProductionForm({
     }
 
     setSaving(true)
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
     const user = session?.user
 
     if (!user) {
@@ -348,7 +347,7 @@ export default function ProductionForm({
     }
 
     try {
-      await enviarRegistroPendiente({ ...registroPendiente, resumen })
+      await conLimite(enviarRegistroPendiente({ ...registroPendiente, resumen }), LIMITE_ENVIO_MS)
       setSaving(false)
       guardarYLimpiar(false)
       refetchSemana()

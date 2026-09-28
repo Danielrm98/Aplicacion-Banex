@@ -1,6 +1,10 @@
 import { supabase } from './supabaseClient'
 import { esErrorDeRed } from './colaRegistros'
+import { conLimite } from './promesaConLimite'
 import { subirFacturaCanastilla } from './facturasCanastillas'
+
+// Más alto que el de un registro (12s): aquí además se sube la foto de la factura.
+export const LIMITE_ENVIO_MS = 20000
 
 /**
  * Cola de "Venta de canastillas" pendientes de sincronizar. Usa IndexedDB
@@ -113,7 +117,7 @@ export async function sincronizarColaVentas(): Promise<{ sincronizados: number; 
   for (const venta of await leerColaVentas()) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) break
     try {
-      await enviarVentaPendiente(venta)
+      await conLimite(enviarVentaPendiente(venta), LIMITE_ENVIO_MS)
       await quitarDeCola(venta.id)
       sincronizados++
     } catch (err) {

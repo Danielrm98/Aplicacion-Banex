@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { usePerfil } from '../lib/usePerfil'
+import { useAuth } from '../lib/AuthContext'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import { useVentasCanastillas } from '../lib/useVentasCanastillas'
 import { subirFacturaCanastilla, eliminarFacturaCanastilla, urlFacturaCanastilla } from '../lib/facturasCanastillas'
-import { agregarVentaACola } from '../lib/colaCanastillas'
+import { agregarVentaACola, LIMITE_ENVIO_MS } from '../lib/colaCanastillas'
 import { esErrorDeRed } from '../lib/colaRegistros'
+import { conLimite } from '../lib/promesaConLimite'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual } from '../lib/fincaActual'
@@ -307,6 +309,7 @@ function ResumenTarjeta({
 }
 
 function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: () => void }) {
+  const { session } = useAuth()
   const [fecha, setFecha] = useState(fechaLocalHoy())
   const [cantidad, setCantidad] = useState<number | ''>('')
   const [obsequio, setObsequio] = useState<number | ''>('')
@@ -334,11 +337,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       return
     }
 
-    // getSession() lee la sesión guardada en el dispositivo sin llamar a la
-    // red (a diferencia de getUser()), así que funciona sin conexión.
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
     const user = session?.user
     if (!user) return
 
@@ -381,19 +379,24 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
 
     setSaving(true)
     try {
-      const rutaFactura = await subirFacturaCanastilla(finca, archivo)
-      const { error: insertError } = await supabase.from('ventas_canastillas').insert({
-        user_id: user.id,
-        finca,
-        fecha,
-        semana: getIsoWeek(fecha),
-        cantidad: cantidadVendida,
-        cantidad_obsequio: cantidadObsequio,
-        cantidad_repique: cantidadRepique,
-        factura_path: rutaFactura,
-        notas: notas || null,
-      })
-      if (insertError) throw insertError
+      await conLimite(
+        (async () => {
+          const rutaFactura = await subirFacturaCanastilla(finca, archivo)
+          const { error: insertError } = await supabase.from('ventas_canastillas').insert({
+            user_id: user.id,
+            finca,
+            fecha,
+            semana: getIsoWeek(fecha),
+            cantidad: cantidadVendida,
+            cantidad_obsequio: cantidadObsequio,
+            cantidad_repique: cantidadRepique,
+            factura_path: rutaFactura,
+            notas: notas || null,
+          })
+          if (insertError) throw insertError
+        })(),
+        LIMITE_ENVIO_MS,
+      )
 
       limpiarFormulario()
       onGuardado()
