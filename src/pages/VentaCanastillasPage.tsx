@@ -332,10 +332,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       setError('Ingresa una cantidad vendida, de obsequio o por repique mayor a 0.')
       return
     }
-    if (!archivo) {
-      setError('Adjunta la foto de la factura de entrega.')
-      return
-    }
 
     const user = session?.user
     if (!user) return
@@ -363,8 +359,8 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       cantidadRepique,
       notas: notas || null,
       foto: archivo,
-      fotoNombre: archivo.name,
-      fotoTipo: archivo.type || 'image/jpeg',
+      fotoNombre: archivo?.name ?? null,
+      fotoTipo: archivo?.type || null,
       creadoEn: new Date().toISOString(),
       intentos: 0,
       ultimoError: null,
@@ -381,7 +377,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
     try {
       await conLimite(
         (async () => {
-          const rutaFactura = await subirFacturaCanastilla(finca, archivo)
+          const rutaFactura = archivo ? await subirFacturaCanastilla(finca, archivo) : null
           const { error: insertError } = await supabase.from('ventas_canastillas').insert({
             user_id: user.id,
             finca,
@@ -462,7 +458,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         </label>
 
         <div className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Foto de la factura</span>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Foto de la factura (opcional)</span>
           {/* Dos botones explícitos (en vez de un solo input) porque en
               Android el selector nativo del sistema no siempre ofrece la
               cámara junto con la galería en el mismo menú (varía según el
@@ -500,7 +496,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             className="hidden"
           />
           <p className="mt-1 text-xs text-gray-500">
-            {archivo ? `Seleccionada: ${archivo.name}` : 'Ninguna foto seleccionada.'}
+            {archivo ? `Seleccionada: ${archivo.name}` : 'Ninguna foto seleccionada. Puedes agregarla después.'}
           </p>
         </div>
 
@@ -543,8 +539,10 @@ function VentaRow({
   onChanged: () => void
 }) {
   const [busy, setBusy] = useState(false)
+  const [agregandoFactura, setAgregandoFactura] = useState(false)
 
   async function verFactura() {
+    if (!venta.factura_path) return
     try {
       const url = await urlFacturaCanastilla(venta.factura_path)
       window.open(url, '_blank')
@@ -559,7 +557,7 @@ function VentaRow({
     try {
       const { error: deleteError } = await supabase.from('ventas_canastillas').delete().eq('id', venta.id)
       if (deleteError) throw deleteError
-      await eliminarFacturaCanastilla(venta.factura_path)
+      if (venta.factura_path) await eliminarFacturaCanastilla(venta.factura_path)
       onChanged()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No se pudo eliminar.')
@@ -569,38 +567,156 @@ function VentaRow({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="font-medium text-gray-900">{venta.fecha}</span>
-        <span className="text-gray-500">Semana {venta.semana}</span>
-        {venta.cantidad > 0 && (
-          <span className="font-semibold text-banex-700">{venta.cantidad.toLocaleString('es')} vendidas</span>
-        )}
-        {venta.cantidad_obsequio > 0 && (
-          <span className="font-semibold text-amber-600">{venta.cantidad_obsequio.toLocaleString('es')} obsequio</span>
-        )}
-        {venta.cantidad_repique > 0 && (
-          <span className="font-semibold text-purple-600">{venta.cantidad_repique.toLocaleString('es')} repique</span>
-        )}
-        {venta.notas && <span className="text-gray-500">{venta.notas}</span>}
+    <div className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <span className="font-medium text-gray-900">{venta.fecha}</span>
+          <span className="text-gray-500">Semana {venta.semana}</span>
+          {venta.cantidad > 0 && (
+            <span className="font-semibold text-banex-700">{venta.cantidad.toLocaleString('es')} vendidas</span>
+          )}
+          {venta.cantidad_obsequio > 0 && (
+            <span className="font-semibold text-amber-600">{venta.cantidad_obsequio.toLocaleString('es')} obsequio</span>
+          )}
+          {venta.cantidad_repique > 0 && (
+            <span className="font-semibold text-purple-600">{venta.cantidad_repique.toLocaleString('es')} repique</span>
+          )}
+          {venta.notas && <span className="text-gray-500">{venta.notas}</span>}
+        </div>
+        <div className="flex gap-2">
+          {venta.factura_path ? (
+            <button
+              onClick={verFactura}
+              className="rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
+            >
+              Ver factura
+            </button>
+          ) : (
+            <button
+              onClick={() => setAgregandoFactura((v) => !v)}
+              className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
+            >
+              📎 Sin factura · Agregar
+            </button>
+          )}
+          {esAdmin && (
+            <button
+              onClick={eliminar}
+              disabled={busy}
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex gap-2">
+
+      {agregandoFactura && (
+        <AgregarFacturaForm
+          venta={venta}
+          onGuardado={() => {
+            setAgregandoFactura(false)
+            onChanged()
+          }}
+          onCancelar={() => setAgregandoFactura(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function AgregarFacturaForm({
+  venta,
+  onGuardado,
+  onCancelar,
+}: {
+  venta: VentaCanastilla
+  onGuardado: () => void
+  onCancelar: () => void
+}) {
+  const [archivo, setArchivo] = useState<File | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const idCamara = `factura-pendiente-camara-${venta.id}`
+  const idGaleria = `factura-pendiente-galeria-${venta.id}`
+
+  async function guardar() {
+    if (!archivo) {
+      setError('Toma o elige una foto de la factura.')
+      return
+    }
+    setError(null)
+    setGuardando(true)
+    try {
+      await conLimite(
+        (async () => {
+          const rutaFactura = await subirFacturaCanastilla(venta.finca, archivo, venta.id)
+          const { error: updateError } = await supabase
+            .from('ventas_canastillas')
+            .update({ factura_path: rutaFactura })
+            .eq('id', venta.id)
+          if (updateError) throw updateError
+        })(),
+        LIMITE_ENVIO_MS,
+      )
+      onGuardado()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la factura.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-3">
+      <div className="flex flex-wrap items-center gap-2">
         <button
-          onClick={verFactura}
-          className="rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
+          type="button"
+          onClick={() => document.getElementById(idCamara)?.click()}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
         >
-          Ver factura
+          📷 Tomar foto
         </button>
-        {esAdmin && (
-          <button
-            onClick={eliminar}
-            disabled={busy}
-            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => document.getElementById(idGaleria)?.click()}
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+        >
+          🖼️ Elegir de galería
+        </button>
+        <input
+          id={idCamara}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+          className="hidden"
+        />
+        <input
+          id={idGaleria}
+          type="file"
+          accept="image/*"
+          onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+          className="hidden"
+        />
+        <span className="text-xs text-gray-500">{archivo ? `Seleccionada: ${archivo.name}` : 'Ninguna foto seleccionada.'}</span>
       </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={guardar}
+          disabled={guardando}
+          className="rounded-md bg-banex-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+        >
+          {guardando ? 'Guardando...' : 'Guardar factura'}
+        </button>
+        <button
+          onClick={onCancelar}
+          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+        >
+          Cancelar
+        </button>
+      </div>
+      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
     </div>
   )
 }

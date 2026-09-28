@@ -23,9 +23,9 @@ export interface VentaPendiente {
   cantidadObsequio: number
   cantidadRepique: number
   notas: string | null
-  foto: Blob
-  fotoNombre: string
-  fotoTipo: string
+  foto: Blob | null
+  fotoNombre: string | null
+  fotoTipo: string | null
   creadoEn: string
   intentos: number
   ultimoError: string | null
@@ -85,16 +85,20 @@ async function marcarIntento(venta: VentaPendiente, error: string) {
   )
 }
 
-/** Sube la foto y crea la venta. Usa insert (no upsert): a diferencia de la
- * cola de registros, aquí editar/eliminar una venta ya guardada queda
- * reservado al administrador (control de las cifras de venta), así que un
- * operario no tiene permiso para el "update" que un upsert necesitaría. La
+/** Sube la foto (si ya se tomó; puede quedar pendiente) y crea la venta.
+ * Usa insert (no upsert): a diferencia de la cola de registros, aquí
+ * cambiar las cantidades de una venta ya guardada queda reservado al
+ * administrador — un operario solo puede completar la factura pendiente
+ * después (ver VentaRow en VentaCanastillasPage.tsx), no editar cifras. La
  * foto sí se sube con upsert (ruta fija por venta) para que reintentar tras
  * un corte de conexión no falle si ya se había subido antes.
  */
 export async function enviarVentaPendiente(venta: VentaPendiente): Promise<void> {
-  const archivo = new File([venta.foto], venta.fotoNombre, { type: venta.fotoTipo })
-  const rutaFactura = await subirFacturaCanastilla(venta.finca, archivo, venta.id)
+  let rutaFactura: string | null = null
+  if (venta.foto) {
+    const archivo = new File([venta.foto], venta.fotoNombre ?? 'factura.jpg', { type: venta.fotoTipo ?? 'image/jpeg' })
+    rutaFactura = await subirFacturaCanastilla(venta.finca, archivo, venta.id)
+  }
 
   const { error } = await supabase.from('ventas_canastillas').insert({
     id: venta.id,

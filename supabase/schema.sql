@@ -512,7 +512,9 @@ create table public.ventas_canastillas (
   -- Aparte de las producidas en proceso; no se descuenta del acumulado
   -- disponible, solo se informa (misma factura de la venta normal).
   cantidad_repique integer not null default 0 check (cantidad_repique >= 0),
-  factura_path text not null,
+  -- Nula hasta que se adjunte la factura (puede quedar pendiente y
+  -- completarse después, incluso por un operario).
+  factura_path text,
   notas text,
   created_at timestamptz not null default now(),
   check (cantidad > 0 or cantidad_obsequio > 0 or cantidad_repique > 0)
@@ -534,14 +536,54 @@ create policy "Insertar ventas de canastillas según rol"
     and (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
   );
 
-create policy "Solo el admin actualiza ventas de canastillas"
+-- El admin puede editar cualquier venta; un operario solo puede completar
+-- una venta suya que todavía no tiene factura (ver el trigger de abajo,
+-- que además le impide cambiar cualquier otro dato de esa venta).
+create policy "Actualizar ventas de canastillas según rol"
   on public.ventas_canastillas for update
-  using (public.es_admin(auth.uid()))
-  with check (public.es_admin(auth.uid()));
+  using (
+    public.es_admin(auth.uid())
+    or (finca = any (public.fincas_de(auth.uid())) and factura_path is null)
+  )
+  with check (
+    public.es_admin(auth.uid())
+    or finca = any (public.fincas_de(auth.uid()))
+  );
 
 create policy "Solo el admin elimina ventas de canastillas"
   on public.ventas_canastillas for delete
   using (public.es_admin(auth.uid()));
+
+create or replace function public.solo_completa_factura_canastilla()
+returns trigger as $$
+begin
+  if public.es_admin(auth.uid()) then
+    return new;
+  end if;
+
+  if old.factura_path is not null then
+    raise exception 'Solo un administrador puede modificar una venta que ya tiene factura.';
+  end if;
+
+  if new.finca <> old.finca or new.fecha <> old.fecha or new.semana <> old.semana
+     or new.cantidad <> old.cantidad or new.cantidad_obsequio <> old.cantidad_obsequio
+     or new.cantidad_repique <> old.cantidad_repique
+     or new.notas is distinct from old.notas
+     or new.user_id <> old.user_id then
+    raise exception 'Un operario solo puede adjuntar la factura pendiente, no modificar la venta.';
+  end if;
+
+  if new.factura_path is null then
+    raise exception 'Debes adjuntar una factura.';
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+create trigger trg_solo_completa_factura_canastilla
+  before update on public.ventas_canastillas
+  for each row execute function public.solo_completa_factura_canastilla();
 
 -- Fotos de las facturas de entrega (bucket privado de Storage, organizado
 -- como "<finca>/<archivo>" para poder filtrar el acceso por finca).
