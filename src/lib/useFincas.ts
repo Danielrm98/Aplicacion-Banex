@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { conCacheLocal } from './consultaConCache'
+import fincasBase from '../data/fincasBase.json'
 import type { Finca } from '../types/finca'
 
 const CLAVE_CACHE = 'approban_cache_fincas'
@@ -12,8 +13,10 @@ export function useFincas() {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await conCacheLocal<Finca[]>(CLAVE_CACHE, () =>
-      supabase.from('fincas').select('*').order('nombre'),
+    const { data, error } = await conCacheLocal<Finca[]>(
+      CLAVE_CACHE,
+      () => supabase.from('fincas').select('*').order('nombre'),
+      fincasBase as Finca[],
     )
 
     if (error) {

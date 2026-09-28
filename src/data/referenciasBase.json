@@ -1,0 +1,713 @@
+[
+  {
+    "marca": "20LD7RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9297,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 17.2,
+    "especificacion_pdf_path": "20LD7RA.pdf"
+  },
+  {
+    "marca": "AGSTDBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "AGSTDBVRA.pdf"
+  },
+  {
+    "marca": "AGSTDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "AGSTDRA.pdf"
+  },
+  {
+    "marca": "AH1BDBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1.0216,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.9,
+    "especificacion_pdf_path": "AH1BDBVRA.pdf"
+  },
+  {
+    "marca": "AH1BDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1.0216,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.9,
+    "especificacion_pdf_path": "AH1BDRA.pdf"
+  },
+  {
+    "marca": "AH23XBD",
+    "cajas_pallet": 54,
+    "factor_conversion": 1.0216,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.9,
+    "especificacion_pdf_path": "AH23XBD.pdf"
+  },
+  {
+    "marca": "AH23XBDBV",
+    "cajas_pallet": 54,
+    "factor_conversion": 1.0216,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.9,
+    "especificacion_pdf_path": "AH23XBDBV.pdf"
+  },
+  {
+    "marca": "ALD20X7EPSRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9297,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 17.2,
+    "especificacion_pdf_path": "ALD20X7EPSRA.pdf"
+  },
+  {
+    "marca": "ALD20X7RA",
+    "cajas_pallet": 54,
+    "factor_conversion": 0.9297,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 17.2,
+    "especificacion_pdf_path": "ALD20X7RA.pdf"
+  },
+  {
+    "marca": "ALSTDEPSBVRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9351,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.3,
+    "especificacion_pdf_path": "ALSTDEPSBVRA.pdf"
+  },
+  {
+    "marca": "ALSTDEPSRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9351,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.3,
+    "especificacion_pdf_path": "ALSTDEPSRA.pdf"
+  },
+  {
+    "marca": "AS17X6PBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.854,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 15.8,
+    "especificacion_pdf_path": "AS17X6PBRA.pdf"
+  },
+  {
+    "marca": "AS17X6RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.854,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 15.8,
+    "especificacion_pdf_path": "AS17X6RA.pdf"
+  },
+  {
+    "marca": "ASGG20X7PBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8918,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16.5,
+    "especificacion_pdf_path": "ASGG20X7PBRA.pdf"
+  },
+  {
+    "marca": "ASGG20X7RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8918,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16.5,
+    "especificacion_pdf_path": "ASGG20X7RA.pdf"
+  },
+  {
+    "marca": "ASSTD17RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9432,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.45,
+    "especificacion_pdf_path": "ASSTD17RA.pdf"
+  },
+  {
+    "marca": "AUMINIBDBV",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "AUMINIBDBV.pdf"
+  },
+  {
+    "marca": "CHIQUITA 404",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "CHIQUITAORG",
+    "cajas_pallet": 48,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CHIQUITAORG.pdf"
+  },
+  {
+    "marca": "CLSIEGEL",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CLSIEGEL.pdf"
+  },
+  {
+    "marca": "CLSMLRA",
+    "cajas_pallet": 66,
+    "factor_conversion": 0.7027,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 13,
+    "especificacion_pdf_path": "CLSMLRA.pdf"
+  },
+  {
+    "marca": "CLSTDBVRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8924,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 16.51,
+    "especificacion_pdf_path": "CLSTDBVRA.pdf"
+  },
+  {
+    "marca": "CLSTDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CLSTDRA.pdf"
+  },
+  {
+    "marca": "CLWSTD",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CLWSTD.pdf"
+  },
+  {
+    "marca": "CLWSTDBV",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CLWSTDBV.pdf"
+  },
+  {
+    "marca": "CODOR13X1,3",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CODOR13X1,3.pdf"
+  },
+  {
+    "marca": "CPSIEGEL",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "CPSIEGEL.pdf"
+  },
+  {
+    "marca": "ED21X5BDBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "ED21X5BDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "ED21X5BDRA.pdf"
+  },
+  {
+    "marca": "EDKORG",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "EDKORG.pdf"
+  },
+  {
+    "marca": "EDKORG-ENSAYO",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "FF16",
+    "cajas_pallet": 66,
+    "factor_conversion": 0.7243243243243244,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 13.4,
+    "especificacion_pdf_path": "FF16.pdf"
+  },
+  {
+    "marca": "FF20X5PBRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "FFB20X5IFPBBVRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8864,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16.4,
+    "especificacion_pdf_path": "FFB20X5IFPBBVRA.pdf"
+  },
+  {
+    "marca": "FFB20X5IFPBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8865,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 16.4,
+    "especificacion_pdf_path": "FFB20X5IFPBRA.pdf"
+  },
+  {
+    "marca": "FFB20X5PBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8486,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 15.7,
+    "especificacion_pdf_path": "FFB20X5PBRA.pdf"
+  },
+  {
+    "marca": "FP12X8RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9081,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 16.8,
+    "especificacion_pdf_path": "FP12X8RA.pdf"
+  },
+  {
+    "marca": "FP12X8SRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.7189,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 13.3,
+    "especificacion_pdf_path": "FP12X8SRA.pdf"
+  },
+  {
+    "marca": "FPX5RA",
+    "cajas_pallet": 66,
+    "factor_conversion": 0.7189,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 13.3,
+    "especificacion_pdf_path": "FPX5RA.pdf"
+  },
+  {
+    "marca": "FSS19X7IFPBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9459,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 17.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "FSS19X7PBIFBVRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9459,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 17.5,
+    "especificacion_pdf_path": "FSS19X7PBIFBVRA.pdf"
+  },
+  {
+    "marca": "FSS19X7PBIFRA V1",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8756756756756756,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16.2,
+    "especificacion_pdf_path": "FSS19X7PBIFRA V1.pdf"
+  },
+  {
+    "marca": "FSS19X7PBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9459,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 17.5,
+    "especificacion_pdf_path": "FSS19X7PBRA.pdf"
+  },
+  {
+    "marca": "IMPP26X5BD",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "IMPP26X5BD.pdf"
+  },
+  {
+    "marca": "IMPP26X5BDBV",
+    "cajas_pallet": 54,
+    "factor_conversion": 0.8135,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 15.05,
+    "especificacion_pdf_path": "IMPP26X5BDBV.pdf"
+  },
+  {
+    "marca": "LD17RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9432,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.45,
+    "especificacion_pdf_path": "LD17RA.pdf"
+  },
+  {
+    "marca": "LDPP17RA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9432,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.45,
+    "especificacion_pdf_path": "LDPP17RA.pdf"
+  },
+  {
+    "marca": "M20X5IFPBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8865,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 16.4,
+    "especificacion_pdf_path": "M20X5IFPBRA.pdf"
+  },
+  {
+    "marca": "M20X5PBRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 0.8865,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 16.4,
+    "especificacion_pdf_path": "M20X5PBRA.pdf"
+  },
+  {
+    "marca": "M22X6IFPBRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.8757,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16.2,
+    "especificacion_pdf_path": "M22X6IFPBRA.pdf"
+  },
+  {
+    "marca": "M22X6PBRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 0.8757,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16.2,
+    "especificacion_pdf_path": "M22X6PBRA.pdf"
+  },
+  {
+    "marca": "MARIOBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MARIOBVRA.pdf"
+  },
+  {
+    "marca": "MARIORA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MARIORA.pdf"
+  },
+  {
+    "marca": "MPBORG303",
+    "cajas_pallet": 48,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MPBORG303.pdf"
+  },
+  {
+    "marca": "MS28X5PBRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MS28X5PBRA.pdf"
+  },
+  {
+    "marca": "MSSMX5PBRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 0.8648,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 16,
+    "especificacion_pdf_path": "MSSMX5PBRA.pdf"
+  },
+  {
+    "marca": "MSSTDBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MSSTDBVRA.pdf"
+  },
+  {
+    "marca": "MSSTDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MSSTDRA.pdf"
+  },
+  {
+    "marca": "MSTDIFBVRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9567,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.7,
+    "especificacion_pdf_path": "MSTDIFBVRA.pdf"
+  },
+  {
+    "marca": "MSTDIFRA",
+    "cajas_pallet": 55,
+    "factor_conversion": 0.9568,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 17.7,
+    "especificacion_pdf_path": "MSTDIFRA.pdf"
+  },
+  {
+    "marca": "MSTDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "MSTDRA.pdf"
+  },
+  {
+    "marca": "NETTOBIOBDOR",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "NETTOBIOBDOR.pdf"
+  },
+  {
+    "marca": "ORG2LB338",
+    "cajas_pallet": 48,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "ORG2LB338.pdf"
+  },
+  {
+    "marca": "PL22X5BDBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "PL22X5BDBVRA.pdf"
+  },
+  {
+    "marca": "PL22X5BDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "PL22X5BDRA.pdf"
+  },
+  {
+    "marca": "SIEGELBV",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "SIEGELCA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "SIEGELCA.pdf"
+  },
+  {
+    "marca": "SIEGELCA-ENSAYO",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "SMLRA",
+    "cajas_pallet": 66,
+    "factor_conversion": 0.7027,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 13,
+    "especificacion_pdf_path": "SMLRA.pdf"
+  },
+  {
+    "marca": "SPARRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "STD",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "STDBV",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "STDBV.pdf"
+  },
+  {
+    "marca": "STDBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "STDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "STDSBVRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "STDSBVRA.pdf"
+  },
+  {
+    "marca": "STDSRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Corta",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": null
+  },
+  {
+    "marca": "TSTDRA",
+    "cajas_pallet": 54,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "TSTDRA.pdf"
+  },
+  {
+    "marca": "TSTDRA-MINI",
+    "cajas_pallet": 18,
+    "factor_conversion": 1,
+    "tipo_caja": "Convencional",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "TSTDRA-MINI.pdf"
+  },
+  {
+    "marca": "WALMORG337",
+    "cajas_pallet": 48,
+    "factor_conversion": 1,
+    "tipo_caja": "Orgánica",
+    "especificacion": "Larga",
+    "peso_neto_kg": 18.5,
+    "especificacion_pdf_path": "WALMORG337.pdf"
+  }
+]

@@ -1,0 +1,122 @@
+[
+  {
+    "nombre": "COSTANERA",
+    "hectareas": 6.76,
+    "latitud": 10.835468893372042,
+    "longitud": -74.17579023174376,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "DILIA ESTHER",
+    "hectareas": 57.23,
+    "latitud": 10.83278275396889,
+    "longitud": -74.16784328389876,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "ESMERALDA",
+    "hectareas": 76.8,
+    "latitud": 10.841685520042313,
+    "longitud": -74.1779908738519,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "FLORIDA",
+    "hectareas": 121.75,
+    "latitud": 10.789984981825643,
+    "longitud": -74.13518186419904,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "GLORIA MERCEDES",
+    "hectareas": 66.68,
+    "latitud": 10.93260771111359,
+    "longitud": -74.17634747295705,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "GOLONDRINA NUEVA",
+    "hectareas": 46.86,
+    "latitud": 10.835531788515915,
+    "longitud": -74.17528513465781,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "GOLONDRINA VIEJA",
+    "hectareas": 39.52,
+    "latitud": 10.834159472904803,
+    "longitud": -74.16865113926256,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "LA MARIA",
+    "hectareas": 10.27,
+    "latitud": 10.544165,
+    "longitud": -74.103684,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "LAS DELICIAS",
+    "hectareas": 38.12,
+    "latitud": 10.797289064032043,
+    "longitud": -74.14208437787951,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "LUCILA MARINA",
+    "hectareas": 181.22,
+    "latitud": 10.55573355408671,
+    "longitud": -74.22962920186757,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "MACONDO",
+    "hectareas": 22.92,
+    "latitud": 10.45704,
+    "longitud": 74.84035,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "MILADY",
+    "hectareas": 57,
+    "latitud": 10.92135112566834,
+    "longitud": -74.17090589735467,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "RAQUELITA",
+    "hectareas": 26.19,
+    "latitud": 10.83532185936731,
+    "longitud": -74.15613636088274,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "TAMACARA",
+    "hectareas": 97.45,
+    "latitud": 10.783604600413286,
+    "longitud": -74.12364997161116,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  },
+  {
+    "nombre": "TROPICANA",
+    "hectareas": 19.5,
+    "latitud": 10.853386033545785,
+    "longitud": -74.19486539518347,
+    "responsable_nombre": null,
+    "responsable_correo": null
+  }
+]

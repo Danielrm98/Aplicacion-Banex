@@ -17,6 +17,10 @@ export async function conCacheLocal<T>(
   // PromiseLike y no Promise: los builders de supabase-js son "thenables"
   // pero no implementan toda la interfaz de Promise (catch/finally/...).
   consulta: () => PromiseLike<ResultadoConsulta<T>>,
+  // Respaldo incluido en el propio build (ver src/data/*Base.json), solo para
+  // un dispositivo que nunca tuvo conexión con esta versión de la app y por
+  // lo tanto todavía no tiene nada en su caché local.
+  respaldoBase?: T,
 ): Promise<{ data: T | null; error: string | null }> {
   const limite = new Promise<'limite'>((resolve) => setTimeout(() => resolve('limite'), LIMITE_MS))
 
@@ -30,6 +34,7 @@ export async function conCacheLocal<T>(
   if (resultado === 'limite' || resultado.error) {
     const cacheado = leerCache<T>(clave)
     if (cacheado !== null) return { data: cacheado, error: null }
+    if (respaldoBase !== undefined) return { data: respaldoBase, error: null }
     return { data: null, error: resultado === 'limite' ? 'Sin conexión.' : resultado.error!.message }
   }
 
