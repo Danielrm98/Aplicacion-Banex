@@ -1,4 +1,4 @@
-const LIMITE_MS = 4000
+const LIMITE_MS_DEFECTO = 4000
 
 interface ResultadoConsulta<T> {
   data: T | null
@@ -21,8 +21,12 @@ export async function conCacheLocal<T>(
   // un dispositivo que nunca tuvo conexión con esta versión de la app y por
   // lo tanto todavía no tiene nada en su caché local.
   respaldoBase?: T,
+  // Para consultas que piden varias páginas seguidas (como embolses, que ya
+  // supera las 1000 filas por página de PostgREST) el límite por defecto se
+  // queda corto; se puede alargar sin afectar al resto de catálogos.
+  limiteMs = LIMITE_MS_DEFECTO,
 ): Promise<{ data: T | null; error: string | null }> {
-  const limite = new Promise<'limite'>((resolve) => setTimeout(() => resolve('limite'), LIMITE_MS))
+  const limite = new Promise<'limite'>((resolve) => setTimeout(() => resolve('limite'), limiteMs))
 
   let resultado: ResultadoConsulta<T> | 'limite'
   try {
