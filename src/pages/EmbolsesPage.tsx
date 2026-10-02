@@ -198,10 +198,12 @@ function ResumenGeneral({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-            <th className="sticky left-0 z-10 min-w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+            <th className="sticky left-0 z-10 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
               Finca
             </th>
-            <th className="min-w-[70px] border border-gray-200 px-2 py-2 text-center font-medium">Has</th>
+            <th className="sticky left-[160px] z-10 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
+              Has
+            </th>
             {semanas.map((s) => (
               <EncabezadoSemana key={claveSemana(s.anio, s.semana)} s={s} />
             ))}
@@ -256,7 +258,7 @@ function GrupoEmpresa({
           <td className="sticky left-0 z-10 border border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
             {f.nombre}
           </td>
-          <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-500">
+          <td className="sticky left-[160px] z-10 border border-gray-200 bg-white px-2 py-1.5 text-center text-gray-500">
             {f.hectareas != null ? f.hectareas.toLocaleString('es') : '—'}
           </td>
           {semanas.map((s) => (
@@ -368,10 +370,12 @@ function DetalleFinca({
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                <th className="sticky left-0 z-10 min-w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+                <th className="sticky left-0 z-10 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
                   Lote
                 </th>
-                <th className="min-w-[70px] border border-gray-200 px-2 py-2 text-center font-medium">Has</th>
+                <th className="sticky left-[120px] z-10 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
+                  Has
+                </th>
                 {semanas.map((s) => (
                   <EncabezadoSemana key={claveSemana(s.anio, s.semana)} s={s} />
                 ))}
@@ -383,7 +387,7 @@ function DetalleFinca({
                   <td className="sticky left-0 z-10 border border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
                     {l.nombre}
                   </td>
-                  <td className="border border-gray-200 px-2 py-1.5 text-center text-gray-500">
+                  <td className="sticky left-[120px] z-10 border border-gray-200 bg-white px-2 py-1.5 text-center text-gray-500">
                     {l.hectareas != null ? l.hectareas.toLocaleString('es') : '—'}
                   </td>
                   {semanas.map((s) => {
