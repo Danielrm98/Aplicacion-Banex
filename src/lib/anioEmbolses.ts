@@ -1,6 +1,10 @@
 // El "año de embolses" de BANEX no es el año calendario: siempre arranca en
 // la semana ISO 42 del año calendario anterior (esos racimos se cosechan ya
-// entrado el año siguiente) y llega hasta la semana 41 del año en curso.
+// entrado el año siguiente) y se ve hasta la semana 52/53 del año en curso —
+// las semanas 42 en adelante de ese año en curso ya pertenecen al siguiente
+// año de embolses, pero se siguen registrando dentro de este año calendario,
+// así que se muestran aquí también para no tener que cambiar de año a mitad
+// de la captura semanal.
 
 function pDeAnio(anio: number): number {
   return (anio + Math.floor(anio / 4) - Math.floor(anio / 100) + Math.floor(anio / 400)) % 7
@@ -21,7 +25,7 @@ export function semanasDelAnioEmbolses(anioEmbolses: number): SemanaReal[] {
   const semanas: SemanaReal[] = []
   const anioAnterior = anioEmbolses - 1
   for (let s = 42; s <= semanasIsoEnAnio(anioAnterior); s++) semanas.push({ anio: anioAnterior, semana: s })
-  for (let s = 1; s <= 41; s++) semanas.push({ anio: anioEmbolses, semana: s })
+  for (let s = 1; s <= semanasIsoEnAnio(anioEmbolses); s++) semanas.push({ anio: anioEmbolses, semana: s })
   return semanas
 }
 

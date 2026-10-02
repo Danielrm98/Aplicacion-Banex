@@ -18,7 +18,16 @@ export function useLotes() {
       setError(error)
     } else {
       setError(null)
-      setLotes(data ?? [])
+      // Orden numérico ("2" antes que "10"), no alfabético: el nombre del
+      // lote suele ser un número, y el orden alfabético de texto dejaba el
+      // 10 y el 11 antes del 2.
+      setLotes(
+        [...(data ?? [])].sort((a, b) =>
+          a.finca === b.finca
+            ? a.nombre.localeCompare(b.nombre, undefined, { numeric: true })
+            : a.finca.localeCompare(b.finca),
+        ),
+      )
     }
     setLoading(false)
   }, [])

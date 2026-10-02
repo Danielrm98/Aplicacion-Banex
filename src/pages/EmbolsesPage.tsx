@@ -4,7 +4,7 @@ import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
-import { semanasDelAnioEmbolses, anioEmbolsesDe, type SemanaReal } from '../lib/anioEmbolses'
+import { semanasDelAnioEmbolses, anioEmbolsesDe, semanasIsoEnAnio, type SemanaReal } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
@@ -119,7 +119,7 @@ export default function EmbolsesPage() {
           />
         </label>
         <p className="text-xs text-gray-400">
-          Va de la semana 42/{anioEmbolses - 1} a la semana 41/{anioEmbolses}.
+          Va de la semana 42/{anioEmbolses - 1} a la semana {semanasIsoEnAnio(anioEmbolses)}/{anioEmbolses}.
         </p>
       </div>
 
