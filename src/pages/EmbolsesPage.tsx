@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../lib/AuthContext'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
@@ -41,12 +41,23 @@ export default function EmbolsesPage() {
   const [anioEmbolses, setAnioEmbolses] = useState(() =>
     anioEmbolsesDe(new Date().getFullYear(), getIsoWeek(fechaLocalHoy())),
   )
-  const [fincaSeleccionada, setFincaSeleccionada] = useState<string>(() => {
-    if (fincaUnicaOperador) return fincaUnicaOperador
+  const [fincaSeleccionada, setFincaSeleccionada] = useState<string>('')
+
+  // El perfil (y por lo tanto fincaUnicaOperador/fincasDisponibles) carga de
+  // forma asíncrona; si todavía no estaba listo en el primer render, hay que
+  // volver a decidir la finca una vez que sí lo esté, o el operario se queda
+  // viendo "Selecciona una finca" aunque el selector ya muestre la suya.
+  useEffect(() => {
+    if (fincaUnicaOperador) {
+      if (fincaSeleccionada !== fincaUnicaOperador) setFincaSeleccionada(fincaUnicaOperador)
+      return
+    }
+    if (fincasDisponibles.length === 0) return
+    if (fincaSeleccionada && (fincaSeleccionada === OPCION_TODAS || fincasDisponibles.some((f) => f.nombre === fincaSeleccionada))) return
     const guardada = obtenerFincaActual()
-    if (guardada && fincasDisponibles.some((f) => f.nombre === guardada)) return guardada
-    return esAdmin ? OPCION_TODAS : ''
-  })
+    if (guardada && fincasDisponibles.some((f) => f.nombre === guardada)) setFincaSeleccionada(guardada)
+    else if (esAdmin) setFincaSeleccionada(OPCION_TODAS)
+  }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada, esAdmin])
 
   const { lotes, loading: loadingLotes } = useLotes()
   const { embolses, loading: loadingEmbolses, refetch: refetchEmbolses } = useEmbolses({ anioEmbolses })
@@ -136,6 +147,7 @@ export default function EmbolsesPage() {
           cantidadLote={cantidadLote}
           userId={session?.user.id ?? ''}
           onGuardado={refetchEmbolses}
+          soloLectura={!esAdmin}
         />
       ) : (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
@@ -319,6 +331,7 @@ function DetalleFinca({
   cantidadLote,
   userId,
   onGuardado,
+  soloLectura,
 }: {
   finca: Finca
   lotes: Lote[]
@@ -326,6 +339,7 @@ function DetalleFinca({
   cantidadLote: (loteId: string, s: SemanaReal) => number
   userId: string
   onGuardado: () => void
+  soloLectura: boolean
 }) {
   const [borrador, setBorrador] = useState<Record<string, string>>(() => {
     const inicial: Record<string, string> = {}
@@ -399,6 +413,12 @@ function DetalleFinca({
         </h2>
       </div>
 
+      {soloLectura && (
+        <p className="mb-3 text-xs text-gray-500">
+          Esta tabla se actualiza sola con lo que se registre en Registro de embolse — aquí no se edita.
+        </p>
+      )}
+
       {lotes.length === 0 ? (
         <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
           Esta finca todavía no tiene lotes. Créalos en Catálogo → Lotes.
@@ -435,18 +455,22 @@ function DetalleFinca({
                     const clave = `${l.id}_${claveSemana(s.anio, s.semana)}`
                     return (
                       <td key={clave} className="border border-gray-200 p-0.5 text-center">
-                        <input
-                          type="number"
-                          min={0}
-                          value={valorDe(l.id, s)}
-                          onChange={(e) => setBorrador((prev) => ({ ...prev, [clave]: e.target.value }))}
-                          onBlur={(e) => guardarCelda(l.id, s, e.target.value)}
-                          disabled={guardando.has(clave)}
-                          title={conError[clave]}
-                          className={`w-14 rounded border px-1 py-1 text-center text-xs text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:opacity-50 ${
-                            conError[clave] ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50 focus:border-banex-500 focus:bg-white'
-                          }`}
-                        />
+                        {soloLectura ? (
+                          <span className="block py-1 text-xs text-gray-700">{valorDe(l.id, s) || '0'}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            min={0}
+                            value={valorDe(l.id, s)}
+                            onChange={(e) => setBorrador((prev) => ({ ...prev, [clave]: e.target.value }))}
+                            onBlur={(e) => guardarCelda(l.id, s, e.target.value)}
+                            disabled={guardando.has(clave)}
+                            title={conError[clave]}
+                            className={`w-14 rounded border px-1 py-1 text-center text-xs text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:opacity-50 ${
+                              conError[clave] ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50 focus:border-banex-500 focus:bg-white'
+                            }`}
+                          />
+                        )}
                       </td>
                     )
                   })}

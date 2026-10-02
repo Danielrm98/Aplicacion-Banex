@@ -5,6 +5,9 @@ export interface Embolse {
   anio: number
   semana: number
   cantidad: number
+  primera_vuelta: number | null
+  segunda_vuelta: number | null
+  debunching: number | null
   created_at: string
 }
 

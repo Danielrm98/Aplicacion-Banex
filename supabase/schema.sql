@@ -751,6 +751,11 @@ create table public.embolses (
   -- siempre arranca en la semana 42 del año calendario anterior.
   semana integer not null check (semana between 1 and 53),
   cantidad integer not null default 0 check (cantidad >= 0),
+  -- Captura detallada de "Registro de embolse" (1ra/2da vuelta + debunching);
+  -- cantidad = primera_vuelta + segunda_vuelta cuando se carga desde ahí.
+  primera_vuelta integer,
+  segunda_vuelta integer,
+  debunching integer,
   created_at timestamptz not null default now(),
   unique (lote_id, anio, semana)
 );
