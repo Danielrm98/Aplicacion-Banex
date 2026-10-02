@@ -5,4 +5,5 @@ export interface Finca {
   longitud: number | null
   responsable_nombre: string | null
   responsable_correo: string | null
+  empresa: string | null
 }

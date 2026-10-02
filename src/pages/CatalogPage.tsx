@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
+import { useLotes } from '../lib/useLotes'
 import { usePerfil } from '../lib/usePerfil'
 import { usePerfiles } from '../lib/usePerfiles'
 import { crearUsuario, eliminarUsuario, resetearPassword } from '../lib/adminUsuarios'
@@ -10,6 +11,7 @@ import { useDraftState } from '../lib/useDraftState'
 import { CAJA_20KG_KG } from '../types/produccion'
 import type { Referencia } from '../types/produccion'
 import type { Finca } from '../types/finca'
+import type { Lote } from '../types/lote'
 import type { Perfil, PerfilConFincas } from '../types/perfil'
 import SectionHeading from '../components/SectionHeading'
 import TabButton from '../components/TabButton'
@@ -23,7 +25,7 @@ const emptyForm = {
 }
 
 export default function CatalogPage() {
-  const [vista, setVista] = useState<'referencias' | 'fincas' | 'usuarios'>('referencias')
+  const [vista, setVista] = useState<'referencias' | 'fincas' | 'lotes' | 'usuarios'>('referencias')
   const { perfil, loading } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
 
@@ -50,6 +52,11 @@ export default function CatalogPage() {
           Fincas
         </TabButton>
         {esAdmin && (
+          <TabButton active={vista === 'lotes'} onClick={() => setVista('lotes')}>
+            Lotes
+          </TabButton>
+        )}
+        {esAdmin && (
           <TabButton active={vista === 'usuarios'} onClick={() => setVista('usuarios')}>
             Usuarios
           </TabButton>
@@ -60,6 +67,8 @@ export default function CatalogPage() {
         <ReferenciasTab />
       ) : vista === 'fincas' ? (
         <FincasTab />
+      ) : vista === 'lotes' ? (
+        esAdmin ? <LotesTab /> : null
       ) : esAdmin ? (
         <UsuariosTab />
       ) : null}
@@ -390,6 +399,7 @@ function ReferenciaRow({
 function FincasTab() {
   const { fincas, loading, error, refetch } = useFincas()
   const totalHectareas = fincas.reduce((sum, f) => sum + (f.hectareas ?? 0), 0)
+  const empresasExistentes = Array.from(new Set(fincas.map((f) => f.empresa).filter((e): e is string => !!e))).sort()
 
   const [nombreNuevo, setNombreNuevo, limpiarNombreNuevo] = useDraftState('approban_borrador_nueva_finca', '')
   const [formError, setFormError] = useState<string | null>(null)
@@ -472,6 +482,7 @@ function FincasTab() {
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
                   <th className="py-2 pr-3 font-medium">Finca</th>
+                  <th className="py-2 pr-3 font-medium">Empresa</th>
                   <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
                   <th className="py-2 pr-3 font-medium">Latitud</th>
                   <th className="py-2 pr-3 font-medium">Longitud</th>
@@ -486,6 +497,11 @@ function FincasTab() {
                 ))}
               </tbody>
             </table>
+            <datalist id="empresas-existentes">
+              {empresasExistentes.map((e) => (
+                <option key={e} value={e} />
+              ))}
+            </datalist>
           </div>
         )}
       </div>
@@ -501,6 +517,7 @@ function FincaRow({
   onSaved: () => void
 }) {
   const nombre = finca.nombre
+  const [draftEmpresa, setDraftEmpresa] = useState(finca.empresa ?? '')
   const [draftHectareas, setDraftHectareas] = useState<string>(finca.hectareas != null ? String(finca.hectareas) : '')
   const [draftLat, setDraftLat] = useState<string>(finca.latitud != null ? String(finca.latitud) : '')
   const [draftLon, setDraftLon] = useState<string>(finca.longitud != null ? String(finca.longitud) : '')
@@ -508,12 +525,14 @@ function FincaRow({
   const [draftResponsableCorreo, setDraftResponsableCorreo] = useState(finca.responsable_correo ?? '')
   const [busy, setBusy] = useState(false)
 
+  const empresaValue = draftEmpresa.trim() === '' ? null : draftEmpresa.trim()
   const hectareasValue = draftHectareas === '' ? null : Number(draftHectareas)
   const latValue = draftLat === '' ? null : Number(draftLat)
   const lonValue = draftLon === '' ? null : Number(draftLon)
   const responsableNombreValue = draftResponsableNombre.trim() === '' ? null : draftResponsableNombre.trim()
   const responsableCorreoValue = draftResponsableCorreo.trim() === '' ? null : draftResponsableCorreo.trim()
   const dirty =
+    empresaValue !== finca.empresa ||
     hectareasValue !== finca.hectareas ||
     latValue !== finca.latitud ||
     lonValue !== finca.longitud ||
@@ -524,6 +543,7 @@ function FincaRow({
     setBusy(true)
     const { error } = await supabase.from('fincas').upsert({
       nombre,
+      empresa: empresaValue,
       hectareas: hectareasValue,
       latitud: latValue,
       longitud: lonValue,
@@ -541,6 +561,18 @@ function FincaRow({
   return (
     <tr className="border-b border-gray-100">
       <td className="py-1.5 pr-3 font-medium text-gray-900">{nombre}</td>
+      <td className="py-1.5 pr-3">
+        <div className="w-32">
+          <input
+            type="text"
+            list="empresas-existentes"
+            value={draftEmpresa}
+            onChange={(e) => setDraftEmpresa(e.target.value)}
+            className={inputClass}
+            placeholder="Ej. BANEX"
+          />
+        </div>
+      </td>
       <td className="py-1.5 pr-3">
         <div className="w-28">
           <input
@@ -608,6 +640,212 @@ function FincaRow({
         >
           Guardar
         </button>
+      </td>
+    </tr>
+  )
+}
+
+function LotesTab() {
+  const { fincas } = useFincas()
+  const { lotes, loading, error, refetch } = useLotes()
+  const [finca, setFinca] = useState('')
+  const fincaActiva = finca || fincas[0]?.nombre || ''
+  const lotesFinca = lotes.filter((l) => l.finca === fincaActiva)
+
+  const [nombreNuevo, setNombreNuevo] = useState('')
+  const [hectareasNuevo, setHectareasNuevo] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [creando, setCreando] = useState(false)
+
+  async function agregarLote(e: FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+
+    const nombre = nombreNuevo.trim()
+    if (!nombre) {
+      setFormError('Escribe el nombre o número del lote.')
+      return
+    }
+    if (lotesFinca.some((l) => l.nombre.toLowerCase() === nombre.toLowerCase())) {
+      setFormError(`"${fincaActiva}" ya tiene un lote llamado "${nombre}".`)
+      return
+    }
+
+    setCreando(true)
+    const { error: insertError } = await supabase.from('lotes').insert({
+      finca: fincaActiva,
+      nombre,
+      hectareas: hectareasNuevo === '' ? null : Number(hectareasNuevo),
+    })
+    setCreando(false)
+
+    if (insertError) {
+      setFormError(insertError.message)
+      return
+    }
+    setNombreNuevo('')
+    setHectareasNuevo('')
+    refetch()
+  }
+
+  return (
+    <>
+      <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
+        <SectionHeading>Agregar lote</SectionHeading>
+        <form onSubmit={agregarLote} className="flex flex-wrap items-end gap-3">
+          <Field label="Finca">
+            <select value={fincaActiva} onChange={(e) => setFinca(e.target.value)} className={inputClass}>
+              {fincas.map((f) => (
+                <option key={f.nombre} value={f.nombre}>
+                  {f.nombre}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Nombre o número del lote">
+            <input
+              type="text"
+              required
+              value={nombreNuevo}
+              onChange={(e) => setNombreNuevo(e.target.value)}
+              className={inputClass}
+              placeholder="Ej. 1"
+            />
+          </Field>
+          <Field label="Hectareaje (ha)">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={hectareasNuevo}
+              onChange={(e) => setHectareasNuevo(e.target.value)}
+              className={inputClass}
+              placeholder="—"
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={creando}
+            className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
+          >
+            {creando ? 'Guardando...' : 'Agregar lote'}
+          </button>
+        </form>
+        {formError && <p className="mt-2 text-sm text-red-600">{formError}</p>}
+      </div>
+
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <SectionHeading>
+          Lotes de {fincaActiva || '—'} ({lotesFinca.length})
+        </SectionHeading>
+        <p className="mb-3 text-xs text-gray-500">
+          Estos lotes son los que aparecen para registrar embolses de esta finca.
+        </p>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+        ) : error ? (
+          <p className="py-8 text-center text-sm text-red-600">{error}</p>
+        ) : lotesFinca.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-500">Esta finca todavía no tiene lotes.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-2 pr-3 font-medium">Lote</th>
+                  <th className="py-2 pr-3 font-medium">Hectareaje (ha)</th>
+                  <th className="py-2 pr-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lotesFinca.map((l) => (
+                  <LoteRow key={l.id} lote={l} onChanged={refetch} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+function LoteRow({ lote, onChanged }: { lote: Lote; onChanged: () => void }) {
+  const [draftNombre, setDraftNombre] = useState(lote.nombre)
+  const [draftHectareas, setDraftHectareas] = useState(lote.hectareas != null ? String(lote.hectareas) : '')
+  const [busy, setBusy] = useState(false)
+
+  const hectareasValue = draftHectareas === '' ? null : Number(draftHectareas)
+  const dirty = draftNombre.trim() !== lote.nombre || hectareasValue !== lote.hectareas
+
+  async function guardar() {
+    setBusy(true)
+    const { error } = await supabase
+      .from('lotes')
+      .update({ nombre: draftNombre.trim(), hectareas: hectareasValue })
+      .eq('id', lote.id)
+    setBusy(false)
+    if (error) {
+      alert(`No se pudo guardar: ${error.message}`)
+      return
+    }
+    onChanged()
+  }
+
+  async function eliminar() {
+    if (!confirm(`¿Eliminar el lote "${lote.nombre}"? También se borran sus embolses registrados.`)) return
+    setBusy(true)
+    const { error } = await supabase.from('lotes').delete().eq('id', lote.id)
+    setBusy(false)
+    if (error) {
+      alert(`No se pudo eliminar: ${error.message}`)
+      return
+    }
+    onChanged()
+  }
+
+  return (
+    <tr className="border-b border-gray-100">
+      <td className="py-1.5 pr-3">
+        <div className="w-28">
+          <input
+            type="text"
+            value={draftNombre}
+            onChange={(e) => setDraftNombre(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3">
+        <div className="w-28">
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            value={draftHectareas}
+            onChange={(e) => setDraftHectareas(e.target.value)}
+            className={inputClass}
+            placeholder="—"
+          />
+        </div>
+      </td>
+      <td className="py-1.5 pr-3 whitespace-nowrap">
+        <div className="flex gap-2">
+          <button
+            onClick={guardar}
+            disabled={!dirty || busy}
+            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Guardar
+          </button>
+          <button
+            onClick={eliminar}
+            disabled={busy}
+            className="rounded-md border border-red-200 bg-white px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+          >
+            Eliminar
+          </button>
+        </div>
       </td>
     </tr>
   )

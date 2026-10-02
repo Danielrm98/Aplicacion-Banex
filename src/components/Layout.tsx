@@ -11,6 +11,7 @@ const navItems = [
   { to: '/plan', label: 'Plan', icon: '🎯' },
   { to: '/plan-general', label: 'Plan general', icon: '📊' },
   { to: '/venta-canastillas', label: 'Venta canastillas', icon: '📦' },
+  { to: '/embolses', label: 'Embolses', icon: '🎗️' },
   { to: '/registros', label: 'Historial', icon: '🗂️' },
   { to: '/reportes', label: 'Reportes', icon: '📈' },
   { to: '/especificaciones', label: 'Especificaciones', icon: '📄' },
