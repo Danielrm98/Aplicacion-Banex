@@ -149,7 +149,7 @@ function EncabezadoSemana({ s }: { s: SemanaReal }) {
   const estilo = ESTILO_CINTA[color]
   return (
     <th
-      className="min-w-[56px] border border-gray-200 px-1.5 py-1.5 text-center font-medium"
+      className="w-[56px] border border-gray-200 px-1.5 py-1.5 text-center font-medium"
       style={{ backgroundColor: estilo.bg, color: estilo.texto }}
       title={`Semana ${s.semana}/${s.anio} · Cinta ${color.charAt(0)}${color.slice(1).toLowerCase()}`}
     >
@@ -193,9 +193,21 @@ function ResumenGeneral({
     return fincas.reduce((sum, f) => sum + totalFinca(f.nombre, s), 0)
   }
 
+  function totalAnualFinca(finca: string) {
+    return semanas.reduce((sum, s) => sum + totalFinca(finca, s), 0)
+  }
+
+  function totalAnualEmpresa(fincasEmpresa: Finca[]) {
+    return semanas.reduce((sum, s) => sum + totalEmpresa(fincasEmpresa, s), 0)
+  }
+
+  function totalAnualGeneral() {
+    return semanas.reduce((sum, s) => sum + totalGeneral(s), 0)
+  }
+
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
             <th className="sticky left-0 z-10 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
@@ -207,6 +219,9 @@ function ResumenGeneral({
             {semanas.map((s) => (
               <EncabezadoSemana key={claveSemana(s.anio, s.semana)} s={s} />
             ))}
+            <th className="w-[90px] border border-gray-200 bg-gray-100 px-2 py-2 text-center font-medium">
+              Total año
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -218,6 +233,8 @@ function ResumenGeneral({
               semanas={semanas}
               totalFinca={totalFinca}
               totalEmpresa={totalEmpresa}
+              totalAnualFinca={totalAnualFinca}
+              totalAnualEmpresa={totalAnualEmpresa}
             />
           ))}
         </tbody>
@@ -231,6 +248,9 @@ function ResumenGeneral({
                 {totalGeneral(s).toLocaleString('es')}
               </td>
             ))}
+            <td className="border border-gray-200 bg-banex-100/60 px-2 py-1.5 text-center">
+              {totalAnualGeneral().toLocaleString('es')}
+            </td>
           </tr>
         </tfoot>
       </table>
@@ -244,12 +264,16 @@ function GrupoEmpresa({
   semanas,
   totalFinca,
   totalEmpresa,
+  totalAnualFinca,
+  totalAnualEmpresa,
 }: {
   empresa: string
   fincas: Finca[]
   semanas: SemanaReal[]
   totalFinca: (finca: string, s: SemanaReal) => number
   totalEmpresa: (fincas: Finca[], s: SemanaReal) => number
+  totalAnualFinca: (finca: string) => number
+  totalAnualEmpresa: (fincas: Finca[]) => number
 }) {
   return (
     <>
@@ -266,6 +290,9 @@ function GrupoEmpresa({
               {totalFinca(f.nombre, s).toLocaleString('es')}
             </td>
           ))}
+          <td className="border border-gray-200 bg-gray-50 px-2 py-1.5 text-center font-semibold text-banex-800">
+            {totalAnualFinca(f.nombre).toLocaleString('es')}
+          </td>
         </tr>
       ))}
       <tr className="border-b-2 border-banex-100 bg-banex-50/40 font-semibold text-banex-800">
@@ -277,6 +304,9 @@ function GrupoEmpresa({
             {totalEmpresa(fincas, s).toLocaleString('es')}
           </td>
         ))}
+        <td className="border border-gray-200 bg-banex-100/40 px-2 py-1.5 text-center">
+          {totalAnualEmpresa(fincas).toLocaleString('es')}
+        </td>
       </tr>
     </>
   )
@@ -316,6 +346,14 @@ function DetalleFinca({
 
   function totalSemana(s: SemanaReal) {
     return lotes.reduce((sum, l) => sum + (Number(valorDe(l.id, s)) || 0), 0)
+  }
+
+  function totalAnualLote(loteId: string) {
+    return semanas.reduce((sum, s) => sum + (Number(valorDe(loteId, s)) || 0), 0)
+  }
+
+  function totalAnualGeneral() {
+    return semanas.reduce((sum, s) => sum + totalSemana(s), 0)
   }
 
   async function guardarCelda(loteId: string, s: SemanaReal, valorTexto: string) {
@@ -367,7 +405,7 @@ function DetalleFinca({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
                 <th className="sticky left-0 z-10 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
@@ -379,6 +417,9 @@ function DetalleFinca({
                 {semanas.map((s) => (
                   <EncabezadoSemana key={claveSemana(s.anio, s.semana)} s={s} />
                 ))}
+                <th className="w-[90px] border border-gray-200 bg-gray-100 px-2 py-2 text-center font-medium">
+                  Total año
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -409,6 +450,9 @@ function DetalleFinca({
                       </td>
                     )
                   })}
+                  <td className="border border-gray-200 bg-gray-50 px-2 py-1.5 text-center font-semibold text-banex-800">
+                    {totalAnualLote(l.id).toLocaleString('es')}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -422,6 +466,9 @@ function DetalleFinca({
                     {totalSemana(s).toLocaleString('es')}
                   </td>
                 ))}
+                <td className="border border-gray-200 bg-banex-100/60 px-2 py-1.5 text-center">
+                  {totalAnualGeneral().toLocaleString('es')}
+                </td>
               </tr>
             </tfoot>
           </table>
