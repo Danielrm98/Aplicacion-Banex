@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { usePerfil } from '../lib/usePerfil'
@@ -6,33 +7,76 @@ import { BANEX_LOGO_URL } from '../lib/logo'
 import TextSizeControl from './TextSizeControl'
 
 const navItems = [
-  { to: '/', label: 'Registrar', end: true },
-  { to: '/plan', label: 'Plan' },
-  { to: '/plan-general', label: 'Plan general' },
-  { to: '/venta-canastillas', label: 'Venta canastillas' },
-  { to: '/registros', label: 'Historial' },
-  { to: '/reportes', label: 'Reportes' },
-  { to: '/especificaciones', label: 'Especificaciones' },
-  { to: '/catalogo', label: 'Catálogo' },
+  { to: '/', label: 'Registrar', icon: '📝', end: true },
+  { to: '/plan', label: 'Plan', icon: '🎯' },
+  { to: '/plan-general', label: 'Plan general', icon: '📊' },
+  { to: '/venta-canastillas', label: 'Venta canastillas', icon: '📦' },
+  { to: '/registros', label: 'Historial', icon: '🗂️' },
+  { to: '/reportes', label: 'Reportes', icon: '📈' },
+  { to: '/especificaciones', label: 'Especificaciones', icon: '📄' },
+  { to: '/catalogo', label: 'Catálogo', icon: '⚙️' },
 ]
 
 const SOLO_ADMIN = ['/catalogo', '/plan-general']
-// En el celular, la barra inferior ya tenía demasiados menús y se veían
-// apilados; "Especificaciones" se saca de ahí y se deja como acceso directo
-// arriba, junto al logo.
-const MOVIDOS_ARRIBA_EN_MOVIL = ['/especificaciones']
+const CLAVE_EXPANDIDO = 'approban_menu_expandido'
 
 export default function Layout() {
   const { perfil } = usePerfil()
   const items = perfil?.rol === 'operador' ? navItems.filter((item) => !SOLO_ADMIN.includes(item.to)) : navItems
-  const itemsBarraInferior = items.filter((item) => !MOVIDOS_ARRIBA_EN_MOVIL.includes(item.to))
   const { pendientes, sincronizando, sincronizarAhora } = useColaSincronizacion()
 
+  // En escritorio se recuerda si el menú queda expandido (con etiquetas) o
+  // reducido a solo íconos; en celular siempre arranca cerrado (el ancho de
+  // pantalla no alcanza para dejarlo abierto encima del contenido).
+  const [expandido, setExpandido] = useState(() => {
+    try {
+      return localStorage.getItem(CLAVE_EXPANDIDO) !== 'false'
+    } catch {
+      return true
+    }
+  })
+  const [abiertoMovil, setAbiertoMovil] = useState(false)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLAVE_EXPANDIDO, String(expandido))
+    } catch {
+      // localStorage no disponible: no se recuerda la preferencia, sin más consecuencia.
+    }
+  }, [expandido])
+
+  function alternarMenu() {
+    setExpandido((v) => !v)
+    setAbiertoMovil((v) => !v)
+  }
+
   return (
-    <div className="min-h-svh pb-14 sm:pb-0">
-      <header className="sticky top-0 z-20 border-b border-banex-800 bg-gradient-to-r from-banex-700 via-banex-700 to-banex-800 shadow-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
-          <div className="flex items-center gap-2 sm:gap-2.5">
+    <div className="min-h-svh">
+      <header className="sticky top-0 z-30 border-b border-banex-800 bg-gradient-to-r from-banex-700 via-banex-700 to-banex-800 shadow-md">
+        <div className="flex items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Dos botones (uno por tamaño de pantalla) en vez de uno solo con
+                una condición combinada: así cada uno refleja únicamente su
+                propio estado (el menú se abre distinto en celular que en
+                escritorio) sin tener que detectar el ancho de pantalla en JS. */}
+            <button
+              type="button"
+              onClick={alternarMenu}
+              aria-label={abiertoMovil ? 'Contraer menú' : 'Expandir menú'}
+              aria-expanded={abiertoMovil}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/10 text-banex-50 transition-colors hover:bg-black/20 sm:hidden"
+            >
+              <span className={`inline-block text-sm transition-transform duration-200 ${abiertoMovil ? '' : 'rotate-180'}`}>◀</span>
+            </button>
+            <button
+              type="button"
+              onClick={alternarMenu}
+              aria-label={expandido ? 'Contraer menú' : 'Expandir menú'}
+              aria-expanded={expandido}
+              className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/10 text-banex-50 transition-colors hover:bg-black/20 sm:flex"
+            >
+              <span className={`inline-block text-sm transition-transform duration-200 ${expandido ? '' : 'rotate-180'}`}>◀</span>
+            </button>
             <img
               src={BANEX_LOGO_URL}
               alt="BANEX S.A."
@@ -40,36 +84,6 @@ export default function Layout() {
             />
             <span className="text-sm font-semibold text-white">ApproBan</span>
           </div>
-
-          <nav className="hidden gap-1 rounded-full bg-black/10 p-1 sm:flex">
-            {items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                    isActive ? 'bg-white text-banex-800 shadow-sm' : 'text-banex-50 hover:bg-white/10'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <NavLink
-            to="/especificaciones"
-            title="Especificaciones"
-            aria-label="Especificaciones"
-            className={({ isActive }) =>
-              `flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-base sm:hidden ${
-                isActive ? 'bg-white text-banex-800 shadow-sm' : 'bg-black/10 text-banex-50'
-              }`
-            }
-          >
-            📄
-          </NavLink>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <TextSizeControl />
@@ -97,26 +111,49 @@ export default function Layout() {
         </div>
       )}
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        <Outlet />
-      </main>
+      <div className="flex items-stretch">
+        {abiertoMovil && (
+          <div
+            onClick={() => setAbiertoMovil(false)}
+            aria-hidden="true"
+            className="fixed inset-0 z-10 bg-black/40 sm:hidden"
+          />
+        )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.05)] sm:hidden">
-        {itemsBarraInferior.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              `min-w-0 flex-1 break-words border-t-2 px-0.5 py-2.5 text-center text-xs font-medium ${
-                isActive ? 'border-banex-600 text-banex-700' : 'border-transparent text-gray-500'
-              }`
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+        <aside
+          className={`fixed top-[57px] bottom-0 left-0 z-20 w-64 transform border-r border-gray-200 bg-white transition-transform duration-200 sm:static sm:z-0 sm:top-auto sm:bottom-auto sm:shrink-0 sm:translate-x-0 sm:transition-[width] ${
+            abiertoMovil ? 'translate-x-0 shadow-xl' : '-translate-x-full'
+          } ${expandido ? 'sm:w-60' : 'sm:w-14'}`}
+        >
+          <nav className="flex h-full flex-col overflow-y-auto py-3">
+            {items.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                title={item.label}
+                onClick={() => setAbiertoMovil(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'border-r-2 border-banex-600 bg-banex-50 text-banex-800'
+                      : 'border-r-2 border-transparent text-gray-600 hover:bg-gray-50'
+                  }`
+                }
+              >
+                <span className="shrink-0 text-base">{item.icon}</span>
+                <span className={expandido ? 'inline' : 'sm:hidden'}>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto max-w-6xl">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   )
 }
