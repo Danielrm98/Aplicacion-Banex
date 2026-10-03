@@ -354,7 +354,7 @@ function TablaRegistro({
 
   function inputClass(loteId: string) {
     const base =
-      'w-20 rounded-md border px-2 py-1 text-center text-sm text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:opacity-50'
+      'w-full min-w-0 rounded-md border px-1.5 py-1 text-center text-sm text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:opacity-50'
     return conError[loteId]
       ? `${base} border-red-400 bg-red-50`
       : `${base} border-gray-200 bg-gray-50 focus:border-banex-500 focus:bg-white`
@@ -377,22 +377,22 @@ function TablaRegistro({
       </h2>
 
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="w-full table-fixed border-collapse text-sm">
+        <table className="w-[1020px] table-fixed border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
               <th className="sticky left-0 z-10 w-[120px] border-r border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">Lote</th>
               <th className="sticky left-[120px] z-10 w-[70px] border-r border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">Has</th>
-              <th className="px-2 py-2 text-center font-medium">Lunes</th>
-              <th className="px-2 py-2 text-center font-medium">Martes</th>
-              <th className="px-2 py-2 text-center font-medium">Miércoles</th>
-              <th className="px-2 py-2 text-center font-medium">1ra VTA</th>
-              <th className="px-2 py-2 text-center font-medium">Jueves</th>
-              <th className="px-2 py-2 text-center font-medium">Viernes</th>
-              <th className="px-2 py-2 text-center font-medium">Sábado</th>
-              <th className="px-2 py-2 text-center font-medium">2da VTA</th>
-              <th className="px-2 py-2 text-center font-medium">Total</th>
-              <th className="px-2 py-2 text-center font-medium">BLL/HAS</th>
-              <th className="px-2 py-2 text-center font-medium">Debunching</th>
+              <th className="w-[70px] px-2 py-2 text-center font-medium">Lunes</th>
+              <th className="w-[70px] px-2 py-2 text-center font-medium">Martes</th>
+              <th className="w-[70px] px-2 py-2 text-center font-medium">Miércoles</th>
+              <th className="w-[80px] px-2 py-2 text-center font-medium">1ra VTA</th>
+              <th className="w-[70px] px-2 py-2 text-center font-medium">Jueves</th>
+              <th className="w-[70px] px-2 py-2 text-center font-medium">Viernes</th>
+              <th className="w-[70px] px-2 py-2 text-center font-medium">Sábado</th>
+              <th className="w-[80px] px-2 py-2 text-center font-medium">2da VTA</th>
+              <th className="w-[80px] px-2 py-2 text-center font-medium">Total</th>
+              <th className="w-[80px] px-2 py-2 text-center font-medium">BLL/HAS</th>
+              <th className="w-[90px] px-2 py-2 text-center font-medium">Debunching</th>
             </tr>
           </thead>
           <tbody>
@@ -492,8 +492,8 @@ function TablaRegistro({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-              <td className="sticky left-0 z-10 border-r border-banex-100 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL</td>
-              <td className="sticky left-[120px] z-10 border-r border-banex-100 bg-banex-50/50 px-2 py-1.5 text-center">
+              <td className="sticky left-0 z-10 border-r border-banex-100 bg-banex-50 py-1.5 pr-3 pl-4">TOTAL</td>
+              <td className="sticky left-[120px] z-10 border-r border-banex-100 bg-banex-50 px-2 py-1.5 text-center">
                 {totalHas.toLocaleString('es', { maximumFractionDigits: 2 })}
               </td>
               <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).lunes) || 0), 0).toLocaleString('es')}</td>
