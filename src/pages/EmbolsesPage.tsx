@@ -222,10 +222,10 @@ function ResumenGeneral({
       <table className="w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-            <th className="sticky top-0 left-0 z-20 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+            <th className="sticky top-0 left-0 z-30 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
               Finca
             </th>
-            <th className="sticky top-0 left-[160px] z-20 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
+            <th className="sticky top-0 left-[160px] z-30 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
               Has
             </th>
             {semanas.map((s) => (
@@ -428,10 +428,10 @@ function DetalleFinca({
           <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                <th className="sticky top-0 left-0 z-20 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+                <th className="sticky top-0 left-0 z-30 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
                   Lote
                 </th>
-                <th className="sticky top-0 left-[120px] z-20 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
+                <th className="sticky top-0 left-[120px] z-30 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
                   Has
                 </th>
                 {semanas.map((s) => (
