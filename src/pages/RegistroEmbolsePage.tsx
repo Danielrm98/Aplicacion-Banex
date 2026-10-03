@@ -4,8 +4,8 @@ import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
-import { anioEmbolsesDe } from '../lib/anioEmbolses'
-import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
+import { anioEmbolsesDe, sumarSemanas } from '../lib/anioEmbolses'
+import { colorCintaDe, COLORES_CINTA, ESTILO_CINTA, type ColorCinta } from '../lib/cintaEmbolse'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
@@ -33,8 +33,18 @@ export default function RegistroEmbolsePage() {
   )
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
-  const [semana, setSemana] = useState(() => getIsoWeek(fechaLocalHoy()))
-  const [anio, setAnio] = useState(() => new Date().getFullYear())
+  // El embolse se hace una semana antes de la que lleva impresa la cinta
+  // (en la semana calendario 40 se usa la cinta de la semana 41), así que
+  // por defecto se abre en "semana actual + 1", no en la semana calendario.
+  const [{ anio, semana }, setSemanaReal] = useState(() =>
+    sumarSemanas(new Date().getFullYear(), getIsoWeek(fechaLocalHoy()), 1),
+  )
+  function setAnio(nuevoAnio: number) {
+    setSemanaReal((prev) => ({ ...prev, anio: nuevoAnio }))
+  }
+  function setSemana(nuevaSemana: number) {
+    setSemanaReal((prev) => ({ ...prev, semana: nuevaSemana }))
+  }
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string>('')
 
   // El perfil (y por lo tanto fincaUnicaOperador/fincasDisponibles) carga de
@@ -72,6 +82,22 @@ export default function RegistroEmbolsePage() {
   function elegirFinca(nombre: string) {
     setFincaSeleccionada(nombre)
     guardarFincaActual(nombre)
+  }
+
+  // El color no es un dato independiente de la semana (son 8 colores que se
+  // repiten), así que elegir un color busca la semana más cercana a la
+  // actual que use ese color, en vez de guardarse aparte.
+  function elegirColor(colorElegido: ColorCinta) {
+    let mejorDelta = 0
+    let mejorDistancia = Infinity
+    for (let delta = -4; delta <= 4; delta++) {
+      const candidata = sumarSemanas(anio, semana, delta)
+      if (colorCintaDe(candidata.anio, candidata.semana) === colorElegido && Math.abs(delta) < mejorDistancia) {
+        mejorDistancia = Math.abs(delta)
+        mejorDelta = delta
+      }
+    }
+    setSemanaReal(sumarSemanas(anio, semana, mejorDelta))
   }
 
   const finca = fincasOrdenadas.find((f) => f.nombre === fincaSeleccionada) ?? null
@@ -129,15 +155,21 @@ export default function RegistroEmbolsePage() {
           />
         </label>
 
-        <div className="text-sm">
+        <label className="text-sm">
           <span className="mb-1 block text-gray-600">Cinta color</span>
-          <span
-            className="inline-block rounded-lg px-3 py-1.5 text-sm font-semibold"
+          <select
+            value={color}
+            onChange={(e) => elegirColor(e.target.value as ColorCinta)}
+            className="rounded-lg border-0 px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/40"
             style={{ backgroundColor: estilo.bg, color: estilo.texto }}
           >
-            {color.charAt(0) + color.slice(1).toLowerCase()}
-          </span>
-        </div>
+            {COLORES_CINTA.map((c) => (
+              <option key={c} value={c}>
+                {c.charAt(0) + c.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {loadingLotes || loadingEmbolses ? (

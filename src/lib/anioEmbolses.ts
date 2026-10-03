@@ -26,3 +26,20 @@ export function semanasDelAnioEmbolses(anioEmbolses: number): SemanaReal[] {
 export function anioEmbolsesDe(anio: number, semana: number): number {
   return semana >= 42 ? anio + 1 : anio
 }
+
+/** Suma (o resta) semanas a una semana real, con años de 52 semanas (igual
+ * que semanasDelAnioEmbolses) — pensado para saltos chicos (unas pocas
+ * semanas), no para contar un año completo. */
+export function sumarSemanas(anio: number, semana: number, delta: number): SemanaReal {
+  let total = semana + delta
+  let a = anio
+  while (total > 52) {
+    total -= 52
+    a += 1
+  }
+  while (total < 1) {
+    total += 52
+    a -= 1
+  }
+  return { anio: a, semana: total }
+}
