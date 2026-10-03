@@ -62,7 +62,7 @@ export default function RegistroEmbolsePage() {
 
   const { lotes, loading: loadingLotes } = useLotes()
   const anioEmbolses = anioEmbolsesDe(semanaRegistro.anio, semanaRegistro.semana)
-  const { embolses, loading: loadingEmbolses, refetch } = useEmbolses({ anioEmbolses })
+  const { embolses, loading: loadingEmbolses, refetchSilencioso } = useEmbolses({ anioEmbolses })
 
   const lotesFinca = useMemo(
     () => [...lotes.filter((l) => l.finca === fincaSeleccionada)].sort((a, b) => a.nombre.localeCompare(b.nombre, undefined, { numeric: true })),
@@ -166,11 +166,12 @@ export default function RegistroEmbolsePage() {
           finca={finca}
           lotes={lotesFinca}
           semana={semana}
+          anio={anio}
           anioRegistro={semanaRegistro.anio}
           semanaRegistro={semanaRegistro.semana}
           embolsePorLote={embolsePorLote}
           userId={session?.user.id ?? ''}
-          onGuardado={refetch}
+          onGuardado={refetchSilencioso}
         />
       )}
     </div>
@@ -194,6 +195,7 @@ function TablaRegistro({
   finca,
   lotes,
   semana,
+  anio,
   anioRegistro,
   semanaRegistro,
   embolsePorLote,
@@ -203,12 +205,15 @@ function TablaRegistro({
   finca: Finca
   lotes: Lote[]
   semana: number
+  anio: number
   anioRegistro: number
   semanaRegistro: number
   embolsePorLote: Map<string, Embolse>
   userId: string
   onGuardado: () => void
 }) {
+  const color = colorCintaDe(anioRegistro, semanaRegistro)
+  const estilo = ESTILO_CINTA[color]
   const [borrador, setBorrador] = useState<Record<string, Campos>>(() => {
     const inicial: Record<string, Campos> = {}
     for (const l of lotes) {
@@ -357,18 +362,26 @@ function TablaRegistro({
 
   return (
     <div className="relative">
-      <h2 className="mb-3 text-sm font-semibold text-banex-800">
-        {finca.nombre}
-        {finca.hectareas != null && <span className="ml-2 font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>} · Semana{' '}
-        {semana} · se registra en semana {semanaRegistro}/{anioRegistro}
+      <h2 className="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold text-banex-800">
+        <span>
+          {finca.nombre}
+          {finca.hectareas != null && <span className="ml-2 font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>} · Semana{' '}
+          {semana}/{anio}
+        </span>
+        <span
+          className="inline-block rounded-md px-2 py-0.5 text-xs font-semibold"
+          style={{ backgroundColor: estilo.bg, color: estilo.texto }}
+        >
+          Cinta {color.charAt(0) + color.slice(1).toLowerCase()} (semana {semanaRegistro})
+        </span>
       </h2>
 
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full table-fixed border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-              <th className="py-2 pr-3 pl-4 font-medium">Lote</th>
-              <th className="px-2 py-2 text-center font-medium">Has</th>
+              <th className="sticky left-0 z-10 w-[120px] border-r border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">Lote</th>
+              <th className="sticky left-[120px] z-10 w-[70px] border-r border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">Has</th>
               <th className="px-2 py-2 text-center font-medium">Lunes</th>
               <th className="px-2 py-2 text-center font-medium">Martes</th>
               <th className="px-2 py-2 text-center font-medium">Miércoles</th>
@@ -388,8 +401,8 @@ function TablaRegistro({
               const bll = bllPorHasDe(l)
               return (
                 <tr key={l.id} className="border-b border-gray-100">
-                  <td className="py-1.5 pr-3 pl-4 font-medium text-gray-900">{l.nombre}</td>
-                  <td className="px-2 py-1.5 text-center text-gray-500">
+                  <td className="sticky left-0 z-10 border-r border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">{l.nombre}</td>
+                  <td className="sticky left-[120px] z-10 border-r border-gray-200 bg-white px-2 py-1.5 text-center text-gray-500">
                     {l.hectareas != null ? l.hectareas.toLocaleString('es') : '—'}
                   </td>
                   <td className="px-2 py-1.5 text-center">
@@ -479,8 +492,10 @@ function TablaRegistro({
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-              <td className="py-1.5 pr-3 pl-4">TOTAL</td>
-              <td className="px-2 py-1.5 text-center">{totalHas.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
+              <td className="sticky left-0 z-10 border-r border-banex-100 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL</td>
+              <td className="sticky left-[120px] z-10 border-r border-banex-100 bg-banex-50/50 px-2 py-1.5 text-center">
+                {totalHas.toLocaleString('es', { maximumFractionDigits: 2 })}
+              </td>
               <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).lunes) || 0), 0).toLocaleString('es')}</td>
               <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).martes) || 0), 0).toLocaleString('es')}</td>
               <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).miercoles) || 0), 0).toLocaleString('es')}</td>
@@ -518,35 +533,43 @@ function TablaRegistro({
           valor no queda reflejado al capturar la pantalla) que se convierte en la
           imagen para compartir por WhatsApp. */}
       <div className="pointer-events-none absolute top-0 -left-[9999px]">
-        <div ref={capturaRef} className="w-[960px] rounded-lg bg-white p-5">
-          <div className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
-            <img src={BANEX_LOGO_URL} alt="BANEX S.A." className="h-9 w-9 shrink-0 rounded-md object-contain" />
+        <div ref={capturaRef} className="w-[1180px] rounded-lg bg-white p-6">
+          <div className="mb-4 flex items-center gap-2.5 border-b border-gray-100 pb-3.5">
+            <img src={BANEX_LOGO_URL} alt="BANEX S.A." className="h-11 w-11 shrink-0 rounded-md object-contain" />
             <div>
-              <p className="text-sm font-bold text-banex-900">ApproBan</p>
-              <p className="text-xs text-gray-500">Registro de embolse</p>
+              <p className="text-base font-bold text-banex-900">ApproBan</p>
+              <p className="text-sm text-gray-500">Registro de embolse</p>
             </div>
           </div>
-          <h2 className="mb-3 text-sm font-semibold text-banex-800">
-            {finca.nombre}
-            {finca.hectareas != null && <span className="ml-2 font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>} ·
-            Semana {semanaRegistro}/{anioRegistro}
-          </h2>
-          <table className="w-full border-collapse text-sm">
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold text-banex-800">
+              {finca.nombre}
+              {finca.hectareas != null && <span className="ml-2 text-base font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>}{' '}
+              · Semana {semana}/{anio}
+            </h2>
+            <span
+              className="inline-block rounded-md px-3 py-1 text-sm font-semibold"
+              style={{ backgroundColor: estilo.bg, color: estilo.texto }}
+            >
+              Cinta {color.charAt(0) + color.slice(1).toLowerCase()} (semana {semanaRegistro})
+            </span>
+          </div>
+          <table className="w-full border-collapse text-base">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                <th className="py-2 pr-3 pl-4 font-medium">Lote</th>
-                <th className="px-2 py-2 text-center font-medium">Has</th>
-                <th className="px-2 py-2 text-center font-medium">Lunes</th>
-                <th className="px-2 py-2 text-center font-medium">Martes</th>
-                <th className="px-2 py-2 text-center font-medium">Miércoles</th>
-                <th className="px-2 py-2 text-center font-medium">1ra VTA</th>
-                <th className="px-2 py-2 text-center font-medium">Jueves</th>
-                <th className="px-2 py-2 text-center font-medium">Viernes</th>
-                <th className="px-2 py-2 text-center font-medium">Sábado</th>
-                <th className="px-2 py-2 text-center font-medium">2da VTA</th>
-                <th className="px-2 py-2 text-center font-medium">Total</th>
-                <th className="px-2 py-2 text-center font-medium">BLL/HAS</th>
-                <th className="px-2 py-2 text-center font-medium">Debunching</th>
+                <th className="py-3 pr-3 pl-4 font-medium">Lote</th>
+                <th className="px-2 py-3 text-center font-medium">Has</th>
+                <th className="px-2 py-3 text-center font-medium">Lunes</th>
+                <th className="px-2 py-3 text-center font-medium">Martes</th>
+                <th className="px-2 py-3 text-center font-medium">Miércoles</th>
+                <th className="px-2 py-3 text-center font-medium">1ra VTA</th>
+                <th className="px-2 py-3 text-center font-medium">Jueves</th>
+                <th className="px-2 py-3 text-center font-medium">Viernes</th>
+                <th className="px-2 py-3 text-center font-medium">Sábado</th>
+                <th className="px-2 py-3 text-center font-medium">2da VTA</th>
+                <th className="px-2 py-3 text-center font-medium">Total</th>
+                <th className="px-2 py-3 text-center font-medium">BLL/HAS</th>
+                <th className="px-2 py-3 text-center font-medium">Debunching</th>
               </tr>
             </thead>
             <tbody>
@@ -555,40 +578,40 @@ function TablaRegistro({
                 const bll = bllPorHasDe(l)
                 return (
                   <tr key={l.id} className="border-b border-gray-100">
-                    <td className="py-1.5 pr-3 pl-4 font-medium text-gray-900">{l.nombre}</td>
-                    <td className="px-2 py-1.5 text-center text-gray-500">{l.hectareas != null ? l.hectareas.toLocaleString('es') : '—'}</td>
-                    <td className="px-2 py-1.5 text-center">{c.lunes || '—'}</td>
-                    <td className="px-2 py-1.5 text-center">{c.martes || '—'}</td>
-                    <td className="px-2 py-1.5 text-center">{c.miercoles || '—'}</td>
-                    <td className="px-2 py-1.5 text-center font-semibold text-banex-800">{primeraDe(l.id).toLocaleString('es')}</td>
-                    <td className="px-2 py-1.5 text-center">{c.jueves || '—'}</td>
-                    <td className="px-2 py-1.5 text-center">{c.viernes || '—'}</td>
-                    <td className="px-2 py-1.5 text-center">{c.sabado || '—'}</td>
-                    <td className="px-2 py-1.5 text-center font-semibold text-banex-800">{segundaDe(l.id).toLocaleString('es')}</td>
-                    <td className="px-2 py-1.5 text-center font-semibold text-banex-800">{totalDe(l.id).toLocaleString('es')}</td>
-                    <td className="px-2 py-1.5 text-center text-gray-500">{bll != null ? bll.toFixed(1) : '—'}</td>
-                    <td className="px-2 py-1.5 text-center">{c.debunching || '—'}</td>
+                    <td className="py-2.5 pr-3 pl-4 font-medium text-gray-900">{l.nombre}</td>
+                    <td className="px-2 py-2.5 text-center text-gray-500">{l.hectareas != null ? l.hectareas.toLocaleString('es') : '—'}</td>
+                    <td className="px-2 py-2.5 text-center">{c.lunes || '—'}</td>
+                    <td className="px-2 py-2.5 text-center">{c.martes || '—'}</td>
+                    <td className="px-2 py-2.5 text-center">{c.miercoles || '—'}</td>
+                    <td className="px-2 py-2.5 text-center font-semibold text-banex-800">{primeraDe(l.id).toLocaleString('es')}</td>
+                    <td className="px-2 py-2.5 text-center">{c.jueves || '—'}</td>
+                    <td className="px-2 py-2.5 text-center">{c.viernes || '—'}</td>
+                    <td className="px-2 py-2.5 text-center">{c.sabado || '—'}</td>
+                    <td className="px-2 py-2.5 text-center font-semibold text-banex-800">{segundaDe(l.id).toLocaleString('es')}</td>
+                    <td className="px-2 py-2.5 text-center font-semibold text-banex-800">{totalDe(l.id).toLocaleString('es')}</td>
+                    <td className="px-2 py-2.5 text-center text-gray-500">{bll != null ? bll.toFixed(1) : '—'}</td>
+                    <td className="px-2 py-2.5 text-center">{c.debunching || '—'}</td>
                   </tr>
                 )
               })}
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                <td className="py-1.5 pr-3 pl-4">TOTAL</td>
-                <td className="px-2 py-1.5 text-center">{totalHas.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).lunes) || 0), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).martes) || 0), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">
+                <td className="py-2.5 pr-3 pl-4">TOTAL</td>
+                <td className="px-2 py-2.5 text-center">{totalHas.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).lunes) || 0), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).martes) || 0), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">
                   {lotes.reduce((sum, l) => sum + (Number(campo(l.id).miercoles) || 0), 0).toLocaleString('es')}
                 </td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + primeraDe(l.id), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).jueves) || 0), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).viernes) || 0), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).sabado) || 0), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + segundaDe(l.id), 0).toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{totalSemana.toLocaleString('es')}</td>
-                <td className="px-2 py-1.5 text-center">{totalHas > 0 ? (totalSemana / totalHas).toFixed(1) : '—'}</td>
-                <td className="px-2 py-1.5 text-center">{totalDebunching.toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + primeraDe(l.id), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).jueves) || 0), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).viernes) || 0), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).sabado) || 0), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{lotes.reduce((sum, l) => sum + segundaDe(l.id), 0).toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{totalSemana.toLocaleString('es')}</td>
+                <td className="px-2 py-2.5 text-center">{totalHas > 0 ? (totalSemana / totalHas).toFixed(1) : '—'}</td>
+                <td className="px-2 py-2.5 text-center">{totalDebunching.toLocaleString('es')}</td>
               </tr>
             </tfoot>
           </table>

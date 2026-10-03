@@ -60,7 +60,7 @@ export default function EmbolsesPage() {
   }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada, esAdmin])
 
   const { lotes, loading: loadingLotes } = useLotes()
-  const { embolses, loading: loadingEmbolses, refetch: refetchEmbolses } = useEmbolses({ anioEmbolses })
+  const { embolses, loading: loadingEmbolses, refetchSilencioso: refetchEmbolses } = useEmbolses({ anioEmbolses })
 
   const semanas = useMemo(() => semanasDelAnioEmbolses(anioEmbolses), [anioEmbolses])
 

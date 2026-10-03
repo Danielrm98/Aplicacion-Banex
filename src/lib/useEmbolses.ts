@@ -34,27 +34,36 @@ export function useEmbolses({ anioEmbolses }: { anioEmbolses: number }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const refetch = useCallback(async () => {
-    setLoading(true)
-    const { data, error } = await conCacheLocal<Embolse[]>(
-      `approban_cache_embolses_${anioEmbolses}`,
-      () => traerTodosLosEmbolses(anioEmbolses),
-      undefined,
-      15000,
-    )
+  const cargar = useCallback(
+    async (mostrarCarga: boolean) => {
+      if (mostrarCarga) setLoading(true)
+      const { data, error } = await conCacheLocal<Embolse[]>(
+        `approban_cache_embolses_${anioEmbolses}`,
+        () => traerTodosLosEmbolses(anioEmbolses),
+        undefined,
+        15000,
+      )
 
-    if (error) {
-      setError(error)
-    } else {
-      setError(null)
-      setEmbolses(data ?? [])
-    }
-    setLoading(false)
-  }, [anioEmbolses])
+      if (error) {
+        setError(error)
+      } else {
+        setError(null)
+        setEmbolses(data ?? [])
+      }
+      if (mostrarCarga) setLoading(false)
+    },
+    [anioEmbolses],
+  )
+
+  const refetch = useCallback(() => cargar(true), [cargar])
+  // Para refrescar tras guardar un solo campo sin tapar toda la tabla con
+  // "Cargando..." en cada guardado (eso hacía que el cuadro "parpadeara" y
+  // obligaba a esperar entre una casilla y la siguiente).
+  const refetchSilencioso = useCallback(() => cargar(false), [cargar])
 
   useEffect(() => {
     refetch()
   }, [refetch])
 
-  return { embolses, loading, error, refetch }
+  return { embolses, loading, error, refetch, refetchSilencioso }
 }
