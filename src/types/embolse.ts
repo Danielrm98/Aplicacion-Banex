@@ -8,6 +8,12 @@ export interface Embolse {
   primera_vuelta: number | null
   segunda_vuelta: number | null
   debunching: number | null
+  lunes: number | null
+  martes: number | null
+  miercoles: number | null
+  jueves: number | null
+  viernes: number | null
+  sabado: number | null
   created_at: string
 }
 

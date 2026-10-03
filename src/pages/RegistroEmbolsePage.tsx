@@ -176,10 +176,17 @@ export default function RegistroEmbolsePage() {
 }
 
 interface Campos {
-  primera: string
-  segunda: string
+  lunes: string
+  martes: string
+  miercoles: string
+  jueves: string
+  viernes: string
+  sabado: string
   debunching: string
 }
+
+const DIAS_1RA_VUELTA = ['lunes', 'martes', 'miercoles'] as const
+const DIAS_2DA_VUELTA = ['jueves', 'viernes', 'sabado'] as const
 
 function TablaRegistro({
   finca,
@@ -205,23 +212,38 @@ function TablaRegistro({
     for (const l of lotes) {
       const e = embolsePorLote.get(l.id)
       inicial[l.id] = {
-        primera: e?.primera_vuelta != null ? String(e.primera_vuelta) : '',
-        segunda: e?.segunda_vuelta != null ? String(e.segunda_vuelta) : '',
+        lunes: e?.lunes != null ? String(e.lunes) : '',
+        martes: e?.martes != null ? String(e.martes) : '',
+        miercoles: e?.miercoles != null ? String(e.miercoles) : '',
+        jueves: e?.jueves != null ? String(e.jueves) : '',
+        viernes: e?.viernes != null ? String(e.viernes) : '',
+        sabado: e?.sabado != null ? String(e.sabado) : '',
         debunching: e?.debunching != null ? String(e.debunching) : '',
       }
     }
     return inicial
   })
-  const [guardando, setGuardando] = useState<Set<string>>(new Set())
   const [conError, setConError] = useState<Record<string, string>>({})
 
   function campo(loteId: string): Campos {
-    return borrador[loteId] ?? { primera: '', segunda: '', debunching: '' }
+    return borrador[loteId] ?? { lunes: '', martes: '', miercoles: '', jueves: '', viernes: '', sabado: '', debunching: '' }
+  }
+
+  function sumaDias(loteId: string, dias: readonly (keyof Campos)[]) {
+    const c = campo(loteId)
+    return dias.reduce((sum, dia) => sum + (Number(c[dia]) || 0), 0)
+  }
+
+  function primeraDe(loteId: string) {
+    return sumaDias(loteId, DIAS_1RA_VUELTA)
+  }
+
+  function segundaDe(loteId: string) {
+    return sumaDias(loteId, DIAS_2DA_VUELTA)
   }
 
   function totalDe(loteId: string) {
-    const { primera, segunda } = campo(loteId)
-    return (Number(primera) || 0) + (Number(segunda) || 0)
+    return primeraDe(loteId) + segundaDe(loteId)
   }
 
   function bllPorHasDe(lote: Lote) {
@@ -235,21 +257,25 @@ function TablaRegistro({
   const totalDebunching = lotes.reduce((sum, l) => sum + (Number(campo(l.id).debunching) || 0), 0)
 
   async function guardar(loteId: string, siguiente: Campos) {
-    const primera = siguiente.primera.trim() === '' ? null : Number(siguiente.primera)
-    const segunda = siguiente.segunda.trim() === '' ? null : Number(siguiente.segunda)
+    const dias = [...DIAS_1RA_VUELTA, ...DIAS_2DA_VUELTA] as const
+    const valores: Record<(typeof dias)[number], number | null> = {} as Record<(typeof dias)[number], number | null>
+    for (const dia of dias) {
+      valores[dia] = siguiente[dia].trim() === '' ? null : Number(siguiente[dia])
+    }
     const debunching = siguiente.debunching.trim() === '' ? null : Number(siguiente.debunching)
-    if ([primera, segunda, debunching].some((v) => v !== null && (Number.isNaN(v) || v < 0))) {
+    if ([...Object.values(valores), debunching].some((v) => v !== null && (Number.isNaN(v) || v < 0))) {
       setConError((prev) => ({ ...prev, [loteId]: 'Cantidad inválida' }))
       return
     }
 
-    setGuardando((prev) => new Set(prev).add(loteId))
     setConError((prev) => {
       const { [loteId]: _quitado, ...resto } = prev
       return resto
     })
     try {
-      const cantidad = (primera ?? 0) + (segunda ?? 0)
+      const primera = DIAS_1RA_VUELTA.reduce((sum, dia) => sum + (valores[dia] ?? 0), 0)
+      const segunda = DIAS_2DA_VUELTA.reduce((sum, dia) => sum + (valores[dia] ?? 0), 0)
+      const cantidad = primera + segunda
       const { error } = await conLimite(
         supabase.from('embolses').upsert(
           {
@@ -261,6 +287,7 @@ function TablaRegistro({
             segunda_vuelta: segunda,
             debunching,
             user_id: userId,
+            ...valores,
           },
           { onConflict: 'lote_id,anio,semana' },
         ),
@@ -270,17 +297,14 @@ function TablaRegistro({
       onGuardado()
     } catch (err) {
       setConError((prev) => ({ ...prev, [loteId]: err instanceof Error ? err.message : 'No se pudo guardar' }))
-    } finally {
-      setGuardando((prev) => {
-        const siguienteSet = new Set(prev)
-        siguienteSet.delete(loteId)
-        return siguienteSet
-      })
     }
   }
 
   function actualizarCampo(loteId: string, campoNombre: keyof Campos, valor: string) {
-    setBorrador((prev) => ({ ...prev, [loteId]: { ...campo(loteId), [campoNombre]: valor } }))
+    setBorrador((prev) => ({
+      ...prev,
+      [loteId]: { ...(prev[loteId] ?? campo(loteId)), [campoNombre]: valor },
+    }))
   }
 
   function inputClass(loteId: string) {
@@ -305,7 +329,13 @@ function TablaRegistro({
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
               <th className="py-2 pr-3 pl-4 font-medium">Lote</th>
               <th className="px-2 py-2 text-center font-medium">Has</th>
+              <th className="px-2 py-2 text-center font-medium">Lunes</th>
+              <th className="px-2 py-2 text-center font-medium">Martes</th>
+              <th className="px-2 py-2 text-center font-medium">Miércoles</th>
               <th className="px-2 py-2 text-center font-medium">1ra VTA</th>
+              <th className="px-2 py-2 text-center font-medium">Jueves</th>
+              <th className="px-2 py-2 text-center font-medium">Viernes</th>
+              <th className="px-2 py-2 text-center font-medium">Sábado</th>
               <th className="px-2 py-2 text-center font-medium">2da VTA</th>
               <th className="px-2 py-2 text-center font-medium">Total</th>
               <th className="px-2 py-2 text-center font-medium">BLL/HAS</th>
@@ -326,10 +356,9 @@ function TablaRegistro({
                     <input
                       type="number"
                       min={0}
-                      value={c.primera}
-                      disabled={guardando.has(l.id)}
-                      onChange={(e) => actualizarCampo(l.id, 'primera', e.target.value)}
-                      onBlur={(e) => guardar(l.id, { ...campo(l.id), primera: e.target.value })}
+                      value={c.lunes}
+                      onChange={(e) => actualizarCampo(l.id, 'lunes', e.target.value)}
+                      onBlur={(e) => guardar(l.id, { ...campo(l.id), lunes: e.target.value })}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -338,14 +367,59 @@ function TablaRegistro({
                     <input
                       type="number"
                       min={0}
-                      value={c.segunda}
-                      disabled={guardando.has(l.id)}
-                      onChange={(e) => actualizarCampo(l.id, 'segunda', e.target.value)}
-                      onBlur={(e) => guardar(l.id, { ...campo(l.id), segunda: e.target.value })}
+                      value={c.martes}
+                      onChange={(e) => actualizarCampo(l.id, 'martes', e.target.value)}
+                      onBlur={(e) => guardar(l.id, { ...campo(l.id), martes: e.target.value })}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
                   </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      value={c.miercoles}
+                      onChange={(e) => actualizarCampo(l.id, 'miercoles', e.target.value)}
+                      onBlur={(e) => guardar(l.id, { ...campo(l.id), miercoles: e.target.value })}
+                      title={conError[l.id]}
+                      className={inputClass(l.id)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-center font-semibold text-banex-800">{primeraDe(l.id).toLocaleString('es')}</td>
+                  <td className="px-2 py-1.5 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      value={c.jueves}
+                      onChange={(e) => actualizarCampo(l.id, 'jueves', e.target.value)}
+                      onBlur={(e) => guardar(l.id, { ...campo(l.id), jueves: e.target.value })}
+                      title={conError[l.id]}
+                      className={inputClass(l.id)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      value={c.viernes}
+                      onChange={(e) => actualizarCampo(l.id, 'viernes', e.target.value)}
+                      onBlur={(e) => guardar(l.id, { ...campo(l.id), viernes: e.target.value })}
+                      title={conError[l.id]}
+                      className={inputClass(l.id)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <input
+                      type="number"
+                      min={0}
+                      value={c.sabado}
+                      onChange={(e) => actualizarCampo(l.id, 'sabado', e.target.value)}
+                      onBlur={(e) => guardar(l.id, { ...campo(l.id), sabado: e.target.value })}
+                      title={conError[l.id]}
+                      className={inputClass(l.id)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-center font-semibold text-banex-800">{segundaDe(l.id).toLocaleString('es')}</td>
                   <td className="px-2 py-1.5 text-center font-semibold text-banex-800">{totalDe(l.id).toLocaleString('es')}</td>
                   <td className="px-2 py-1.5 text-center text-gray-500">{bll != null ? bll.toFixed(1) : '—'}</td>
                   <td className="px-2 py-1.5 text-center">
@@ -353,7 +427,6 @@ function TablaRegistro({
                       type="number"
                       min={0}
                       value={c.debunching}
-                      disabled={guardando.has(l.id)}
                       onChange={(e) => actualizarCampo(l.id, 'debunching', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), debunching: e.target.value })}
                       title={conError[l.id]}
@@ -368,12 +441,14 @@ function TablaRegistro({
             <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
               <td className="py-1.5 pr-3 pl-4">TOTAL</td>
               <td className="px-2 py-1.5 text-center">{totalHas.toLocaleString('es', { maximumFractionDigits: 2 })}</td>
-              <td className="px-2 py-1.5 text-center">
-                {lotes.reduce((sum, l) => sum + (Number(campo(l.id).primera) || 0), 0).toLocaleString('es')}
-              </td>
-              <td className="px-2 py-1.5 text-center">
-                {lotes.reduce((sum, l) => sum + (Number(campo(l.id).segunda) || 0), 0).toLocaleString('es')}
-              </td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).lunes) || 0), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).martes) || 0), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).miercoles) || 0), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + primeraDe(l.id), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).jueves) || 0), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).viernes) || 0), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + (Number(campo(l.id).sabado) || 0), 0).toLocaleString('es')}</td>
+              <td className="px-2 py-1.5 text-center">{lotes.reduce((sum, l) => sum + segundaDe(l.id), 0).toLocaleString('es')}</td>
               <td className="px-2 py-1.5 text-center">{totalSemana.toLocaleString('es')}</td>
               <td className="px-2 py-1.5 text-center">{totalHas > 0 ? (totalSemana / totalHas).toFixed(1) : '—'}</td>
               <td className="px-2 py-1.5 text-center">{totalDebunching.toLocaleString('es')}</td>

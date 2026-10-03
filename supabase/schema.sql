@@ -756,6 +756,14 @@ create table public.embolses (
   primera_vuelta integer,
   segunda_vuelta integer,
   debunching integer,
+  -- Captura día a día: lunes-miércoles arman primera_vuelta y jueves-sábado
+  -- arman segunda_vuelta (se recalculan en la app a partir de estas).
+  lunes integer,
+  martes integer,
+  miercoles integer,
+  jueves integer,
+  viernes integer,
+  sabado integer,
   created_at timestamptz not null default now(),
   unique (lote_id, anio, semana)
 );
