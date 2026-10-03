@@ -332,7 +332,7 @@ function TablaRegistro({
       })
       const nombreArchivo = `embolse_${finca.nombre}_semana${semanaRegistro}_${anioRegistro}.png`.replace(/\s+/g, '_')
       const file = new File([blob], nombreArchivo, { type: 'image/png' })
-      const texto = `*REGISTRO DE EMBOLSE*\n*FINCA:* ${finca.nombre}\n*SEMANA:* ${semanaRegistro}/${anioRegistro}`
+      const texto = `*REGISTRO DE EMBOLSE*\n*FINCA:* ${finca.nombre}\n*SEMANA:* ${semana}/${anio}`
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: 'Registro de embolse', text: texto })
       } else {
@@ -369,7 +369,7 @@ function TablaRegistro({
           {semana}/{anio}
         </span>
         <span
-          className="inline-block rounded-md px-2 py-0.5 text-xs font-semibold"
+          className="inline-block rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap"
           style={{ backgroundColor: estilo.bg, color: estilo.texto }}
         >
           Cinta {color.charAt(0) + color.slice(1).toLowerCase()} (semana {semanaRegistro})
@@ -549,7 +549,7 @@ function TablaRegistro({
             <div className="mt-1.5 flex flex-wrap items-center gap-3">
               <span className="text-base font-medium text-gray-600">Semana {semana}/{anio}</span>
               <span
-                className="inline-block rounded-md px-3 py-1 text-sm font-semibold"
+                className="inline-block rounded-md px-3 py-1 text-sm font-semibold whitespace-nowrap"
                 style={{ backgroundColor: estilo.bg, color: estilo.texto }}
               >
                 Cinta {color.charAt(0) + color.slice(1).toLowerCase()}
