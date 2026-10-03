@@ -5,7 +5,7 @@ import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
 import { anioEmbolsesDe, sumarSemanas } from '../lib/anioEmbolses'
-import { colorCintaDe, COLORES_CINTA, ESTILO_CINTA, type ColorCinta } from '../lib/cintaEmbolse'
+import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
@@ -33,18 +33,14 @@ export default function RegistroEmbolsePage() {
   )
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
-  // El embolse se hace una semana antes de la que lleva impresa la cinta
-  // (en la semana calendario 40 se usa la cinta de la semana 41), así que
-  // por defecto se abre en "semana actual + 1", no en la semana calendario.
-  const [{ anio, semana }, setSemanaReal] = useState(() =>
-    sumarSemanas(new Date().getFullYear(), getIsoWeek(fechaLocalHoy()), 1),
-  )
-  function setAnio(nuevoAnio: number) {
-    setSemanaReal((prev) => ({ ...prev, anio: nuevoAnio }))
-  }
-  function setSemana(nuevaSemana: number) {
-    setSemanaReal((prev) => ({ ...prev, semana: nuevaSemana }))
-  }
+  // El operario elige la semana calendario normal (la que está viviendo hoy),
+  // pero el embolse de esa semana se hace con la cinta de la semana
+  // SIGUIENTE (en la semana calendario 40 se usa la cinta de la semana 41).
+  // Por eso todo lo que se guarda y el color mostrado usan "semana + 1", sin
+  // que el operario tenga que calcularlo ni elegirlo aparte.
+  const [semana, setSemana] = useState(() => getIsoWeek(fechaLocalHoy()))
+  const [anio, setAnio] = useState(() => new Date().getFullYear())
+  const semanaRegistro = sumarSemanas(anio, semana, 1)
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string>('')
 
   // El perfil (y por lo tanto fincaUnicaOperador/fincasDisponibles) carga de
@@ -63,7 +59,7 @@ export default function RegistroEmbolsePage() {
   }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada])
 
   const { lotes, loading: loadingLotes } = useLotes()
-  const anioEmbolses = anioEmbolsesDe(anio, semana)
+  const anioEmbolses = anioEmbolsesDe(semanaRegistro.anio, semanaRegistro.semana)
   const { embolses, loading: loadingEmbolses, refetch } = useEmbolses({ anioEmbolses })
 
   const lotesFinca = useMemo(
@@ -74,34 +70,18 @@ export default function RegistroEmbolsePage() {
   const embolsePorLote = useMemo(() => {
     const m = new Map<string, Embolse>()
     for (const e of embolses) {
-      if (e.anio === anio && e.semana === semana) m.set(e.lote_id, e)
+      if (e.anio === semanaRegistro.anio && e.semana === semanaRegistro.semana) m.set(e.lote_id, e)
     }
     return m
-  }, [embolses, anio, semana])
+  }, [embolses, semanaRegistro.anio, semanaRegistro.semana])
 
   function elegirFinca(nombre: string) {
     setFincaSeleccionada(nombre)
     guardarFincaActual(nombre)
   }
 
-  // El color no es un dato independiente de la semana (son 8 colores que se
-  // repiten), así que elegir un color busca la semana más cercana a la
-  // actual que use ese color, en vez de guardarse aparte.
-  function elegirColor(colorElegido: ColorCinta) {
-    let mejorDelta = 0
-    let mejorDistancia = Infinity
-    for (let delta = -4; delta <= 4; delta++) {
-      const candidata = sumarSemanas(anio, semana, delta)
-      if (colorCintaDe(candidata.anio, candidata.semana) === colorElegido && Math.abs(delta) < mejorDistancia) {
-        mejorDistancia = Math.abs(delta)
-        mejorDelta = delta
-      }
-    }
-    setSemanaReal(sumarSemanas(anio, semana, mejorDelta))
-  }
-
   const finca = fincasOrdenadas.find((f) => f.nombre === fincaSeleccionada) ?? null
-  const color = colorCintaDe(anio, semana)
+  const color = colorCintaDe(semanaRegistro.anio, semanaRegistro.semana)
   const estilo = ESTILO_CINTA[color]
 
   return (
@@ -155,22 +135,20 @@ export default function RegistroEmbolsePage() {
           />
         </label>
 
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Cinta color</span>
-          <select
-            value={color}
-            onChange={(e) => elegirColor(e.target.value as ColorCinta)}
-            className="rounded-lg border-0 px-3 py-1.5 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/40"
+        <div className="text-sm">
+          <span className="mb-1 block text-gray-600">Cinta color (semana {semanaRegistro.semana})</span>
+          <span
+            className="inline-block rounded-lg px-3 py-1.5 text-sm font-semibold"
             style={{ backgroundColor: estilo.bg, color: estilo.texto }}
           >
-            {COLORES_CINTA.map((c) => (
-              <option key={c} value={c}>
-                {c.charAt(0) + c.slice(1).toLowerCase()}
-              </option>
-            ))}
-          </select>
-        </label>
+            {color.charAt(0) + color.slice(1).toLowerCase()}
+          </span>
+        </div>
       </div>
+      <p className="mb-6 text-xs text-gray-400">
+        El embolse de la semana {semana} se hace con la cinta de la semana {semanaRegistro.semana} — por eso el color y
+        lo que guardes aquí quedan registrados en esa semana siguiente.
+      </p>
 
       {loadingLotes || loadingEmbolses ? (
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
@@ -185,8 +163,9 @@ export default function RegistroEmbolsePage() {
           key={`${finca.nombre}-${anio}-${semana}`}
           finca={finca}
           lotes={lotesFinca}
-          anio={anio}
           semana={semana}
+          anioRegistro={semanaRegistro.anio}
+          semanaRegistro={semanaRegistro.semana}
           embolsePorLote={embolsePorLote}
           userId={session?.user.id ?? ''}
           onGuardado={refetch}
@@ -205,16 +184,18 @@ interface Campos {
 function TablaRegistro({
   finca,
   lotes,
-  anio,
   semana,
+  anioRegistro,
+  semanaRegistro,
   embolsePorLote,
   userId,
   onGuardado,
 }: {
   finca: Finca
   lotes: Lote[]
-  anio: number
   semana: number
+  anioRegistro: number
+  semanaRegistro: number
   embolsePorLote: Map<string, Embolse>
   userId: string
   onGuardado: () => void
@@ -271,7 +252,16 @@ function TablaRegistro({
       const cantidad = (primera ?? 0) + (segunda ?? 0)
       const { error } = await conLimite(
         supabase.from('embolses').upsert(
-          { lote_id: loteId, anio, semana, cantidad, primera_vuelta: primera, segunda_vuelta: segunda, debunching, user_id: userId },
+          {
+            lote_id: loteId,
+            anio: anioRegistro,
+            semana: semanaRegistro,
+            cantidad,
+            primera_vuelta: primera,
+            segunda_vuelta: segunda,
+            debunching,
+            user_id: userId,
+          },
           { onConflict: 'lote_id,anio,semana' },
         ),
         LIMITE_ENVIO_MS,
@@ -306,7 +296,7 @@ function TablaRegistro({
       <h2 className="mb-3 text-sm font-semibold text-banex-800">
         {finca.nombre}
         {finca.hectareas != null && <span className="ml-2 font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>} · Semana{' '}
-        {semana}/{anio}
+        {semana} · se registra en semana {semanaRegistro}/{anioRegistro}
       </h2>
 
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
