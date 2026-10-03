@@ -161,7 +161,7 @@ function EncabezadoSemana({ s }: { s: SemanaReal }) {
   const estilo = ESTILO_CINTA[color]
   return (
     <th
-      className="w-[56px] border border-gray-200 px-1.5 py-1.5 text-center font-medium"
+      className="sticky top-0 z-20 w-[56px] border border-gray-200 px-1.5 py-1.5 text-center font-medium"
       style={{ backgroundColor: estilo.bg, color: estilo.texto }}
       title={`Semana ${s.semana}/${s.anio} · Cinta ${color.charAt(0)}${color.slice(1).toLowerCase()}`}
     >
@@ -218,20 +218,20 @@ function ResumenGeneral({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+    <div className="max-h-[75vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
       <table className="w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-            <th className="sticky left-0 z-10 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+            <th className="sticky top-0 left-0 z-20 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
               Finca
             </th>
-            <th className="sticky left-[160px] z-10 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
+            <th className="sticky top-0 left-[160px] z-20 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
               Has
             </th>
             {semanas.map((s) => (
               <EncabezadoSemana key={claveSemana(s.anio, s.semana)} s={s} />
             ))}
-            <th className="w-[90px] border border-gray-200 bg-gray-100 px-2 py-2 text-center font-medium">
+            <th className="sticky top-0 z-20 w-[90px] border border-gray-200 bg-gray-100 px-2 py-2 text-center font-medium">
               Total año
             </th>
           </tr>
@@ -424,20 +424,20 @@ function DetalleFinca({
           Esta finca todavía no tiene lotes. Créalos en Catálogo → Lotes.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+        <div className="max-h-[75vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
           <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                <th className="sticky left-0 z-10 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+                <th className="sticky top-0 left-0 z-20 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
                   Lote
                 </th>
-                <th className="sticky left-[120px] z-10 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
+                <th className="sticky top-0 left-[120px] z-20 w-[70px] border border-gray-200 bg-gray-50 px-2 py-2 text-center font-medium">
                   Has
                 </th>
                 {semanas.map((s) => (
                   <EncabezadoSemana key={claveSemana(s.anio, s.semana)} s={s} />
                 ))}
-                <th className="w-[90px] border border-gray-200 bg-gray-100 px-2 py-2 text-center font-medium">
+                <th className="sticky top-0 z-20 w-[90px] border border-gray-200 bg-gray-100 px-2 py-2 text-center font-medium">
                   Total año
                 </th>
               </tr>
