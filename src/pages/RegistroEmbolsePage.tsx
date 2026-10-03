@@ -541,18 +541,20 @@ function TablaRegistro({
               <p className="text-sm text-gray-500">Registro de embolse</p>
             </div>
           </div>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="mb-4">
             <h2 className="text-lg font-semibold text-banex-800">
               {finca.nombre}
-              {finca.hectareas != null && <span className="ml-2 text-base font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>}{' '}
-              · Semana {semana}/{anio}
+              {finca.hectareas != null && <span className="ml-2 text-base font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>}
             </h2>
-            <span
-              className="inline-block rounded-md px-3 py-1 text-sm font-semibold"
-              style={{ backgroundColor: estilo.bg, color: estilo.texto }}
-            >
-              Cinta {color.charAt(0) + color.slice(1).toLowerCase()} (semana {semanaRegistro})
-            </span>
+            <div className="mt-1.5 flex flex-wrap items-center gap-3">
+              <span className="text-base font-medium text-gray-600">Semana {semana}/{anio}</span>
+              <span
+                className="inline-block rounded-md px-3 py-1 text-sm font-semibold"
+                style={{ backgroundColor: estilo.bg, color: estilo.texto }}
+              >
+                Cinta {color.charAt(0) + color.slice(1).toLowerCase()}
+              </span>
+            </div>
           </div>
           <table className="w-full border-collapse text-base">
             <thead>
