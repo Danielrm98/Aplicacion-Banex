@@ -6,6 +6,7 @@ import type { Produccion } from '../types/produccion'
 import type { VentaCanastilla } from '../types/ventaCanastilla'
 import { diaSemana } from './diaSemana'
 import { posicionFinca } from './ordenFincas'
+import { anioDeSemana } from './isoWeek'
 
 const columns: { header: string; key: keyof FilaProduccion; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
@@ -232,7 +233,7 @@ function agregarHojaVentas(workbook: ExcelJS.Workbook, ventas: VentaParaExcel[])
   for (const v of ordenadas) {
     const repique = v.cantidad_repique ?? 0
     const fila = sheet.addRow({
-      anio: Number(v.fecha.slice(0, 4)),
+      anio: anioDeSemana(v.fecha, v.semana),
       fecha: v.fecha,
       dia: diaSinTilde(diaSemana(v.fecha)),
       semana: v.semana,

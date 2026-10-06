@@ -10,7 +10,7 @@ import { subirFacturaCanastilla, eliminarFacturaCanastilla, urlFacturaCanastilla
 import { agregarVentaACola, LIMITE_ENVIO_MS } from '../lib/colaCanastillas'
 import { esErrorDeRed } from '../lib/colaRegistros'
 import { conLimite } from '../lib/promesaConLimite'
-import { getIsoWeek } from '../lib/isoWeek'
+import { anioDeSemana, getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual } from '../lib/fincaActual'
 import type { VentaCanastilla } from '../types/ventaCanastilla'
@@ -170,14 +170,14 @@ function VistaFinca({
   const vendidoEstaSemana = useMemo(
     () =>
       ventas
-        .filter((v) => v.semana === semana && v.fecha.slice(0, 4) === String(anio))
+        .filter((v) => v.semana === semana && anioDeSemana(v.fecha, v.semana) === anio)
         .reduce((sum, v) => sum + v.cantidad, 0),
     [ventas, semana, anio],
   )
   const obsequioEstaSemana = useMemo(
     () =>
       ventas
-        .filter((v) => v.semana === semana && v.fecha.slice(0, 4) === String(anio))
+        .filter((v) => v.semana === semana && anioDeSemana(v.fecha, v.semana) === anio)
         .reduce((sum, v) => sum + (v.cantidad_obsequio ?? 0), 0),
     [ventas, semana, anio],
   )
@@ -186,7 +186,7 @@ function VistaFinca({
   const repiqueEstaSemana = useMemo(
     () =>
       ventas
-        .filter((v) => v.semana === semana && v.fecha.slice(0, 4) === String(anio))
+        .filter((v) => v.semana === semana && anioDeSemana(v.fecha, v.semana) === anio)
         .reduce((sum, v) => sum + (v.cantidad_repique ?? 0), 0),
     [ventas, semana, anio],
   )
@@ -412,6 +412,10 @@ function ResumenTarjeta({
 function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: () => void }) {
   const { session } = useAuth()
   const [fecha, setFecha] = useState(fechaLocalHoy())
+  // Semana a la que corresponde la venta. Por defecto es la de la fecha, pero
+  // puede ser otra (p. ej. canastillas de la semana 40 que se venden en la 41).
+  const [semanaElegida, setSemanaElegida] = useState<number | null>(null)
+  const semanaVenta = semanaElegida ?? getIsoWeek(fecha)
   const [cantidad, setCantidad] = useState<number | ''>('')
   const [obsequio, setObsequio] = useState<number | ''>('')
   const [repique, setRepique] = useState<number | ''>('')
@@ -438,6 +442,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
     if (!user) return
 
     function limpiarFormulario() {
+      setSemanaElegida(null)
       setCantidad('')
       setObsequio('')
       setRepique('')
@@ -454,7 +459,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       userId: user.id,
       finca,
       fecha,
-      semana: getIsoWeek(fecha),
+      semana: semanaVenta,
       cantidad: cantidadVendida,
       cantidadObsequio,
       cantidadRepique,
@@ -483,7 +488,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             user_id: user.id,
             finca,
             fecha,
-            semana: getIsoWeek(fecha),
+            semana: semanaVenta,
             cantidad: cantidadVendida,
             cantidad_obsequio: cantidadObsequio,
             cantidad_repique: cantidadRepique,
@@ -523,6 +528,21 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             onChange={(e) => setFecha(e.target.value)}
             className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
+        </label>
+
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-gray-700">Semana que corresponde</span>
+          <select
+            value={semanaVenta}
+            onChange={(e) => setSemanaElegida(Number(e.target.value))}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          >
+            {SEMANAS.map((s) => (
+              <option key={s} value={s}>
+                Semana {s}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="block">
@@ -757,6 +777,7 @@ function EditarVentaForm({
   onCancelar: () => void
 }) {
   const [fecha, setFecha] = useState(venta.fecha)
+  const [semanaEditada, setSemanaEditada] = useState(venta.semana)
   const [cantidad, setCantidad] = useState<number | ''>(venta.cantidad)
   const [obsequio, setObsequio] = useState<number | ''>(venta.cantidad_obsequio)
   const [repique, setRepique] = useState<number | ''>(venta.cantidad_repique)
@@ -781,7 +802,7 @@ function EditarVentaForm({
           .from('ventas_canastillas')
           .update({
             fecha,
-            semana: getIsoWeek(fecha),
+            semana: semanaEditada,
             cantidad: cantidadVendida,
             cantidad_obsequio: cantidadObsequio,
             cantidad_repique: cantidadRepique,
@@ -808,6 +829,16 @@ function EditarVentaForm({
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-gray-700">Fecha</span>
           <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} className={campoClase} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Semana</span>
+          <select value={semanaEditada} onChange={(e) => setSemanaEditada(Number(e.target.value))} className={campoClase}>
+            {SEMANAS.map((s) => (
+              <option key={s} value={s}>
+                Semana {s}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-gray-700">Vendidas</span>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
-import { getIsoWeek } from './isoWeek'
+import { anioDeSemana, getIsoWeek } from './isoWeek'
 
 const TAMANO_PAGINA = 1000
 
@@ -11,6 +11,7 @@ export interface ProduccionConsolidable {
 
 export interface VentaConsolidable {
   fecha: string
+  semana: number
   cantidad: number
   cantidad_obsequio: number
   cantidad_repique: number
@@ -63,14 +64,14 @@ export function consolidadoSemanal(
   hastaFecha: string,
 ): SemanaConsolidada[] {
   const porClave = new Map<string, Omit<SemanaConsolidada, 'clave' | 'anio' | 'semana' | 'totalVendidas' | 'existencia'>>()
-  const sumar = (fecha: string) => {
-    const clave = claveSemanaIso(fecha)
+  const sumar = (clave: string) => {
     if (!porClave.has(clave)) porClave.set(clave, { generadas: 0, vendidas: 0, obsequio: 0, repique: 0 })
     return porClave.get(clave)!
   }
-  for (const p of producciones) sumar(p.fecha).generadas += p.canastillas
+  for (const p of producciones) sumar(claveSemanaIso(p.fecha)).generadas += p.canastillas
   for (const v of ventas) {
-    const acc = sumar(v.fecha)
+    // La venta se cuenta en la semana que le corresponde (la guardada), no en la de su fecha.
+    const acc = sumar(`${anioDeSemana(v.fecha, v.semana)}-${v.semana}`)
     acc.vendidas += v.cantidad
     acc.obsequio += v.cantidad_obsequio ?? 0
     acc.repique += v.cantidad_repique ?? 0
@@ -117,7 +118,7 @@ export function useConsolidadoCanastillas(desdeFecha: string) {
         traerTodos<ProduccionConsolidable>('producciones', 'id, fecha, canastillas', desdeFecha),
         traerTodos<VentaConsolidable>(
           'ventas_canastillas',
-          'id, fecha, cantidad, cantidad_obsequio, cantidad_repique',
+          'id, fecha, semana, cantidad, cantidad_obsequio, cantidad_repique',
           desdeFecha,
         ),
       ])
