@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { FilaCompleta, FilaProduccion, ResumenDiaFinca } from './aggregations'
 import type { Produccion } from '../types/produccion'
+import type { VentaCanastilla } from '../types/ventaCanastilla'
 import { diaSemana } from './diaSemana'
 import { posicionFinca } from './ordenFincas'
 
@@ -81,17 +82,12 @@ const columnasResumen: { header: string; key: keyof ResumenDiaFinca; width?: num
   { header: 'Calibración promedio', key: 'gradoPromedio', width: 18 },
   { header: 'Promedio de manos', key: 'promedioManos', width: 16 },
   { header: 'Canastillas', key: 'canastillas', width: 12 },
-  { header: 'Canastillas vendidas', key: 'canastillasVendidas', width: 16 },
   { header: 'Kilos canastillas', key: 'kilosCanastillas', width: 16 },
   { header: 'Peso neto racimo (kg)', key: 'pesoNetoRacimo', width: 18 },
   { header: 'Ratio', key: 'ratio', width: 10 },
   { header: 'Merma (%)', key: 'merma', width: 12 },
   { header: 'Transporte', key: 'transporte', width: 30 },
   { header: 'Notas', key: 'notas', width: 24 },
-  // Al final a propósito, para no correr el orden de las columnas ya
-  // asignadas: las canastillas por repique son aparte de las producidas en
-  // proceso y no se descuentan del acumulado, solo se informan.
-  { header: 'Canastillas por repique', key: 'canastillasRepique', width: 20 },
 ]
 
 // En el Excel, "Miércoles" y "Sábado" van sin tilde (a pedido); el resto de
@@ -201,6 +197,56 @@ export async function exportFilaCompletaToExcel(
   }
 
   agregarHojaTransporte(workbook, registros)
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
+}
+
+const columnasVentas: { header: string; key: string; width?: number }[] = [
+  { header: 'Año', key: 'anio', width: 8 },
+  { header: 'Fecha de venta', key: 'fecha', width: 14 },
+  { header: 'Día', key: 'dia', width: 12 },
+  { header: 'Semana', key: 'semana', width: 10 },
+  { header: 'Finca', key: 'finca', width: 22 },
+  { header: 'Vendidas por proceso', key: 'vendidas', width: 18 },
+  { header: 'Obsequios entregados', key: 'obsequio', width: 18 },
+  { header: 'Canastillas por repique', key: 'repique', width: 20 },
+  { header: 'Total vendidas (proceso + repique)', key: 'total', width: 26 },
+]
+
+/** Libro aparte de las salidas de canastillas: no depende de si la finca salió a proceso ese día. */
+export async function exportVentasCanastillasToExcel(
+  ventas: Pick<VentaCanastilla, 'fecha' | 'semana' | 'finca' | 'cantidad' | 'cantidad_obsequio' | 'cantidad_repique'>[],
+  filename = 'ventas_canastillas.xlsx',
+) {
+  const ordenadas = [...ventas].sort(
+    (a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca),
+  )
+
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('VENTAS DE CANASTILLAS')
+  sheet.columns = columnasVentas.map((c) => ({ header: c.header, key: c.key, width: c.width }))
+  sheet.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheet, columnasVentas)
+
+  for (const v of ordenadas) {
+    const repique = v.cantidad_repique ?? 0
+    const fila = sheet.addRow({
+      anio: Number(v.fecha.slice(0, 4)),
+      fecha: v.fecha,
+      dia: diaSinTilde(diaSemana(v.fecha)),
+      semana: v.semana,
+      finca: v.finca,
+      vendidas: v.cantidad,
+      obsequio: v.cantidad_obsequio ?? 0,
+      repique,
+    })
+    // Fórmula viva: si se corrige una cifra en el Excel, el total se recalcula solo.
+    fila.getCell('total').value = {
+      formula: `F${fila.number}+H${fila.number}`,
+      result: v.cantidad + repique,
+    }
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
