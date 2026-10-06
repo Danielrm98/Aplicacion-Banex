@@ -540,6 +540,7 @@ function VentaRow({
 }) {
   const [busy, setBusy] = useState(false)
   const [agregandoFactura, setAgregandoFactura] = useState(false)
+  const [editando, setEditando] = useState(false)
 
   async function verFactura() {
     if (!venta.factura_path) return
@@ -600,16 +601,36 @@ function VentaRow({
             </button>
           )}
           {esAdmin && (
-            <button
-              onClick={eliminar}
-              disabled={busy}
-              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              Eliminar
-            </button>
+            <>
+              <button
+                onClick={() => setEditando((v) => !v)}
+                disabled={busy}
+                className="rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50 disabled:opacity-50"
+              >
+                Editar
+              </button>
+              <button
+                onClick={eliminar}
+                disabled={busy}
+                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                Eliminar
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {editando && (
+        <EditarVentaForm
+          venta={venta}
+          onGuardado={() => {
+            setEditando(false)
+            onChanged()
+          }}
+          onCancelar={() => setEditando(false)}
+        />
+      )}
 
       {agregandoFactura && (
         <AgregarFacturaForm
@@ -622,6 +643,124 @@ function VentaRow({
         />
       )}
     </div>
+  )
+}
+
+function EditarVentaForm({
+  venta,
+  onGuardado,
+  onCancelar,
+}: {
+  venta: VentaCanastilla
+  onGuardado: () => void
+  onCancelar: () => void
+}) {
+  const [fecha, setFecha] = useState(venta.fecha)
+  const [cantidad, setCantidad] = useState<number | ''>(venta.cantidad)
+  const [obsequio, setObsequio] = useState<number | ''>(venta.cantidad_obsequio)
+  const [repique, setRepique] = useState<number | ''>(venta.cantidad_repique)
+  const [notas, setNotas] = useState(venta.notas ?? '')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault()
+    const cantidadVendida = cantidad || 0
+    const cantidadObsequio = obsequio || 0
+    const cantidadRepique = repique || 0
+    if (cantidadVendida <= 0 && cantidadObsequio <= 0 && cantidadRepique <= 0) {
+      setError('Ingresa una cantidad vendida, de obsequio o por repique mayor a 0.')
+      return
+    }
+    setError(null)
+    setGuardando(true)
+    try {
+      const { error: updateError } = await conLimite(
+        supabase
+          .from('ventas_canastillas')
+          .update({
+            fecha,
+            semana: getIsoWeek(fecha),
+            cantidad: cantidadVendida,
+            cantidad_obsequio: cantidadObsequio,
+            cantidad_repique: cantidadRepique,
+            notas: notas || null,
+          })
+          .eq('id', venta.id),
+        LIMITE_ENVIO_MS,
+      )
+      if (updateError) throw updateError
+      onGuardado()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudieron guardar los cambios.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  const campoClase =
+    'rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20'
+
+  return (
+    <form onSubmit={guardar} className="mt-3 border-t border-gray-100 pt-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Fecha</span>
+          <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} className={campoClase} />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Vendidas</span>
+          <input
+            type="number"
+            min={0}
+            value={cantidad}
+            onChange={(e) => setCantidad(e.target.value === '' ? '' : Number(e.target.value))}
+            className={`w-28 ${campoClase}`}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Obsequio</span>
+          <input
+            type="number"
+            min={0}
+            value={obsequio}
+            onChange={(e) => setObsequio(e.target.value === '' ? '' : Number(e.target.value))}
+            className={`w-28 ${campoClase}`}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Repique</span>
+          <input
+            type="number"
+            min={0}
+            value={repique}
+            onChange={(e) => setRepique(e.target.value === '' ? '' : Number(e.target.value))}
+            className={`w-28 ${campoClase}`}
+          />
+        </label>
+        <label className="block min-w-[160px] flex-1">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Notas</span>
+          <input type="text" value={notas} onChange={(e) => setNotas(e.target.value)} className={`w-full ${campoClase}`} />
+        </label>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="submit"
+          disabled={guardando}
+          className="rounded-md bg-banex-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+        >
+          {guardando ? 'Guardando...' : 'Guardar cambios'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancelar}
+          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+        >
+          Cancelar
+        </button>
+      </div>
+      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+    </form>
   )
 }
 
