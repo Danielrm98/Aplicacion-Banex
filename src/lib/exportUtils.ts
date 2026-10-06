@@ -249,14 +249,6 @@ function agregarHojaVentas(workbook: ExcelJS.Workbook, ventas: VentaParaExcel[])
   }
 }
 
-/** Libro solo de ventas (usado desde Venta de canastillas con los filtros de la lista). */
-export async function exportVentasCanastillasToExcel(ventas: VentaParaExcel[], filename = 'ventas_canastillas.xlsx') {
-  const workbook = new ExcelJS.Workbook()
-  agregarHojaVentas(workbook, ventas)
-  const buffer = await workbook.xlsx.writeBuffer()
-  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
-}
-
 export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_banano.pdf') {
   const filasOrdenadas = [...filas].sort(
     (a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca),

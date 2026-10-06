@@ -8,7 +8,6 @@ import { useVentasCanastillas } from '../lib/useVentasCanastillas'
 import { consolidadoSemanal, useConsolidadoCanastillas } from '../lib/useConsolidadoCanastillas'
 import { subirFacturaCanastilla, eliminarFacturaCanastilla, urlFacturaCanastilla } from '../lib/facturasCanastillas'
 import { agregarVentaACola, LIMITE_ENVIO_MS } from '../lib/colaCanastillas'
-import { exportVentasCanastillasToExcel } from '../lib/exportUtils'
 import { esErrorDeRed } from '../lib/colaRegistros'
 import { conLimite } from '../lib/promesaConLimite'
 import { getIsoWeek } from '../lib/isoWeek'
@@ -203,16 +202,6 @@ function VistaFinca({
     [ventas, filtroSemanaLista, filtroFecha],
   )
 
-  const [exportando, setExportando] = useState(false)
-  async function exportarFiltradas() {
-    setExportando(true)
-    try {
-      await exportVentasCanastillasToExcel(ventasFiltradas, `ventas_canastillas_${finca}.xlsx`.replace(/\s+/g, '_'))
-    } finally {
-      setExportando(false)
-    }
-  }
-
   return (
     <>
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -288,16 +277,6 @@ function VistaFinca({
                   Limpiar filtros
                 </button>
               )}
-            </div>
-
-            <div className="mb-4 flex justify-end">
-              <button
-                onClick={exportarFiltradas}
-                disabled={exportando || ventasFiltradas.length === 0}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
-              >
-                Exportar estas salidas a Excel
-              </button>
             </div>
 
             {loading ? (
