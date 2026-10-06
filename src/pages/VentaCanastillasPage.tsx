@@ -5,6 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
 import { useVentasCanastillas } from '../lib/useVentasCanastillas'
+import { consolidadoSemanal, useConsolidadoCanastillas } from '../lib/useConsolidadoCanastillas'
 import { subirFacturaCanastilla, eliminarFacturaCanastilla, urlFacturaCanastilla } from '../lib/facturasCanastillas'
 import { agregarVentaACola, LIMITE_ENVIO_MS } from '../lib/colaCanastillas'
 import { esErrorDeRed } from '../lib/colaRegistros'
@@ -21,6 +22,7 @@ const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 // la aplicación, así que el acumulado arranca aquí para no dejarlas como
 // pendientes por vender. Lunes de la semana ISO 37 de 2026.
 const FECHA_INICIO_ACUMULADO = '2026-09-07'
+const OPCION_CONSOLIDADO = '__consolidado__'
 
 export default function VentaCanastillasPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
@@ -35,22 +37,105 @@ export default function VentaCanastillasPage() {
   const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
   const [semana, setSemana] = useState<number>(() => getIsoWeek(fechaLocalHoy()))
   const [anio, setAnio] = useState<number>(new Date().getFullYear())
-  // Filtros de la lista "Salidas registradas", independientes de la semana/
-  // año de arriba (esos son solo para las tarjetas de resumen): por defecto
-  // se ven todas las salidas de la finca, sin necesidad de elegir semana.
-  const [filtroSemanaLista, setFiltroSemanaLista] = useState<number | ''>('')
-  const [filtroFecha, setFiltroFecha] = useState('')
 
   useEffect(() => {
     if (fincaUnicaOperador) {
       if (finca !== fincaUnicaOperador) setFinca(fincaUnicaOperador)
       return
     }
+    if (finca === OPCION_CONSOLIDADO && esAdmin) return
     if (fincasDisponibles.length === 0) return
     if (finca && fincasDisponibles.some((f) => f.nombre === finca)) return
     const guardada = obtenerFincaActual()
     setFinca(guardada && fincasDisponibles.some((f) => f.nombre === guardada) ? guardada : fincasDisponibles[0].nombre)
-  }, [fincasDisponibles, finca, fincaUnicaOperador])
+  }, [fincasDisponibles, finca, fincaUnicaOperador, esAdmin])
+
+  return (
+    <div>
+      <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Venta de canastillas</h1>
+      <p className="mb-6 text-sm text-gray-500">
+        Las canastillas producidas se venden a terceros, y otras se obsequian al personal operativo. Registra cada
+        salida con la foto de la factura de entrega y lleva el control de cuántas quedan disponibles. Las canastillas
+        por repique son aparte de las producidas en proceso y no se descuentan del acumulado.
+      </p>
+
+      <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <label className="text-sm">
+          <span className="mb-1 block text-gray-600">Finca</span>
+          <select
+            value={finca}
+            disabled={!!fincaUnicaOperador}
+            onChange={(e) => setFinca(e.target.value)}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {fincaUnicaOperador ? (
+              <option value={finca}>{finca}</option>
+            ) : (
+              <>
+                {esAdmin && <option value={OPCION_CONSOLIDADO}>Todas las fincas (consolidado)</option>}
+                {fincasDisponibles.map((f) => (
+                  <option key={f.nombre} value={f.nombre}>
+                    {f.nombre}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-gray-600">Semana</span>
+          <select
+            value={semana}
+            onChange={(e) => setSemana(Number(e.target.value))}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          >
+            {SEMANAS.map((s) => (
+              <option key={s} value={s}>
+                Semana {s}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="text-sm">
+          <span className="mb-1 block text-gray-600">Año</span>
+          <input
+            type="number"
+            value={anio}
+            onChange={(e) => setAnio(Number(e.target.value))}
+            className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          />
+        </label>
+      </div>
+
+      {finca === OPCION_CONSOLIDADO && esAdmin ? (
+        <ConsolidadoGlobal semana={semana} anio={anio} />
+      ) : !finca ? (
+        <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
+      ) : (
+        <VistaFinca finca={finca} semana={semana} anio={anio} esAdmin={esAdmin} />
+      )}
+    </div>
+  )
+}
+
+function VistaFinca({
+  finca,
+  semana,
+  anio,
+  esAdmin,
+}: {
+  finca: string
+  semana: number
+  anio: number
+  esAdmin: boolean
+}) {
+  // Filtros de la lista "Salidas registradas", independientes de la semana/
+  // año de arriba (esos son solo para las tarjetas de resumen): por defecto
+  // se ven todas las salidas de la finca, sin necesidad de elegir semana.
+  const [filtroSemanaLista, setFiltroSemanaLista] = useState<number | ''>('')
+  const [filtroFecha, setFiltroFecha] = useState('')
 
   // Se trae todo el histórico de la finca (sin filtrar por semana) porque el
   // disponible es un saldo acumulado en el tiempo, no algo que se reinicie
@@ -118,65 +203,7 @@ export default function VentaCanastillasPage() {
   )
 
   return (
-    <div>
-      <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Venta de canastillas</h1>
-      <p className="mb-6 text-sm text-gray-500">
-        Las canastillas producidas se venden a terceros, y otras se obsequian al personal operativo. Registra cada
-        salida con la foto de la factura de entrega y lleva el control de cuántas quedan disponibles. Las canastillas
-        por repique son aparte de las producidas en proceso y no se descuentan del acumulado.
-      </p>
-
-      <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Finca</span>
-          <select
-            value={finca}
-            disabled={!!fincaUnicaOperador}
-            onChange={(e) => setFinca(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {fincaUnicaOperador ? (
-              <option value={finca}>{finca}</option>
-            ) : (
-              fincasDisponibles.map((f) => (
-                <option key={f.nombre} value={f.nombre}>
-                  {f.nombre}
-                </option>
-              ))
-            )}
-          </select>
-        </label>
-
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Semana</span>
-          <select
-            value={semana}
-            onChange={(e) => setSemana(Number(e.target.value))}
-            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
-          >
-            {SEMANAS.map((s) => (
-              <option key={s} value={s}>
-                Semana {s}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Año</span>
-          <input
-            type="number"
-            value={anio}
-            onChange={(e) => setAnio(Number(e.target.value))}
-            className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
-          />
-        </label>
-      </div>
-
-      {!finca ? (
-        <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
-      ) : (
-        <>
+    <>
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <ResumenTarjeta
               titulo="Producidas esta semana"
@@ -270,9 +297,83 @@ export default function VentaCanastillasPage() {
               </div>
             )}
           </div>
-        </>
+    </>
+  )
+}
+
+function ConsolidadoGlobal({ semana, anio }: { semana: number; anio: number }) {
+  const { producciones, ventas, loading, error } = useConsolidadoCanastillas(FECHA_INICIO_ACUMULADO)
+  const filas = useMemo(
+    () => consolidadoSemanal(producciones, ventas, FECHA_INICIO_ACUMULADO, fechaLocalHoy()),
+    [producciones, ventas],
+  )
+  const seleccionada = filas.find((f) => f.anio === anio && f.semana === semana)
+
+  if (loading) return <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+  if (error) return <p className="py-8 text-center text-sm text-red-600">{error}</p>
+
+  return (
+    <>
+      {seleccionada ? (
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <ResumenTarjeta titulo="Generadas" valor={seleccionada.generadas} detalle={`Semana ${semana}/${anio}`} />
+          <ResumenTarjeta titulo="Vendidas (proceso)" valor={seleccionada.vendidas} detalle={`Semana ${semana}/${anio}`} />
+          <ResumenTarjeta titulo="Obsequio" valor={seleccionada.obsequio} detalle={`Semana ${semana}/${anio}`} />
+          <ResumenTarjeta titulo="Vendidas por repique" valor={seleccionada.repique} detalle="Aparte de lo producido" />
+          <ResumenTarjeta titulo="Total vendidas" valor={seleccionada.totalVendidas} detalle="Proceso + repique" />
+          <ResumenTarjeta
+            titulo="Existencia"
+            valor={seleccionada.existencia}
+            detalle="Quedan al cierre de la semana"
+            destacado
+            alerta={seleccionada.existencia < 0}
+          />
+        </div>
+      ) : (
+        <p className="mb-6 text-sm text-gray-500">
+          Semana {semana}/{anio}: está antes del acumulado (desde la semana 37/2026) o todavía no llega.
+        </p>
       )}
-    </div>
+
+      <SectionHeading>Resumen semana a semana</SectionHeading>
+      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+              <th className="px-4 py-2 font-medium">Semana</th>
+              <th className="px-2 py-2 text-right font-medium">Generadas</th>
+              <th className="px-2 py-2 text-right font-medium">Vendidas</th>
+              <th className="px-2 py-2 text-right font-medium">Obsequio</th>
+              <th className="px-2 py-2 text-right font-medium">Repique</th>
+              <th className="px-2 py-2 text-right font-medium">Total vendidas</th>
+              <th className="px-4 py-2 text-right font-medium">Existencia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...filas].reverse().map((f) => {
+              const esSeleccionada = f.anio === anio && f.semana === semana
+              return (
+                <tr key={f.clave} className={`border-b border-gray-100 ${esSeleccionada ? 'bg-banex-50' : ''}`}>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    Semana {f.semana}/{f.anio}
+                  </td>
+                  <td className="px-2 py-2 text-right text-gray-700">{f.generadas.toLocaleString('es')}</td>
+                  <td className="px-2 py-2 text-right text-gray-700">{f.vendidas.toLocaleString('es')}</td>
+                  <td className="px-2 py-2 text-right text-gray-700">{f.obsequio.toLocaleString('es')}</td>
+                  <td className="px-2 py-2 text-right text-purple-600">{f.repique.toLocaleString('es')}</td>
+                  <td className="px-2 py-2 text-right font-semibold text-banex-700">{f.totalVendidas.toLocaleString('es')}</td>
+                  <td
+                    className={`px-4 py-2 text-right font-semibold ${f.existencia < 0 ? 'text-red-600' : 'text-banex-800'}`}
+                  >
+                    {f.existencia.toLocaleString('es')}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
