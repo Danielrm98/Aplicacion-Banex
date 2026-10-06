@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { exportFilaCompletaToExcel, exportToPdf, exportVentasCanastillasToExcel } from '../lib/exportUtils'
+import { exportFilaCompletaToExcel, exportToPdf } from '../lib/exportUtils'
 import { filaCompleta, flattenItems, resumenPorDiaFinca } from '../lib/aggregations'
 import { useVentasCanastillas } from '../lib/useVentasCanastillas'
 import type { Produccion } from '../types/produccion'
@@ -17,16 +17,7 @@ export default function ExportButtons({ registros }: { registros: Produccion[] }
   async function handleExcel() {
     setExporting(true)
     try {
-      await exportFilaCompletaToExcel(filasCompletas, resumenes, registros)
-    } finally {
-      setExporting(false)
-    }
-  }
-
-  async function handleVentas() {
-    setExporting(true)
-    try {
-      await exportVentasCanastillasToExcel(ventas)
+      await exportFilaCompletaToExcel(filasCompletas, resumenes, registros, ventas)
     } finally {
       setExporting(false)
     }
@@ -43,9 +34,6 @@ export default function ExportButtons({ registros }: { registros: Produccion[] }
     <div className="flex flex-wrap gap-2">
       <button onClick={handleExcel} disabled={disabled} className={claseBoton}>
         Exportar Excel
-      </button>
-      <button onClick={handleVentas} disabled={exporting || ventas.length === 0} className={claseBoton}>
-        Exportar ventas de canastillas
       </button>
       <button onClick={handlePdf} disabled={disabled} className={claseBoton}>
         Exportar PDF

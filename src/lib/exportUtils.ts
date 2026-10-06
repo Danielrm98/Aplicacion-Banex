@@ -157,6 +157,7 @@ export async function exportFilaCompletaToExcel(
   filas: FilaCompleta[],
   resumenes: ResumenDiaFinca[],
   registros: Produccion[],
+  ventas: VentaParaExcel[],
   filename = 'reportes_banano.xlsx',
 ) {
   // Del más antiguo al más reciente, para que los registros nuevos se vayan
@@ -197,6 +198,7 @@ export async function exportFilaCompletaToExcel(
   }
 
   agregarHojaTransporte(workbook, registros)
+  agregarHojaVentas(workbook, ventas)
 
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
@@ -215,15 +217,13 @@ const columnasVentas: { header: string; key: string; width?: number }[] = [
 ]
 
 /** Libro aparte de las salidas de canastillas: no depende de si la finca salió a proceso ese día. */
-export async function exportVentasCanastillasToExcel(
-  ventas: Pick<VentaCanastilla, 'fecha' | 'semana' | 'finca' | 'cantidad' | 'cantidad_obsequio' | 'cantidad_repique'>[],
-  filename = 'ventas_canastillas.xlsx',
-) {
+type VentaParaExcel = Pick<VentaCanastilla, 'fecha' | 'semana' | 'finca' | 'cantidad' | 'cantidad_obsequio' | 'cantidad_repique'>
+
+function agregarHojaVentas(workbook: ExcelJS.Workbook, ventas: VentaParaExcel[]) {
   const ordenadas = [...ventas].sort(
     (a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca),
   )
 
-  const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('VENTAS DE CANASTILLAS')
   sheet.columns = columnasVentas.map((c) => ({ header: c.header, key: c.key, width: c.width }))
   sheet.getRow(1).font = { bold: true }
@@ -247,7 +247,12 @@ export async function exportVentasCanastillasToExcel(
       result: v.cantidad + repique,
     }
   }
+}
 
+/** Libro solo de ventas (usado desde Venta de canastillas con los filtros de la lista). */
+export async function exportVentasCanastillasToExcel(ventas: VentaParaExcel[], filename = 'ventas_canastillas.xlsx') {
+  const workbook = new ExcelJS.Workbook()
+  agregarHojaVentas(workbook, ventas)
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
 }
