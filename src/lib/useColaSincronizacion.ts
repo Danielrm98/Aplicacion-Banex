@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { leerCola, sincronizarCola } from './colaRegistros'
 import { leerColaVentas, sincronizarColaVentas } from './colaCanastillas'
+import { leerColaEmbolses, sincronizarColaEmbolses } from './colaEmbolses'
+import { EVENTO_COLA_CAMBIO } from './bdOffline'
 
 async function contarPendientes(): Promise<number> {
-  return leerCola().length + (await leerColaVentas()).length
+  return leerCola().length + (await leerColaVentas()).length + (await leerColaEmbolses()).length
 }
 
 export function useColaSincronizacion() {
@@ -16,7 +18,7 @@ export function useColaSincronizacion() {
     enCursoRef.current = true
     setSincronizando(true)
     try {
-      await Promise.all([sincronizarCola(), sincronizarColaVentas()])
+      await Promise.all([sincronizarCola(), sincronizarColaVentas(), sincronizarColaEmbolses()])
     } catch {
       // cada cola ya maneja sus propios errores por elemento; esto solo
       // cubre un fallo inesperado para no dejar el spinner colgado.
@@ -30,16 +32,20 @@ export function useColaSincronizacion() {
     contarPendientes().then(setPendientes)
     if (navigator.onLine) sincronizarAhora()
 
+    const recontar = () => contarPendientes().then(setPendientes)
+
     window.addEventListener('online', sincronizarAhora)
+    window.addEventListener(EVENTO_COLA_CAMBIO, recontar)
     // La señal en finca es intermitente y el evento "online" del navegador no
     // siempre llega (por ejemplo si la pestaña estaba en segundo plano). Este
     // intervalo reintenta la sincronización aunque ese evento se pierda.
     const intervalo = setInterval(() => {
       if (navigator.onLine) sincronizarAhora()
-      else contarPendientes().then(setPendientes)
+      else recontar()
     }, 15000)
     return () => {
       window.removeEventListener('online', sincronizarAhora)
+      window.removeEventListener(EVENTO_COLA_CAMBIO, recontar)
       clearInterval(intervalo)
     }
     // Se registra una sola vez al montar; sincronizarAhora no depende de

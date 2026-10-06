@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient'
 import { esErrorDeRed } from './colaRegistros'
 import { conLimite } from './promesaConLimite'
 import { subirFacturaCanastilla } from './facturasCanastillas'
+import { ALMACEN_VENTAS_PENDIENTES, EVENTO_COLA_CAMBIO, conAlmacen } from './bdOffline'
 
 // Más alto que el de un registro (12s): aquí además se sube la foto de la factura.
 export const LIMITE_ENVIO_MS = 20000
@@ -31,56 +32,26 @@ export interface VentaPendiente {
   ultimoError: string | null
 }
 
-const DB_NOMBRE = 'approban_offline'
-const DB_VERSION = 1
-const ALMACEN = 'ventas_canastillas_pendientes'
-
-function abrirDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NOMBRE, DB_VERSION)
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(ALMACEN)) {
-        req.result.createObjectStore(ALMACEN, { keyPath: 'id' })
-      }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
-
-async function conAlmacen<T>(modo: IDBTransactionMode, fn: (almacen: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const db = await abrirDb()
-  try {
-    return await new Promise<T>((resolve, reject) => {
-      const tx = db.transaction(ALMACEN, modo)
-      const req = fn(tx.objectStore(ALMACEN))
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => reject(req.error)
-    })
-  } finally {
-    db.close()
-  }
-}
-
 export async function agregarVentaACola(venta: VentaPendiente): Promise<void> {
-  await conAlmacen('readwrite', (almacen) => almacen.put(venta))
+  await conAlmacen(ALMACEN_VENTAS_PENDIENTES, 'readwrite', (almacen) => almacen.put(venta))
+  window.dispatchEvent(new Event(EVENTO_COLA_CAMBIO))
 }
 
 /** Si falla (navegador sin IndexedDB, modo privado, etc.) se trata como "sin pendientes". */
 export async function leerColaVentas(): Promise<VentaPendiente[]> {
   try {
-    return await conAlmacen<VentaPendiente[]>('readonly', (almacen) => almacen.getAll())
+    return await conAlmacen<VentaPendiente[]>(ALMACEN_VENTAS_PENDIENTES, 'readonly', (almacen) => almacen.getAll())
   } catch {
     return []
   }
 }
 
 async function quitarDeCola(id: string) {
-  await conAlmacen('readwrite', (almacen) => almacen.delete(id))
+  await conAlmacen(ALMACEN_VENTAS_PENDIENTES, 'readwrite', (almacen) => almacen.delete(id))
 }
 
 async function marcarIntento(venta: VentaPendiente, error: string) {
-  await conAlmacen('readwrite', (almacen) =>
+  await conAlmacen(ALMACEN_VENTAS_PENDIENTES, 'readwrite', (almacen) =>
     almacen.put({ ...venta, intentos: venta.intentos + 1, ultimoError: error }),
   )
 }

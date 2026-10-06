@@ -26,17 +26,22 @@ export async function conCacheLocal<T>(
   // queda corto; se puede alargar sin afectar al resto de catálogos.
   limiteMs = LIMITE_MS_DEFECTO,
 ): Promise<{ data: T | null; error: string | null }> {
+  const sinConexion = typeof navigator !== 'undefined' && navigator.onLine === false
   const limite = new Promise<'limite'>((resolve) => setTimeout(() => resolve('limite'), limiteMs))
 
   let resultado: ResultadoConsulta<T> | 'limite'
-  try {
-    resultado = await Promise.race([consulta(), limite])
-  } catch (err) {
-    resultado = { data: null, error: { message: err instanceof Error ? err.message : 'Error de red' } }
+  if (sinConexion) {
+    resultado = 'limite'
+  } else {
+    try {
+      resultado = await Promise.race([consulta(), limite])
+    } catch (err) {
+      resultado = { data: null, error: { message: err instanceof Error ? err.message : 'Error de red' } }
+    }
   }
 
   if (resultado === 'limite' || resultado.error) {
-    const cacheado = leerCache<T>(clave)
+    const cacheado = leerCacheLocal<T>(clave)
     if (cacheado !== null) return { data: cacheado, error: null }
     if (respaldoBase !== undefined) return { data: respaldoBase, error: null }
     return { data: null, error: resultado === 'limite' ? 'Sin conexión.' : resultado.error!.message }
@@ -46,7 +51,7 @@ export async function conCacheLocal<T>(
   return { data: resultado.data, error: null }
 }
 
-function leerCache<T>(clave: string): T | null {
+export function leerCacheLocal<T>(clave: string): T | null {
   try {
     const bruto = localStorage.getItem(clave)
     return bruto ? (JSON.parse(bruto) as T) : null

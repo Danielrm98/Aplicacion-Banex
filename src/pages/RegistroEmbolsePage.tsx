@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { domToBlob } from 'modern-screenshot'
 import { BANEX_LOGO_URL } from '../lib/logo'
 import { useAuth } from '../lib/AuthContext'
@@ -12,12 +12,14 @@ import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
-import { supabase } from '../lib/supabaseClient'
 import { conLimite } from '../lib/promesaConLimite'
-import { LIMITE_ENVIO_MS } from '../lib/colaRegistros'
+import { esErrorDeRed, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
+import { agregarEmbolseACola, enviarEmbolse, type DiasEmbolse, type PayloadEmbolse } from '../lib/colaEmbolses'
+import { useEmbolsesPendientes } from '../lib/useEmbolsesPendientes'
 import type { Finca } from '../types/finca'
 import type { Lote } from '../types/lote'
-import type { Embolse } from '../types/embolse'
+
+type DatosGuardados = DiasEmbolse & { debunching: number | null }
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
@@ -63,19 +65,30 @@ export default function RegistroEmbolsePage() {
   const { lotes, loading: loadingLotes } = useLotes()
   const anioEmbolses = anioEmbolsesDe(semanaRegistro.anio, semanaRegistro.semana)
   const { embolses, loading: loadingEmbolses, refetchSilencioso } = useEmbolses({ anioEmbolses })
+  const { pendientes, cargado: pendientesCargados, recargar: recargarPendientes } = useEmbolsesPendientes()
 
   const lotesFinca = useMemo(
     () => [...lotes.filter((l) => l.finca === fincaSeleccionada)].sort((a, b) => a.nombre.localeCompare(b.nombre, undefined, { numeric: true })),
     [lotes, fincaSeleccionada],
   )
 
+  // Lo guardado en el servidor, con encima lo que todavía está pendiente de
+  // enviar desde este celular (más reciente que lo del servidor).
   const embolsePorLote = useMemo(() => {
-    const m = new Map<string, Embolse>()
+    const m = new Map<string, DatosGuardados>()
     for (const e of embolses) {
       if (e.anio === semanaRegistro.anio && e.semana === semanaRegistro.semana) m.set(e.lote_id, e)
     }
+    for (const p of pendientes) {
+      if (p.payload.anio === semanaRegistro.anio && p.payload.semana === semanaRegistro.semana) m.set(p.payload.lote_id, p.payload)
+    }
     return m
-  }, [embolses, semanaRegistro.anio, semanaRegistro.semana])
+  }, [embolses, pendientes, semanaRegistro.anio, semanaRegistro.semana])
+
+  const alGuardar = useCallback(() => {
+    refetchSilencioso()
+    recargarPendientes()
+  }, [refetchSilencioso, recargarPendientes])
 
   function elegirFinca(nombre: string) {
     setFincaSeleccionada(nombre)
@@ -152,7 +165,7 @@ export default function RegistroEmbolsePage() {
         lo que guardes aquí quedan registrados en esa semana siguiente.
       </p>
 
-      {loadingLotes || loadingEmbolses ? (
+      {loadingLotes || loadingEmbolses || !pendientesCargados ? (
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
       ) : !finca ? (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
@@ -171,7 +184,7 @@ export default function RegistroEmbolsePage() {
           semanaRegistro={semanaRegistro.semana}
           embolsePorLote={embolsePorLote}
           userId={session?.user.id ?? ''}
-          onGuardado={refetchSilencioso}
+          onGuardado={alGuardar}
         />
       )}
     </div>
@@ -208,7 +221,7 @@ function TablaRegistro({
   anio: number
   anioRegistro: number
   semanaRegistro: number
-  embolsePorLote: Map<string, Embolse>
+  embolsePorLote: Map<string, DatosGuardados>
   userId: string
   onGuardado: () => void
 }) {
@@ -282,31 +295,37 @@ function TablaRegistro({
       const { [loteId]: _quitado, ...resto } = prev
       return resto
     })
+    const primera = DIAS_1RA_VUELTA.reduce((sum, dia) => sum + (valores[dia] ?? 0), 0)
+    const segunda = DIAS_2DA_VUELTA.reduce((sum, dia) => sum + (valores[dia] ?? 0), 0)
+    const payload: PayloadEmbolse = {
+      lote_id: loteId,
+      anio: anioRegistro,
+      semana: semanaRegistro,
+      cantidad: primera + segunda,
+      primera_vuelta: primera,
+      segunda_vuelta: segunda,
+      debunching,
+      user_id: userId,
+      ...valores,
+    }
+
+    // Sin señal (o con señal tan débil que la petición no termina) el registro
+    // queda guardado en el celular y se envía solo cuando vuelva la conexión.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await agregarEmbolseACola(payload)
+      onGuardado()
+      return
+    }
     try {
-      const primera = DIAS_1RA_VUELTA.reduce((sum, dia) => sum + (valores[dia] ?? 0), 0)
-      const segunda = DIAS_2DA_VUELTA.reduce((sum, dia) => sum + (valores[dia] ?? 0), 0)
-      const cantidad = primera + segunda
-      const { error } = await conLimite(
-        supabase.from('embolses').upsert(
-          {
-            lote_id: loteId,
-            anio: anioRegistro,
-            semana: semanaRegistro,
-            cantidad,
-            primera_vuelta: primera,
-            segunda_vuelta: segunda,
-            debunching,
-            user_id: userId,
-            ...valores,
-          },
-          { onConflict: 'lote_id,anio,semana' },
-        ),
-        LIMITE_ENVIO_MS,
-      )
-      if (error) throw error
+      await conLimite(enviarEmbolse(payload), LIMITE_ENVIO_MS)
       onGuardado()
     } catch (err) {
-      setConError((prev) => ({ ...prev, [loteId]: err instanceof Error ? err.message : 'No se pudo guardar' }))
+      if (esErrorDeRed(err)) {
+        await agregarEmbolseACola(payload)
+        onGuardado()
+      } else {
+        setConError((prev) => ({ ...prev, [loteId]: err instanceof Error ? err.message : 'No se pudo guardar' }))
+      }
     }
   }
 
