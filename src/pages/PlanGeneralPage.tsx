@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { conCacheLocal, leerCacheLocal } from '../lib/consultaConCache'
 import { useAuth } from '../lib/AuthContext'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
@@ -27,8 +28,9 @@ export default function PlanGeneralPage() {
 
   const [semana, setSemana] = useState(() => getIsoWeek(fechaLocalHoy()))
   const [anio, setAnio] = useState(() => new Date().getFullYear())
-  const [planes, setPlanes] = useState<PlanSemana[]>([])
-  const [loading, setLoading] = useState(true)
+  const claveCachePlanes = (a: number, s: number) => `approban_cache_planes_general_${a}_${s}`
+  const [planes, setPlanes] = useState<PlanSemana[]>(() => leerCacheLocal<PlanSemana[]>(claveCachePlanes(anio, semana)) ?? [])
+  const [loading, setLoading] = useState(() => leerCacheLocal<PlanSemana[]>(claveCachePlanes(anio, semana)) === null)
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -38,25 +40,29 @@ export default function PlanGeneralPage() {
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
 
   const cargarPlanes = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    const { data, error } = await supabase
-      .from('planes_semana')
-      .select('*, items:plan_items(*)')
-      .eq('anio', anio)
-      .eq('semana', semana)
+    const { data, error } = await conCacheLocal<PlanSemana[]>(claveCachePlanes(anio, semana), () =>
+      supabase.from('planes_semana').select('*, items:plan_items(*)').eq('anio', anio).eq('semana', semana),
+    )
 
     if (error) {
-      setError(error.message)
-      setPlanes([])
+      setError(error)
     } else {
+      setError(null)
       setPlanes(data ?? [])
     }
     setLoading(false)
   }, [anio, semana])
 
   useEffect(() => {
+    const cacheado = leerCacheLocal<PlanSemana[]>(claveCachePlanes(anio, semana))
+    if (cacheado !== null) {
+      setPlanes(cacheado)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     cargarPlanes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargarPlanes])
 
   useEffect(() => {

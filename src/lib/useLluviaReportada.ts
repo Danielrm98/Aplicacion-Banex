@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { conCacheLocal, leerCacheLocal } from './consultaConCache'
+import { conLimite } from './promesaConLimite'
+
+const LIMITE_MS = 6000
 import type { LluviaHistorialDia } from './useClima'
 import type { LluviaReportada } from '../types/lluvia'
+
+function claveCache(finca: string): string {
+  return `approban_cache_lluvia_${finca}`
+}
 
 export interface LluviaHistorialConFuente extends LluviaHistorialDia {
   fuente: 'reportado' | 'estimado'
@@ -22,8 +30,10 @@ export function combinarHistorialLluvia(
 }
 
 export function useLluviaReportada(finca: string | null) {
-  const [reportes, setReportes] = useState<LluviaReportada[]>([])
-  const [loading, setLoading] = useState(true)
+  const [reportes, setReportes] = useState<LluviaReportada[]>(
+    () => (finca ? leerCacheLocal<LluviaReportada[]>(claveCache(finca)) : null) ?? [],
+  )
+  const [loading, setLoading] = useState(() => !!finca && leerCacheLocal<LluviaReportada[]>(claveCache(finca)) === null)
   const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
@@ -32,16 +42,12 @@ export function useLluviaReportada(finca: string | null) {
       setLoading(false)
       return
     }
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('lluvia_reportada')
-      .select('*')
-      .eq('finca', finca)
-      .order('fecha', { ascending: false })
-      .limit(30)
+    const { data, error } = await conCacheLocal<LluviaReportada[]>(claveCache(finca), () =>
+      supabase.from('lluvia_reportada').select('*').eq('finca', finca).order('fecha', { ascending: false }).limit(30),
+    )
 
     if (error) {
-      setError(error.message)
+      setError(error)
     } else {
       setError(null)
       setReportes(data ?? [])
@@ -59,23 +65,26 @@ export function useLluviaReportada(finca: string | null) {
 export async function guardarLluviaReportada(finca: string, fecha: string, milimetros: number) {
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await conLimite(supabase.auth.getUser(), LIMITE_MS)
   if (!user) throw new Error('No hay sesión activa.')
 
-  const { error } = await supabase.from('lluvia_reportada').upsert(
-    {
-      finca,
-      fecha,
-      milimetros,
-      user_id: user.id,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'finca,fecha' },
+  const { error } = await conLimite(
+    supabase.from('lluvia_reportada').upsert(
+      {
+        finca,
+        fecha,
+        milimetros,
+        user_id: user.id,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'finca,fecha' },
+    ),
+    LIMITE_MS,
   )
   if (error) throw error
 }
 
 export async function eliminarLluviaReportada(id: string) {
-  const { error } = await supabase.from('lluvia_reportada').delete().eq('id', id)
+  const { error } = await conLimite(supabase.from('lluvia_reportada').delete().eq('id', id), LIMITE_MS)
   if (error) throw error
 }

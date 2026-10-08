@@ -45,7 +45,12 @@ export function useProducciones(filtros: Filtros) {
       setRegistros(data ?? [])
     }
     setLoading(false)
-  }, [filtros])
+    // Dependencias por campo (no el objeto filtros completo): quien llama
+    // (EntryPage, ProductionForm, etc.) suele pasar un literal nuevo en cada
+    // render, así que depender del objeto entero recrearía refetch sin
+    // parar y dispararía una tanda infinita de peticiones.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtros.semana, filtros.fecha, filtros.finca])
 
   useEffect(() => {
     // Al cambiar de filtros se muestra de una vez lo guardado para esa

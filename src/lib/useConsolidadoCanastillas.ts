@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import { conCacheLocal, leerCacheLocal } from './consultaConCache'
 import { anioDeSemana, getIsoWeek } from './isoWeek'
 
 const TAMANO_PAGINA = 1000
+// Más alto que el límite por defecto: esto pagina de a 1000 filas y puede
+// necesitar varias idas y vueltas si hay mucho histórico acumulado.
+const LIMITE_MS = 20000
+
+function claveCache(desdeFecha: string): string {
+  return `approban_cache_consolidado_${desdeFecha}`
+}
 
 export interface ProduccionConsolidable {
   fecha: string
@@ -104,36 +112,60 @@ export function consolidadoSemanal(
   })
 }
 
+interface DatosConsolidado {
+  producciones: ProduccionConsolidable[]
+  ventas: VentaConsolidable[]
+}
+
+const SIN_DATOS: DatosConsolidado = { producciones: [], ventas: [] }
+
 export function useConsolidadoCanastillas(desdeFecha: string) {
-  const [producciones, setProducciones] = useState<ProduccionConsolidable[]>([])
-  const [ventas, setVentas] = useState<VentaConsolidable[]>([])
-  const [loading, setLoading] = useState(true)
+  const [datos, setDatos] = useState<DatosConsolidado>(() => leerCacheLocal<DatosConsolidado>(claveCache(desdeFecha)) ?? SIN_DATOS)
+  const [loading, setLoading] = useState(() => leerCacheLocal<DatosConsolidado>(claveCache(desdeFecha)) === null)
   const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const [p, v] = await Promise.all([
-        traerTodos<ProduccionConsolidable>('producciones', 'id, fecha, canastillas', desdeFecha),
-        traerTodos<VentaConsolidable>(
-          'ventas_canastillas',
-          'id, fecha, semana, cantidad, cantidad_obsequio, cantidad_repique',
-          desdeFecha,
-        ),
-      ])
-      setProducciones(p)
-      setVentas(v)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo cargar el consolidado.')
-    } finally {
-      setLoading(false)
+    const { data, error } = await conCacheLocal<DatosConsolidado>(
+      claveCache(desdeFecha),
+      async () => {
+        try {
+          const [p, v] = await Promise.all([
+            traerTodos<ProduccionConsolidable>('producciones', 'id, fecha, canastillas', desdeFecha),
+            traerTodos<VentaConsolidable>(
+              'ventas_canastillas',
+              'id, fecha, semana, cantidad, cantidad_obsequio, cantidad_repique',
+              desdeFecha,
+            ),
+          ])
+          return { data: { producciones: p, ventas: v }, error: null }
+        } catch (err) {
+          return { data: null, error: { message: err instanceof Error ? err.message : 'No se pudo cargar el consolidado.' } }
+        }
+      },
+      undefined,
+      LIMITE_MS,
+    )
+
+    if (error) {
+      setError(error)
+    } else {
+      setError(null)
+      setDatos(data ?? SIN_DATOS)
     }
+    setLoading(false)
   }, [desdeFecha])
 
   useEffect(() => {
+    const cacheado = leerCacheLocal<DatosConsolidado>(claveCache(desdeFecha))
+    if (cacheado !== null) {
+      setDatos(cacheado)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
     refetch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refetch])
 
-  return { producciones, ventas, loading, error, refetch }
+  return { producciones: datos.producciones, ventas: datos.ventas, loading, error, refetch }
 }
