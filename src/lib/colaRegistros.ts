@@ -126,12 +126,39 @@ export async function enviarRegistroPendiente(registro: RegistroPendiente): Prom
   }
 }
 
+/**
+ * Antes de intentar enviar, revisa si YA existe un registro (de otro id) para
+ * esa misma finca/fecha. Pasa con registros de antes de que existiera el
+ * bloqueo de duplicados sin señal: el operario llegó a guardar el mismo día
+ * varias veces en el celular, y el primero que logró sincronizar ya cubrió
+ * ese día. Los demás nunca van a poder enviarse (la regla de la base de datos
+ * no permite dos producciones el mismo día) y se quedarían pendientes para
+ * siempre si se siguen reintentando.
+ */
+async function yaHayOtroRegistroEseDia(registro: RegistroPendiente): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('producciones')
+    .select('id')
+    .eq('finca', registro.header.finca)
+    .eq('fecha', registro.header.fecha)
+    .neq('id', registro.id)
+    .limit(1)
+  if (error) return false
+  return (data?.length ?? 0) > 0
+}
+
 /** Intenta sincronizar toda la cola; se detiene si detecta que ya no hay conexión. */
-export async function sincronizarCola(): Promise<{ sincronizados: number; pendientes: number }> {
+export async function sincronizarCola(): Promise<{ sincronizados: number; pendientes: number; descartados: number }> {
   let sincronizados = 0
+  let descartados = 0
   for (const registro of leerCola()) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) break
     try {
+      if (await conLimite(yaHayOtroRegistroEseDia(registro), LIMITE_ENVIO_MS)) {
+        quitarDeCola(registro.id)
+        descartados++
+        continue
+      }
       await conLimite(enviarRegistroPendiente(registro), LIMITE_ENVIO_MS)
       quitarDeCola(registro.id)
       sincronizados++
@@ -140,5 +167,5 @@ export async function sincronizarCola(): Promise<{ sincronizados: number; pendie
       marcarIntento(registro.id, err instanceof Error ? err.message : 'Error desconocido')
     }
   }
-  return { sincronizados, pendientes: leerCola().length }
+  return { sincronizados, pendientes: leerCola().length, descartados }
 }
