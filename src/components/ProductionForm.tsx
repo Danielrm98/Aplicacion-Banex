@@ -9,7 +9,8 @@ import { useProducciones } from '../lib/useProducciones'
 import { usePerfil } from '../lib/usePerfil'
 import { useAuth } from '../lib/AuthContext'
 import { leerBorrador, guardarBorrador } from '../lib/borradorRegistro'
-import { agregarACola, enviarRegistroPendiente, esErrorDeRed, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
+import { agregarACola, enviarRegistroPendiente, esErrorDeRed, hayRegistroPendiente, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
+import { EVENTO_COLA_CAMBIO } from '../lib/bdOffline'
 import { conLimite } from '../lib/promesaConLimite'
 import SectionHeading from './SectionHeading'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
@@ -139,7 +140,36 @@ export default function ProductionForm({
   // operadores deben editarlo en Historial en vez de crear uno nuevo. Los
   // administradores no tienen esta restricción.
   const registroExistente = registrosSemana.find((r) => r.fecha === header.fecha) ?? null
-  const bloqueadoPorDuplicado = !esAdmin && registroExistente !== null
+
+  // El de arriba solo ve lo que ya llegó al servidor; si el registro de hoy se
+  // guardó sin señal, todavía no existe allá y ese chequeo no lo detecta — por
+  // eso también se revisa la cola local, o un operario sin conexión podía
+  // registrar el mismo día varias veces (el formulario "se veía vacío" tras
+  // guardar y volvían a llenarlo, dejando registros duplicados o a medias al
+  // sincronizar).
+  const [pendienteLocal, setPendienteLocal] = useState(false)
+  useEffect(() => {
+    function actualizar() {
+      setPendienteLocal(hayRegistroPendiente(header.finca, header.fecha))
+    }
+    actualizar()
+    // Al sincronizar (o al encolar) la cola cambia; hay que volver a revisar
+    // para desbloquear el formulario apenas el pendiente ya se envió, y de
+    // paso refrescar lo que ve el chequeo del servidor.
+    function alCambiarCola() {
+      actualizar()
+      refetchSemana()
+    }
+    window.addEventListener(EVENTO_COLA_CAMBIO, alCambiarCola)
+    window.addEventListener('online', alCambiarCola)
+    return () => {
+      window.removeEventListener(EVENTO_COLA_CAMBIO, alCambiarCola)
+      window.removeEventListener('online', alCambiarCola)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [header.finca, header.fecha])
+
+  const bloqueadoPorDuplicado = !esAdmin && (registroExistente !== null || pendienteLocal)
 
   useEffect(() => {
     guardarBorrador(finca, {
@@ -224,7 +254,11 @@ export default function ProductionForm({
     }
 
     if (bloqueadoPorDuplicado) {
-      setError('Ya existe un registro guardado para esta finca en esta fecha. Edítalo desde Historial en vez de crear uno nuevo.')
+      setError(
+        pendienteLocal
+          ? 'Ya hay un registro de esta finca y fecha pendiente de enviarse. Espera a que se sincronice antes de registrar otro.'
+          : 'Ya existe un registro guardado para esta finca en esta fecha. Edítalo desde Historial en vez de crear uno nuevo.',
+      )
       return
     }
 
@@ -332,30 +366,35 @@ export default function ProductionForm({
       notas: header.notas ?? '',
     }
 
-    function guardarYLimpiar(pendienteSync: boolean) {
+    function limpiarFormulario() {
       setHeader({ ...emptyHeader, finca, fecha: header.fecha, semana: header.semana })
       setItems([emptyItem()])
       setTransportes([])
-      onSaved(resumen, pendienteSync)
     }
 
+    // Sin señal: el registro queda en la cola del celular, pero el formulario
+    // NO se limpia — se deja tal como se llenó, para que el operario vea que sí
+    // quedó capturado (en vez de verlo en blanco y volver a registrarlo). El
+    // aviso de "ya existe un registro pendiente" bloquea el botón de guardar
+    // hasta que esto se sincronice.
     if (!navigator.onLine) {
       agregarACola({ ...registroPendiente, resumen })
       setSaving(false)
-      guardarYLimpiar(true)
+      onSaved(resumen, true)
       return
     }
 
     try {
       await conLimite(enviarRegistroPendiente({ ...registroPendiente, resumen }), LIMITE_ENVIO_MS)
       setSaving(false)
-      guardarYLimpiar(false)
+      limpiarFormulario()
+      onSaved(resumen, false)
       refetchSemana()
     } catch (err) {
       setSaving(false)
       if (esErrorDeRed(err)) {
         agregarACola({ ...registroPendiente, resumen })
-        guardarYLimpiar(true)
+        onSaved(resumen, true)
       } else {
         setError(err instanceof Error ? err.message : 'No se pudo guardar el registro.')
       }
@@ -364,18 +403,26 @@ export default function ProductionForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {bloqueadoPorDuplicado && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <p className="font-medium">Ya existe un registro guardado para esta finca en esta fecha.</p>
-          <p className="mt-0.5">
-            No se puede crear un segundo registro el mismo día — edita el que ya está guardado desde{' '}
-            <Link to="/registros" className="font-medium underline underline-offset-2 hover:text-amber-950">
-              Historial
-            </Link>
-            .
-          </p>
-        </div>
-      )}
+      {bloqueadoPorDuplicado &&
+        (pendienteLocal ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="font-medium">📶 Este registro quedó guardado en el celular, pendiente de enviarse.</p>
+            <p className="mt-0.5">
+              No se puede crear otro para esta finca y fecha hasta que vuelva la señal y se sincronice solo.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="font-medium">Ya existe un registro guardado para esta finca en esta fecha.</p>
+            <p className="mt-0.5">
+              No se puede crear un segundo registro el mismo día — edita el que ya está guardado desde{' '}
+              <Link to="/registros" className="font-medium underline underline-offset-2 hover:text-amber-950">
+                Historial
+              </Link>
+              .
+            </p>
+          </div>
+        ))}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Fecha">
@@ -817,7 +864,13 @@ export default function ProductionForm({
           disabled={saving || bloqueadoPorDuplicado}
           className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50 disabled:hover:bg-banex-600 disabled:hover:shadow-sm"
         >
-          {saving ? 'Guardando...' : bloqueadoPorDuplicado ? 'Ya existe un registro este día' : 'Guardar registro'}
+          {saving
+            ? 'Guardando...'
+            : bloqueadoPorDuplicado
+              ? pendienteLocal
+                ? 'Pendiente de enviar'
+                : 'Ya existe un registro este día'
+              : 'Guardar registro'}
         </button>
       </div>
     </form>

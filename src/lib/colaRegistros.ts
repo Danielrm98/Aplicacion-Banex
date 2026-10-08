@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient'
 import { conLimite, ErrorTiempoAgotado } from './promesaConLimite'
+import { EVENTO_COLA_CAMBIO } from './bdOffline'
 import type { ProduccionHeaderInput } from '../types/produccion'
 import type { RegistroResumenCompartir } from './shareSummary'
 
@@ -60,10 +61,19 @@ export function agregarACola(registro: RegistroPendiente) {
   const cola = leerCola()
   cola.push(registro)
   guardarCola(cola)
+  window.dispatchEvent(new Event(EVENTO_COLA_CAMBIO))
+}
+
+/** Para bloquear un segundo registro de la misma finca/fecha mientras el primero
+ * sigue sin sincronizar: a diferencia del registro ya guardado en el servidor,
+ * este solo existe en este celular, así que hay que revisar la cola local. */
+export function hayRegistroPendiente(finca: string, fecha: string): boolean {
+  return leerCola().some((r) => r.header.finca === finca && r.header.fecha === fecha)
 }
 
 function quitarDeCola(id: string) {
   guardarCola(leerCola().filter((r) => r.id !== id))
+  window.dispatchEvent(new Event(EVENTO_COLA_CAMBIO))
 }
 
 function marcarIntento(id: string, error: string) {
