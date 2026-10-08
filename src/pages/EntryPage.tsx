@@ -9,6 +9,7 @@ import { useClima } from '../lib/useClima'
 import { usePerfil } from '../lib/usePerfil'
 import { guardarFincaActual, obtenerFincaActual } from '../lib/fincaActual'
 import { leerBorrador, borradorTieneDatos } from '../lib/borradorRegistro'
+import { fechaLocalHoy } from '../lib/fechaLocal'
 import { saludoSegunHora } from '../lib/saludo'
 import type { RegistroResumenCompartir } from '../lib/shareSummary'
 import type { Finca } from '../types/finca'
@@ -17,7 +18,9 @@ function fincaConBorradorPendiente(): string | null {
   const ultima = obtenerFincaActual()
   if (!ultima) return null
   const borrador = leerBorrador(ultima)
-  return borrador && borradorTieneDatos(borrador) ? ultima : null
+  // Un borrador de un día anterior ya quedó obsoleto (ver ProductionForm):
+  // no debe hacer que la app vuelva a saltar directo a esa finca.
+  return borrador && borrador.header.fecha === fechaLocalHoy() && borradorTieneDatos(borrador) ? ultima : null
 }
 
 export default function EntryPage() {

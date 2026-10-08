@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { getIsoWeek } from '../lib/isoWeek'
 import { diaSemana } from '../lib/diaSemana'
@@ -109,23 +109,26 @@ export default function ProductionForm({
   const [header, setHeader] = useState<ProduccionHeaderInput>(() => {
     const fecha = fechaLocalHoy()
     const borrador = leerBorrador(finca)
-    // La fecha siempre se sincroniza con la del celular al abrir el
-    // formulario, aunque haya un borrador guardado de otro día — si no, un
-    // borrador viejo (por ejemplo de una recarga de página) podía dejar
-    // fechada una entrada varios días atrás sin que el operario lo notara.
-    // El campo sigue siendo editable por si de verdad necesita otra fecha.
-    if (borrador) return { ...borrador.header, finca, fecha, semana: getIsoWeek(fecha) }
+    // El borrador solo se restaura si es del mismo día: existe para no
+    // perder lo escrito si el navegador recarga la página a medio llenar
+    // (ver borradorRegistro.ts), no para seguir arrastrando los datos de
+    // ayer — si no, el formulario aparecía lleno de lo de un día anterior
+    // y el operario tenía que borrarlo a mano antes de poder registrar hoy.
+    if (borrador && borrador.header.fecha === fecha) return { ...borrador.header, finca, fecha, semana: getIsoWeek(fecha) }
     return { ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) }
   })
   const [items, setItems] = useState<ItemDraft[]>(() => {
     const borrador = leerBorrador(finca)
-    if (borrador && borrador.items.length > 0) return borrador.items.map((it) => ({ ...it, key: itemKeySeq++ }))
+    if (borrador && borrador.header.fecha === fechaLocalHoy() && borrador.items.length > 0) {
+      return borrador.items.map((it) => ({ ...it, key: itemKeySeq++ }))
+    }
     return [emptyItem()]
   })
   const [transportes, setTransportes] = useState<TransporteDraft[]>(() => {
     const borrador = leerBorrador(finca)
-    if (borrador)
+    if (borrador && borrador.header.fecha === fechaLocalHoy()) {
       return borrador.transportes.map((t) => ({ ...t, numero_contenedor: t.numero_contenedor ?? '', key: transporteKeySeq++ }))
+    }
     return []
   })
   const [error, setError] = useState<string | null>(null)
@@ -170,6 +173,27 @@ export default function ProductionForm({
   }, [header.finca, header.fecha])
 
   const bloqueadoPorDuplicado = !esAdmin && (registroExistente !== null || pendienteLocal)
+
+  function limpiarFormulario() {
+    const fecha = fechaLocalHoy()
+    setHeader({ ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) })
+    setItems([emptyItem()])
+    setTransportes([])
+  }
+
+  // Cuando el registro que estaba pendiente de esta finca y fecha se resuelve
+  // (se sincroniza, o se descarta por ser un duplicado de antes del bloqueo)
+  // mientras la app sigue abierta, el formulario se limpia solo — así no
+  // queda lleno con lo de ese registro esperando a que el operario lo borre
+  // a mano para poder registrar el siguiente día.
+  const pendienteLocalPrevRef = useRef(pendienteLocal)
+  useEffect(() => {
+    if (pendienteLocalPrevRef.current && !pendienteLocal) {
+      limpiarFormulario()
+    }
+    pendienteLocalPrevRef.current = pendienteLocal
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendienteLocal])
 
   useEffect(() => {
     guardarBorrador(finca, {
@@ -364,12 +388,6 @@ export default function ProductionForm({
         horaSalida: t.hora_salida,
       })),
       notas: header.notas ?? '',
-    }
-
-    function limpiarFormulario() {
-      setHeader({ ...emptyHeader, finca, fecha: header.fecha, semana: header.semana })
-      setItems([emptyItem()])
-      setTransportes([])
     }
 
     // Sin señal: el registro queda en la cola del celular, pero el formulario
