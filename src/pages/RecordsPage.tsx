@@ -36,12 +36,17 @@ export default function RecordsPage() {
 
       {loading ? (
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
-      ) : error ? (
+      ) : gruposPorSemana.length === 0 && error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
       ) : gruposPorSemana.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay registros para los filtros seleccionados.</p>
       ) : (
         <div className="flex flex-col gap-3">
+          {error && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              No se pudo actualizar ({error}); se muestra lo último guardado en este celular.
+            </p>
+          )}
           {gruposPorSemana.map(([semana, regs], idx) => (
             <WeekGroup
               key={semana}
