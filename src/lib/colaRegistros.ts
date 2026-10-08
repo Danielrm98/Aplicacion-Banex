@@ -76,6 +76,11 @@ function quitarDeCola(id: string) {
   window.dispatchEvent(new Event(EVENTO_COLA_CAMBIO))
 }
 
+/** Para que el operario o el administrador puedan descartar a mano, desde el detalle de pendientes, uno que ya saben que quedó cubierto por otro registro. */
+export function descartarRegistroPendiente(id: string) {
+  quitarDeCola(id)
+}
+
 function marcarIntento(id: string, error: string) {
   const cola = leerCola().map((r) => (r.id === id ? { ...r, intentos: r.intentos + 1, ultimoError: error } : r))
   guardarCola(cola)

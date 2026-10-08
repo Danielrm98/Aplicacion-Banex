@@ -71,6 +71,12 @@ async function quitarSiNoCambio(pendiente: EmbolsePendiente) {
   }
 }
 
+/** Para que el operario o el administrador puedan descartar a mano, desde el detalle de pendientes, un embolse que ya saben que quedó guardado de otra forma. */
+export async function descartarEmbolsePendiente(clave: string): Promise<void> {
+  await conAlmacen(ALMACEN_EMBOLSES_PENDIENTES, 'readwrite', (almacen) => almacen.delete(clave))
+  window.dispatchEvent(new Event(EVENTO_COLA_CAMBIO))
+}
+
 async function marcarIntento(pendiente: EmbolsePendiente, error: string) {
   await conAlmacen(ALMACEN_EMBOLSES_PENDIENTES, 'readwrite', (almacen) =>
     almacen.put({ ...pendiente, intentos: pendiente.intentos + 1, ultimoError: error }),

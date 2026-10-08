@@ -50,6 +50,12 @@ async function quitarDeCola(id: string) {
   await conAlmacen(ALMACEN_VENTAS_PENDIENTES, 'readwrite', (almacen) => almacen.delete(id))
 }
 
+/** Para que el operario o el administrador puedan descartar a mano, desde el detalle de pendientes, una venta que ya saben que quedó registrada de otra forma. */
+export async function descartarVentaPendiente(id: string): Promise<void> {
+  await quitarDeCola(id)
+  window.dispatchEvent(new Event(EVENTO_COLA_CAMBIO))
+}
+
 async function marcarIntento(venta: VentaPendiente, error: string) {
   await conAlmacen(ALMACEN_VENTAS_PENDIENTES, 'readwrite', (almacen) =>
     almacen.put({ ...venta, intentos: venta.intentos + 1, ultimoError: error }),

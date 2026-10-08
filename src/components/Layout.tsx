@@ -5,6 +5,7 @@ import { usePerfil } from '../lib/usePerfil'
 import { useColaSincronizacion } from '../lib/useColaSincronizacion'
 import { BANEX_LOGO_URL } from '../lib/logo'
 import TextSizeControl from './TextSizeControl'
+import DetallePendientes from './DetallePendientes'
 
 const navItems = [
   { to: '/', label: 'Registrar', icon: '📝', end: true },
@@ -110,6 +111,7 @@ export default function Layout() {
           >
             {sincronizando ? 'Sincronizando...' : 'Sincronizar ahora'}
           </button>
+          <DetallePendientes />
         </div>
       )}
 
