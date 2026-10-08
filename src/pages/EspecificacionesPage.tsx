@@ -7,7 +7,7 @@ import {
   eliminarEspecificacionPdf,
   agregarEspecificacionMarca,
   eliminarEspecificacionMarca,
-  urlEspecificacionPdf,
+  abrirEspecificacionPdf,
   descargarEspecificacionPdf,
 } from '../lib/especificacionesPdf'
 
@@ -273,6 +273,7 @@ function FilaEspecificacionRow({
 }) {
   const [busy, setBusy] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [avisoMsg, setAvisoMsg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [descargando, setDescargando] = useState(false)
@@ -280,9 +281,12 @@ function FilaEspecificacionRow({
   async function verPdf() {
     if (!pdfPath) return
     setErrorMsg(null)
+    setAvisoMsg(null)
     try {
-      const url = await urlEspecificacionPdf(pdfPath)
-      window.open(url, '_blank')
+      const { desdeCache } = await abrirEspecificacionPdf(pdfPath)
+      if (desdeCache) {
+        setAvisoMsg('Mostrando la copia guardada en este celular — sin señal no se pudo confirmar si es la más reciente.')
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'No se pudo abrir el PDF.')
     }
@@ -291,6 +295,7 @@ function FilaEspecificacionRow({
   async function descargarPdf() {
     if (!pdfPath) return
     setErrorMsg(null)
+    setAvisoMsg(null)
     setDescargando(true)
     try {
       await descargarEspecificacionPdf(pdfPath, `${marca}.pdf`)
@@ -365,6 +370,7 @@ function FilaEspecificacionRow({
           <span className="text-xs text-gray-400">Sin PDF</span>
         )}
         {errorMsg && <p className="mt-1 text-xs text-red-600">{errorMsg}</p>}
+        {avisoMsg && <p className="mt-1 text-xs text-amber-700">{avisoMsg}</p>}
       </td>
       {esAdmin && (
         <td className="py-1.5 pr-3 whitespace-nowrap">

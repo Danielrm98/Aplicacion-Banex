@@ -1,9 +1,15 @@
 import { supabase } from './supabaseClient'
+import { leerCacheIdb, guardarCacheIdb } from './bdOffline'
+import { esErrorDeRed } from './colaRegistros'
 
 const BUCKET = 'especificaciones'
 
 function rutaPara(marca: string): string {
   return `${marca}.pdf`
+}
+
+function claveCachePdf(ruta: string): string {
+  return `especificacion_pdf_${ruta}`
 }
 
 export async function subirEspecificacionPdf(marca: string, file: File): Promise<string> {
@@ -40,21 +46,65 @@ export async function urlEspecificacionPdf(ruta: string): Promise<string> {
 }
 
 /**
- * A diferencia de "Ver PDF" (lo abre en una pestaña), esto fuerza la
- * descarga del archivo al dispositivo: necesita señal para traerlo, pero una
- * vez descargado queda disponible sin conexión en el celular del operario.
+ * Trae el PDF (y lo guarda en el celular para la próxima vez) si hay señal;
+ * sin señal, usa la última copia guardada en este dispositivo. Así "Ver PDF"
+ * y "Descargar" funcionan sin conexión una vez que alguien lo abrió o lo
+ * descargó al menos una vez con señal.
+ */
+async function obtenerBlobPdf(ruta: string): Promise<{ blob: Blob; desdeCache: boolean }> {
+  const clave = claveCachePdf(ruta)
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    const cacheado = await leerCacheIdb<Blob>(clave)
+    if (cacheado) return { blob: cacheado, desdeCache: true }
+    throw new Error('Sin señal y todavía no tienes este PDF guardado en este celular. Ábrelo una vez con conexión para consultarlo después sin señal.')
+  }
+
+  try {
+    const url = await urlEspecificacionPdf(ruta)
+    const respuesta = await fetch(url)
+    if (!respuesta.ok) throw new Error('No se pudo descargar el PDF.')
+    const blob = await respuesta.blob()
+    await guardarCacheIdb(clave, blob)
+    return { blob, desdeCache: false }
+  } catch (err) {
+    const cacheado = await leerCacheIdb<Blob>(clave)
+    if (cacheado) return { blob: cacheado, desdeCache: true }
+    // navigator.onLine no siempre baja a tiempo con señal intermitente; si la
+    // falla fue justo de red (y no, por ejemplo, un PDF corrupto), igual se
+    // explica como falta de señal en vez de mostrar el error técnico crudo.
+    if (esErrorDeRed(err)) {
+      throw new Error(
+        'Sin señal y todavía no tienes este PDF guardado en este celular. Ábrelo una vez con conexión para consultarlo después sin señal.',
+      )
+    }
+    throw err instanceof Error ? err : new Error('No se pudo abrir el PDF.')
+  }
+}
+
+/** Abre el PDF en una pestaña nueva; devuelve si lo que se ve es la copia guardada en el celular (no la más reciente). */
+export async function abrirEspecificacionPdf(ruta: string): Promise<{ desdeCache: boolean }> {
+  const { blob, desdeCache } = await obtenerBlobPdf(ruta)
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank')
+  // No se revoca de inmediato: la pestaña nueva necesita la URL mientras el PDF sigue cargado ahí.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  return { desdeCache }
+}
+
+/**
+ * A diferencia de "Ver PDF" (lo abre en una pestaña), esto además fuerza la
+ * descarga del archivo al dispositivo, para tenerlo disponible también desde
+ * fuera de la aplicación.
  */
 export async function descargarEspecificacionPdf(ruta: string, nombreArchivo: string): Promise<void> {
-  const url = await urlEspecificacionPdf(ruta)
-  const respuesta = await fetch(url)
-  if (!respuesta.ok) throw new Error('No se pudo descargar el PDF.')
-  const blob = await respuesta.blob()
-  const objectUrl = URL.createObjectURL(blob)
+  const { blob } = await obtenerBlobPdf(ruta)
+  const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
-  link.href = objectUrl
+  link.href = url
   link.download = nombreArchivo
   link.click()
-  URL.revokeObjectURL(objectUrl)
+  URL.revokeObjectURL(url)
 }
 
 /**
