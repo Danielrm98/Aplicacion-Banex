@@ -8,6 +8,7 @@ import {
   agregarEspecificacionMarca,
   eliminarEspecificacionMarca,
   urlEspecificacionPdf,
+  descargarEspecificacionPdf,
 } from '../lib/especificacionesPdf'
 
 interface FilaEspecificacion {
@@ -101,7 +102,10 @@ export default function EspecificacionesPage() {
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         {loading ? (
           <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
-        ) : error ? (
+        ) : filas.length === 0 && error ? (
+          // Solo bloquea toda la pantalla si de verdad no hay nada que
+          // mostrar; si al menos una de las dos fuentes sí cargó, se ve esa
+          // información y el error queda como aviso aparte (más abajo).
           <p className="py-8 text-center text-sm text-red-600">{error}</p>
         ) : filas.length === 0 ? (
           <p className="py-8 text-center text-sm text-gray-500">Todavía no hay especificaciones registradas.</p>
@@ -109,6 +113,11 @@ export default function EspecificacionesPage() {
           <p className="py-8 text-center text-sm text-gray-500">Ninguna marca coincide con "{busqueda}".</p>
         ) : (
           <div className="overflow-x-auto">
+            {error && (
+              <p className="mb-3 text-xs text-amber-700">
+                Parte de la información no se pudo actualizar ({error}); se muestra la última guardada.
+              </p>
+            )}
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left text-gray-500">
@@ -266,6 +275,8 @@ function FilaEspecificacionRow({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const [descargando, setDescargando] = useState(false)
+
   async function verPdf() {
     if (!pdfPath) return
     setErrorMsg(null)
@@ -274,6 +285,19 @@ function FilaEspecificacionRow({
       window.open(url, '_blank')
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'No se pudo abrir el PDF.')
+    }
+  }
+
+  async function descargarPdf() {
+    if (!pdfPath) return
+    setErrorMsg(null)
+    setDescargando(true)
+    try {
+      await descargarEspecificacionPdf(pdfPath, `${marca}.pdf`)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'No se pudo descargar el PDF.')
+    } finally {
+      setDescargando(false)
     }
   }
 
@@ -322,12 +346,21 @@ function FilaEspecificacionRow({
       <td className="py-1.5 pr-3">{especificacion ?? '—'}</td>
       <td className="py-1.5 pr-3">
         {pdfPath ? (
-          <button
-            onClick={verPdf}
-            className="rounded-md border border-banex-200 bg-banex-50 px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-100"
-          >
-            Ver PDF
-          </button>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={verPdf}
+              className="rounded-md border border-banex-200 bg-banex-50 px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-100"
+            >
+              Ver PDF
+            </button>
+            <button
+              onClick={descargarPdf}
+              disabled={descargando}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
+            >
+              {descargando ? 'Descargando...' : 'Descargar'}
+            </button>
+          </div>
         ) : (
           <span className="text-xs text-gray-400">Sin PDF</span>
         )}

@@ -40,6 +40,24 @@ export async function urlEspecificacionPdf(ruta: string): Promise<string> {
 }
 
 /**
+ * A diferencia de "Ver PDF" (lo abre en una pestaña), esto fuerza la
+ * descarga del archivo al dispositivo: necesita señal para traerlo, pero una
+ * vez descargado queda disponible sin conexión en el celular del operario.
+ */
+export async function descargarEspecificacionPdf(ruta: string, nombreArchivo: string): Promise<void> {
+  const url = await urlEspecificacionPdf(ruta)
+  const respuesta = await fetch(url)
+  if (!respuesta.ok) throw new Error('No se pudo descargar el PDF.')
+  const blob = await respuesta.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = nombreArchivo
+  link.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
+/**
  * Sube el PDF de especificaciones de una marca que todavía no está
  * registrada como referencia del catálogo de producción (por ejemplo,
  * porque la especificación cambió de versión antes de que se defina o se

@@ -15,8 +15,14 @@ export function useEspecificacionesMarcas() {
   // Mismo patrón que useReferencias/useLotes/useFincas: se muestra lo guardado
   // de inmediato (sin "cargando") y la red actualiza en segundo plano.
   const refetch = useCallback(async () => {
-    const { data, error } = await conCacheLocal<EspecificacionMarca[]>(CLAVE_CACHE, () =>
-      supabase.from('especificaciones_marcas').select('*').order('marca'),
+    const { data, error } = await conCacheLocal<EspecificacionMarca[]>(
+      CLAVE_CACHE,
+      () => supabase.from('especificaciones_marcas').select('*').order('marca'),
+      // Sin señal y sin nada guardado todavía (nadie agregó ninguna marca suelta
+      // en este dispositivo): lista vacía, no un error — si no, tapaba toda la
+      // pantalla de Especificaciones aunque el catálogo de referencias sí
+      // hubiera cargado bien.
+      [],
     )
 
     if (error) {
