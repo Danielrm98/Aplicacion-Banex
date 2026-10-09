@@ -166,7 +166,7 @@ function EncabezadoSemana({ s }: { s: SemanaReal }) {
   const estilo = ESTILO_CINTA[color]
   return (
     <th
-      className="sticky top-0 z-20 w-[56px] border border-gray-200 px-1.5 py-1.5 text-center font-medium"
+      className="sticky top-0 z-[2] w-[56px] border border-gray-200 px-1.5 py-1.5 text-center font-medium"
       style={{ backgroundColor: estilo.bg, color: estilo.texto }}
       title={`Semana ${s.semana}/${s.anio} · Cinta ${color.charAt(0)}${color.slice(1).toLowerCase()}`}
     >
@@ -213,7 +213,7 @@ function ResumenGeneral({
       <table className="w-full table-fixed border-collapse text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-            <th className="sticky top-0 left-0 z-30 w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+            <th className="sticky top-0 left-0 z-[3] w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
               Finca
             </th>
             {semanas.map((s) => (
@@ -226,7 +226,7 @@ function ResumenGeneral({
             <Fragment key={empresa}>
               {fincasEmpresa.map((f) => (
                 <tr key={f.nombre} className="border-b border-gray-100">
-                  <td className="sticky left-0 z-10 border border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
+                  <td className="sticky left-0 z-[1] border border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
                     {f.nombre}
                   </td>
                   {semanas.map((s) => (
@@ -237,7 +237,7 @@ function ResumenGeneral({
                 </tr>
               ))}
               <tr className="border-b-2 border-banex-100 bg-banex-50/40 font-semibold text-banex-800">
-                <td className="sticky left-0 z-10 border border-gray-200 bg-banex-50/40 py-1.5 pr-3 pl-4">{empresa} - TOTAL</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/40 py-1.5 pr-3 pl-4">{empresa} - TOTAL</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {totalEmpresa(fincasEmpresa, s).toLocaleString('es')}
@@ -249,7 +249,7 @@ function ResumenGeneral({
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-            <td className="sticky left-0 z-10 border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">Total general</td>
+            <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">Total general</td>
             {semanas.map((s) => (
               <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                 {totalGeneral(s).toLocaleString('es')}
@@ -297,7 +297,7 @@ function DetalleFinca({
           <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                <th className="sticky top-0 left-0 z-30 w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
+                <th className="sticky top-0 left-0 z-[3] w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
                   Lote
                 </th>
                 {semanas.map((s) => (
@@ -308,7 +308,7 @@ function DetalleFinca({
             <tbody>
               {lotes.map((l) => (
                 <tr key={l.id} className="border-b border-gray-100">
-                  <td className="sticky left-0 z-10 border border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
+                  <td className="sticky left-0 z-[1] border border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
                     {l.nombre}
                   </td>
                   {semanas.map((s) => {
@@ -326,7 +326,7 @@ function DetalleFinca({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                <td className="sticky left-0 z-10 border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {totalSemana(s).toLocaleString('es')}
