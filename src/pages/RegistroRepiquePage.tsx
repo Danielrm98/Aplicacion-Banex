@@ -657,6 +657,20 @@ function TablaRepique({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
+                <td className="py-3 pr-4 pl-5">TOTAL</td>
+                {columnas.map((c) => (
+                  <td key={c.edad} className="px-1 py-3 text-center">
+                    {lotes.reduce((sum, l) => sum + (Number(valorDe(l.id, c.edad)) || 0), 0).toLocaleString('es')}
+                  </td>
+                ))}
+                <td className="px-3 py-3 text-center">{totalGeneralParidas.toLocaleString('es')}</td>
+                <td className="px-3 py-3 text-center">{totalGeneralSinParir.toLocaleString('es')}</td>
+                <td className="px-3 py-3 text-center">{totalGeneralPlantas.toLocaleString('es')}</td>
+                <td className="px-3 py-3 text-center">{totalGeneral.toLocaleString('es')}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
