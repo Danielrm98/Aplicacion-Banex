@@ -16,6 +16,7 @@ import { conLimite } from '../lib/promesaConLimite'
 import { esErrorDeRed, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
 import { agregarEmbolseACola, enviarEmbolse, type DiasEmbolse, type PayloadEmbolse } from '../lib/colaEmbolses'
 import { useEmbolsesPendientes } from '../lib/useEmbolsesPendientes'
+import { manejarFlechasCelda } from '../lib/navegacionGrid'
 import type { Finca } from '../types/finca'
 import type { Lote } from '../types/lote'
 
@@ -415,7 +416,7 @@ function TablaRegistro({
             </tr>
           </thead>
           <tbody>
-            {lotes.map((l) => {
+            {lotes.map((l, fila) => {
               const c = campo(l.id)
               const bll = bllPorHasDe(l)
               return (
@@ -431,6 +432,9 @@ function TablaRegistro({
                       value={c.lunes}
                       onChange={(e) => actualizarCampo(l.id, 'lunes', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), lunes: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 0)}
+                      data-fila={fila}
+                      data-col={0}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -442,6 +446,9 @@ function TablaRegistro({
                       value={c.martes}
                       onChange={(e) => actualizarCampo(l.id, 'martes', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), martes: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 1)}
+                      data-fila={fila}
+                      data-col={1}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -453,6 +460,9 @@ function TablaRegistro({
                       value={c.miercoles}
                       onChange={(e) => actualizarCampo(l.id, 'miercoles', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), miercoles: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 2)}
+                      data-fila={fila}
+                      data-col={2}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -465,6 +475,9 @@ function TablaRegistro({
                       value={c.jueves}
                       onChange={(e) => actualizarCampo(l.id, 'jueves', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), jueves: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 3)}
+                      data-fila={fila}
+                      data-col={3}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -476,6 +489,9 @@ function TablaRegistro({
                       value={c.viernes}
                       onChange={(e) => actualizarCampo(l.id, 'viernes', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), viernes: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 4)}
+                      data-fila={fila}
+                      data-col={4}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -487,6 +503,9 @@ function TablaRegistro({
                       value={c.sabado}
                       onChange={(e) => actualizarCampo(l.id, 'sabado', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), sabado: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 5)}
+                      data-fila={fila}
+                      data-col={5}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />
@@ -501,6 +520,9 @@ function TablaRegistro({
                       value={c.debunching}
                       onChange={(e) => actualizarCampo(l.id, 'debunching', e.target.value)}
                       onBlur={(e) => guardar(l.id, { ...campo(l.id), debunching: e.target.value })}
+                      onKeyDown={(e) => manejarFlechasCelda(e, fila, 6)}
+                      data-fila={fila}
+                      data-col={6}
                       title={conError[l.id]}
                       className={inputClass(l.id)}
                     />

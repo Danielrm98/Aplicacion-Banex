@@ -17,6 +17,7 @@ import { conLimite } from '../lib/promesaConLimite'
 import { esErrorDeRed, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
 import { agregarRepiqueACola, enviarRepique } from '../lib/colaRepiques'
 import { useRepiquesPendientes } from '../lib/useRepiquesPendientes'
+import { manejarFlechasCelda } from '../lib/navegacionGrid'
 import type { RepiqueInput } from '../types/repique'
 import type { Finca } from '../types/finca'
 import type { Lote } from '../types/lote'
@@ -377,12 +378,12 @@ function TablaRepique({
             </tr>
           </thead>
           <tbody>
-            {lotes.map((l) => (
+            {lotes.map((l, fila) => (
               <tr key={l.id} className="border-b border-gray-100">
                 <td className="sticky left-0 z-10 border-r border-gray-200 bg-white py-1.5 pr-3 pl-4 font-medium text-gray-900">
                   {l.nombre}
                 </td>
-                {columnas.map((c) => {
+                {columnas.map((c, columna) => {
                   const clave = `${l.id}_${c.edad}`
                   const { embolsado, yaRepicado } = datosCelda(l.id, c)
                   const disponible = embolsado - yaRepicado
@@ -394,6 +395,9 @@ function TablaRepique({
                         value={valorDe(l.id, c.edad)}
                         onChange={(e) => setBorrador((prev) => ({ ...prev, [clave]: e.target.value }))}
                         onBlur={(e) => guardarCelda(l, c, e.target.value)}
+                        onKeyDown={(e) => manejarFlechasCelda(e, fila, columna)}
+                        data-fila={fila}
+                        data-col={columna}
                         disabled={guardando.has(clave)}
                         title={conError[clave]}
                         className={inputClass(clave)}
