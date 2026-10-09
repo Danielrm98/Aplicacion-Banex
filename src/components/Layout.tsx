@@ -14,6 +14,8 @@ const navItems = [
   { to: '/venta-canastillas', label: 'Venta canastillas', icon: '📦' },
   { to: '/registro-embolse', label: 'Registro de embolse', icon: '🧾' },
   { to: '/embolses', label: 'Embolses', icon: '🎗️' },
+  { to: '/registro-repique', label: 'Registro de repique', icon: '✂️' },
+  { to: '/repiques', label: 'Repiques', icon: '📉' },
   { to: '/registros', label: 'Historial', icon: '🗂️' },
   { to: '/reportes', label: 'Reportes', icon: '📈' },
   { to: '/especificaciones', label: 'Especificaciones', icon: '📄' },

@@ -1,3 +1,5 @@
+import { sumarSemanas, type SemanaReal } from './anioEmbolses'
+
 // Ciclo de color de cinta de embolse: 8 colores que se repiten en este
 // orden exacto (confirmado con BANEX), sin reiniciarse nunca entre años —
 // la semana ISO 42 del 2025 es CAFE (índice 3) y de ahí se cuenta siempre
@@ -40,4 +42,16 @@ export function colorCintaDe(anio: number, semana: number): ColorCinta {
   )
   const indice = (((ANCLA_INDICE + diffSemanas) % 8) + 8) % 8
   return COLORES_CINTA[indice]
+}
+
+/**
+ * A qué semana de embolse (año/semana reales, mismas que usa la tabla
+ * embolses) corresponde un racimo de cierta edad en semanas, reportado en
+ * una semana dada. Una edad de 1 semana es la cinta de la semana que se está
+ * reportando (recién embolsado); de ahí para atrás: edad 12 en la semana 41
+ * es la semana 30 (41 - 12 + 1 = 30), igual a como BANEX ya lo cuenta en
+ * campo.
+ */
+export function semanaEmbolseDeEdad(anioReporte: number, semanaReporte: number, edadSemanas: number): SemanaReal {
+  return sumarSemanas(anioReporte, semanaReporte, -(edadSemanas - 1))
 }
