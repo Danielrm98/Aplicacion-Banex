@@ -3,11 +3,16 @@ import { leerCola, sincronizarCola } from './colaRegistros'
 import { leerColaVentas, sincronizarColaVentas } from './colaCanastillas'
 import { leerColaEmbolses, sincronizarColaEmbolses } from './colaEmbolses'
 import { leerColaRepiques, sincronizarColaRepiques } from './colaRepiques'
+import { leerColaCensoPlantas, sincronizarColaCensoPlantas } from './colaCensoPlantas'
 import { EVENTO_COLA_CAMBIO } from './bdOffline'
 
 async function contarPendientes(): Promise<number> {
   return (
-    leerCola().length + (await leerColaVentas()).length + (await leerColaEmbolses()).length + (await leerColaRepiques()).length
+    leerCola().length +
+    (await leerColaVentas()).length +
+    (await leerColaEmbolses()).length +
+    (await leerColaRepiques()).length +
+    (await leerColaCensoPlantas()).length
   )
 }
 
@@ -21,7 +26,13 @@ export function useColaSincronizacion() {
     enCursoRef.current = true
     setSincronizando(true)
     try {
-      await Promise.all([sincronizarCola(), sincronizarColaVentas(), sincronizarColaEmbolses(), sincronizarColaRepiques()])
+      await Promise.all([
+        sincronizarCola(),
+        sincronizarColaVentas(),
+        sincronizarColaEmbolses(),
+        sincronizarColaRepiques(),
+        sincronizarColaCensoPlantas(),
+      ])
     } catch {
       // cada cola ya maneja sus propios errores por elemento; esto solo
       // cubre un fallo inesperado para no dejar el spinner colgado.

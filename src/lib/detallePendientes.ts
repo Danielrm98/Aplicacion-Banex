@@ -2,9 +2,10 @@ import { leerCola, descartarRegistroPendiente } from './colaRegistros'
 import { leerColaVentas, descartarVentaPendiente } from './colaCanastillas'
 import { leerColaEmbolses, descartarEmbolsePendiente } from './colaEmbolses'
 import { leerColaRepiques, descartarRepiquePendiente } from './colaRepiques'
+import { leerColaCensoPlantas, descartarCensoPlantasPendiente } from './colaCensoPlantas'
 
 export interface ItemPendienteDetalle {
-  tipo: 'registro' | 'venta' | 'embolse' | 'repique'
+  tipo: 'registro' | 'venta' | 'embolse' | 'repique' | 'censo'
   id: string
   descripcion: string
   intentos: number
@@ -41,12 +42,20 @@ export async function listarPendientesDetalle(): Promise<ItemPendienteDetalle[]>
     intentos: r.intentos,
     ultimoError: r.ultimoError,
   }))
-  return [...registros, ...ventas, ...embolses, ...repiques]
+  const censo = (await leerColaCensoPlantas()).map((c) => ({
+    tipo: 'censo' as const,
+    id: c.clave,
+    descripcion: `Censo de plantas — lote ${c.payload.lote_id} — semana ${c.payload.semana} de ${c.payload.anio}`,
+    intentos: c.intentos,
+    ultimoError: c.ultimoError,
+  }))
+  return [...registros, ...ventas, ...embolses, ...repiques, ...censo]
 }
 
 export async function descartarPendienteDetalle(item: ItemPendienteDetalle): Promise<void> {
   if (item.tipo === 'registro') descartarRegistroPendiente(item.id)
   else if (item.tipo === 'venta') await descartarVentaPendiente(item.id)
   else if (item.tipo === 'embolse') await descartarEmbolsePendiente(item.id)
-  else await descartarRepiquePendiente(item.id)
+  else if (item.tipo === 'repique') await descartarRepiquePendiente(item.id)
+  else await descartarCensoPlantasPendiente(item.id)
 }

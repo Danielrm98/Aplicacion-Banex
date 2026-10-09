@@ -2,11 +2,12 @@
 // Cada módulo abre la base con esta misma versión: si una versión nueva agrega
 // un almacén, todos lo ven al abrir.
 const DB_NOMBRE = 'approban_offline'
-const DB_VERSION = 3
+const DB_VERSION = 4
 
 export const ALMACEN_VENTAS_PENDIENTES = 'ventas_canastillas_pendientes'
 export const ALMACEN_EMBOLSES_PENDIENTES = 'embolses_pendientes'
 export const ALMACEN_REPIQUES_PENDIENTES = 'repiques_pendientes'
+export const ALMACEN_CENSO_PLANTAS_PENDIENTES = 'censo_plantas_pendientes'
 export const ALMACEN_CACHE = 'cache'
 
 /** Aviso para que el contador de pendientes se actualice al encolar, sin esperar a una sincronización. */
@@ -16,6 +17,7 @@ const ALMACENES = [
   { nombre: ALMACEN_VENTAS_PENDIENTES, keyPath: 'id' },
   { nombre: ALMACEN_EMBOLSES_PENDIENTES, keyPath: 'clave' },
   { nombre: ALMACEN_REPIQUES_PENDIENTES, keyPath: 'clave' },
+  { nombre: ALMACEN_CENSO_PLANTAS_PENDIENTES, keyPath: 'clave' },
   { nombre: ALMACEN_CACHE, keyPath: 'clave' },
 ]
 
