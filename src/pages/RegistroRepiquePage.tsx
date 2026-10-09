@@ -416,7 +416,7 @@ function TablaRepique({
       const { scrollWidth, scrollHeight } = capturaRef.current
       const blob = await domToBlob(capturaRef.current, {
         backgroundColor: '#ffffff',
-        scale: 2,
+        scale: 2.5,
         width: scrollWidth,
         height: scrollHeight,
         style: { width: `${scrollWidth}px`, maxWidth: 'none' },
@@ -600,47 +600,60 @@ function TablaRepique({
       </div>
 
       <div className="pointer-events-none absolute top-0 -left-[9999px]">
-        <div ref={capturaRef} className="rounded-lg bg-white p-6" style={{ width: `${640 + columnas.length * 72 + 3 * 92}px` }}>
-          <div className="mb-4 flex items-center gap-2.5 border-b border-gray-100 pb-3.5">
-            <img src={BANEX_LOGO_URL} alt="BANEX S.A." className="h-11 w-11 shrink-0 rounded-md object-contain" />
+        <div
+          ref={capturaRef}
+          className="rounded-lg bg-white p-8"
+          style={{ width: `${820 + columnas.length * 96 + 3 * 120}px` }}
+        >
+          <div className="mb-5 flex items-center gap-3 border-b border-gray-100 pb-4">
+            <img src={BANEX_LOGO_URL} alt="BANEX S.A." className="h-16 w-16 shrink-0 rounded-md object-contain" />
             <div>
-              <p className="text-base font-bold text-banex-900">ApproBan</p>
-              <p className="text-sm text-gray-500">Registro de repique</p>
+              <p className="text-2xl font-bold text-banex-900">ApproBan</p>
+              <p className="text-lg text-gray-500">Registro de repique</p>
             </div>
           </div>
-          <h2 className="mb-4 text-lg font-semibold text-banex-800">
+          <h2 className="mb-5 text-2xl font-semibold text-banex-800">
             {finca.nombre}
-            {finca.hectareas != null && <span className="ml-2 text-base font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>}
-            <span className="ml-3 text-base font-normal text-gray-600">Semana {semana}/{anio}</span>
+            {finca.hectareas != null && <span className="ml-3 text-xl font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>}
+            <span className="ml-4 text-xl font-normal text-gray-600">Semana {semana}/{anio}</span>
           </h2>
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-lg">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                <th className="py-2 pr-3 pl-4 font-medium">Lote</th>
-                {columnas.map((c) => (
-                  <th key={c.edad} className="px-1 py-2 text-center font-medium">
-                    Edad {c.edad}
-                  </th>
-                ))}
-                <th className="px-2 py-2 text-center font-medium">Paridas</th>
-                <th className="px-2 py-2 text-center font-medium">Sin parir</th>
-                <th className="px-2 py-2 text-center font-medium">Total plantas</th>
-                <th className="px-2 py-2 text-center font-medium">Total</th>
+                <th className="py-3 pr-4 pl-5 font-medium">Lote</th>
+                {columnas.map((c) => {
+                  const estilo = ESTILO_CINTA[c.color]
+                  return (
+                    <th key={c.edad} className="px-1 py-3 text-center font-medium">
+                      <div>Edad {c.edad}</div>
+                      <div
+                        className="mx-auto mt-1 inline-block rounded px-2 py-0.5 text-sm font-semibold"
+                        style={{ backgroundColor: estilo.bg, color: estilo.texto }}
+                      >
+                        {c.color.charAt(0) + c.color.slice(1).toLowerCase()}
+                      </div>
+                    </th>
+                  )
+                })}
+                <th className="px-3 py-3 text-center font-medium">Paridas</th>
+                <th className="px-3 py-3 text-center font-medium">Sin parir</th>
+                <th className="px-3 py-3 text-center font-medium">Total plantas</th>
+                <th className="px-3 py-3 text-center font-medium">Total</th>
               </tr>
             </thead>
             <tbody>
               {lotes.map((l) => (
                 <tr key={l.id} className="border-b border-gray-100">
-                  <td className="py-2 pr-3 pl-4 font-medium text-gray-900">{l.nombre}</td>
+                  <td className="py-3 pr-4 pl-5 font-medium text-gray-900">{l.nombre}</td>
                   {columnas.map((c) => (
-                    <td key={c.edad} className="px-1 py-2 text-center">
+                    <td key={c.edad} className="px-1 py-3 text-center">
                       {valorDe(l.id, c.edad) || '—'}
                     </td>
                   ))}
-                  <td className="px-2 py-2 text-center">{valorParidasDe(l.id) || '—'}</td>
-                  <td className="px-2 py-2 text-center">{valorSinParirDe(l.id) || '—'}</td>
-                  <td className="px-2 py-2 text-center font-semibold text-banex-800">{totalPlantas(l.id).toLocaleString('es')}</td>
-                  <td className="px-2 py-2 text-center font-semibold text-banex-800">{totalLote(l.id).toLocaleString('es')}</td>
+                  <td className="px-3 py-3 text-center">{valorParidasDe(l.id) || '—'}</td>
+                  <td className="px-3 py-3 text-center">{valorSinParirDe(l.id) || '—'}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-banex-800">{totalPlantas(l.id).toLocaleString('es')}</td>
+                  <td className="px-3 py-3 text-center font-semibold text-banex-800">{totalLote(l.id).toLocaleString('es')}</td>
                 </tr>
               ))}
             </tbody>
