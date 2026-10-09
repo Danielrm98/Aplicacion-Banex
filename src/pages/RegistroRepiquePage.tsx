@@ -100,6 +100,11 @@ export default function RegistroRepiquePage() {
         plantas paridas, sin parir, y racimos repicados sin identificar de esta semana.
       </p>
       <p className="mb-6 text-xs text-gray-400">
+        Cada casilla de edad arranca en blanco: lo que escribas se SUMA a lo ya repicado antes para esa misma cinta
+        (aunque esa cinta haya caído en otra columna de edad en una semana anterior), no lo reemplaza. No hace falta
+        volver a escribir lo ya reportado.
+      </p>
+      <p className="mb-6 text-xs text-gray-400">
         Igual que en Registro de embolse: la edad 0 (recién embolsado) usa la cinta de la semana SIGUIENTE a la que
         elijas abajo, por eso el color de cada columna puede no coincidir con la semana que seleccionaste.
       </p>
@@ -262,13 +267,28 @@ function TablaRepique({
   const COL_SIN_PARIR = EDADES.length + 1
   const COL_SIN_IDENTIFICAR = EDADES.length + 2
 
+  // Los racimos repicados de una misma semana de embolse se van reportando
+  // en semanas distintas (la cinta de esa semana va cambiando de columna de
+  // "edad" conforme pasan las semanas) y se SUMAN, no se reemplazan — así lo
+  // confirmó BANEX. Por eso la casilla de edad arranca en blanco cada vez
+  // (no muestra lo ya repicado de antes) y lo que se escriba se suma al
+  // total ya guardado para esa semana de embolse, en vez de reemplazarlo.
+  // "base" guarda ese total ya guardado al momento de abrir esta tabla, fijo
+  // durante toda la sesión, para poder sumarle lo nuevo sin perder lo viejo
+  // ni volver a sumarlo dos veces si se corrige la misma casilla otra vez.
+  const [baseRepicado] = useState<Record<string, number>>(() => {
+    const inicial: Record<string, number> = {}
+    for (const l of lotes) {
+      for (const c of columnas) {
+        inicial[`${l.id}_${c.edad}`] = datosCelda(l.id, c).yaRepicado
+      }
+    }
+    return inicial
+  })
+
   const [borrador, setBorrador] = useState<Record<string, string>>(() => {
     const inicial: Record<string, string> = {}
     for (const l of lotes) {
-      for (const c of columnas) {
-        const { yaRepicado } = datosCelda(l.id, c)
-        inicial[`${l.id}_${c.edad}`] = yaRepicado > 0 ? String(yaRepicado) : ''
-      }
       const { paridas, sinParir, sinIdentificar } = datosCensoCelda(l.id)
       inicial[`${l.id}_paridas`] = paridas > 0 ? String(paridas) : ''
       inicial[`${l.id}_sinparir`] = sinParir > 0 ? String(sinParir) : ''
@@ -306,8 +326,13 @@ function TablaRepique({
     )
   }
 
+  function totalAcumuladoCelda(loteId: string, edad: number) {
+    const clave = `${loteId}_${edad}`
+    return (baseRepicado[clave] ?? 0) + (Number(valorDe(loteId, edad)) || 0)
+  }
+
   function totalLote(loteId: string) {
-    return columnas.reduce((sum, c) => sum + (Number(valorDe(loteId, c.edad)) || 0), 0) + totalPlantas(loteId)
+    return columnas.reduce((sum, c) => sum + totalAcumuladoCelda(loteId, c.edad), 0) + totalPlantas(loteId)
   }
 
   const totalGeneral = lotes.reduce((sum, l) => sum + totalLote(l.id), 0)
@@ -318,13 +343,21 @@ function TablaRepique({
 
   async function guardarCelda(lote: Lote, info: CeldaInfo, valorTexto: string) {
     const clave = `${lote.id}_${info.edad}`
-    const cantidad = valorTexto.trim() === '' ? 0 : Number(valorTexto)
-    if (Number.isNaN(cantidad) || cantidad < 0) {
+    const nuevo = valorTexto.trim() === '' ? 0 : Number(valorTexto)
+    if (Number.isNaN(nuevo) || nuevo < 0) {
       setConError((prev) => ({ ...prev, [clave]: 'Cantidad inválida' }))
       return
     }
-    const { yaRepicado } = datosCelda(lote.id, info)
-    if (cantidad === yaRepicado) return
+    if (nuevo === 0) return // nada que sumar
+
+    // La casilla muestra lo nuevo reportado en esta visita (arranca en
+    // blanco); lo que se guarda es esa cantidad sumada a lo que ya había
+    // antes de abrir esta tabla ("base", fija toda la sesión). Si se corrige
+    // la misma casilla otra vez en la misma visita, vuelve a sumar sobre esa
+    // misma base (no sobre lo que se guardó la vez anterior), así que
+    // corregir un error no duplica lo ya guardado.
+    const base = baseRepicado[clave] ?? 0
+    const cantidad = base + nuevo
 
     setGuardando((prev) => new Set(prev).add(clave))
     setConError((prev) => {
@@ -612,7 +645,7 @@ function TablaRepique({
               <td className="sticky left-0 z-10 border-r border-banex-100 bg-banex-50 py-1.5 pr-3 pl-4">TOTAL</td>
               {columnas.map((c) => (
                 <td key={c.edad} className="border-r border-banex-50 px-1 py-1.5 text-center">
-                  {lotes.reduce((sum, l) => sum + (Number(valorDe(l.id, c.edad)) || 0), 0).toLocaleString('es')}
+                  {lotes.reduce((sum, l) => sum + totalAcumuladoCelda(l.id, c.edad), 0).toLocaleString('es')}
                 </td>
               ))}
               <td className="border-l-2 border-r border-banex-100 bg-green-100/60 px-2 py-1.5 text-center">
@@ -713,7 +746,7 @@ function TablaRepique({
                 <td className="py-3 pr-4 pl-5">TOTAL</td>
                 {columnas.map((c) => (
                   <td key={c.edad} className="px-1 py-3 text-center">
-                    {lotes.reduce((sum, l) => sum + (Number(valorDe(l.id, c.edad)) || 0), 0).toLocaleString('es')}
+                    {lotes.reduce((sum, l) => sum + totalAcumuladoCelda(l.id, c.edad), 0).toLocaleString('es')}
                   </td>
                 ))}
                 <td className="px-3 py-3 text-center">{totalGeneralParidas.toLocaleString('es')}</td>
