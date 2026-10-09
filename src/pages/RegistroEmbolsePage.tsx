@@ -249,6 +249,48 @@ function TablaRegistro({
   const [compartiendo, setCompartiendo] = useState(false)
   const [errorCompartir, setErrorCompartir] = useState<string | null>(null)
 
+  // navigator.share() exige llamarse dentro del mismo gesto del usuario (el
+  // clic); generar la captura toma más tiempo del que el navegador
+  // considera "gesto activo" y el share termina fallando con "Must be
+  // handling a user gesture...". Por eso la imagen se genera en segundo
+  // plano (al abrir la tabla y después de cada guardado) y el clic en
+  // "Compartir" solo la usa — ya lista, el share se llama casi de inmediato.
+  const [imagenLista, setImagenLista] = useState<{ blob: Blob; file: File } | null>(null)
+  const regenerarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  async function generarImagen(): Promise<{ blob: Blob; file: File } | null> {
+    if (!capturaRef.current) return null
+    try {
+      const { scrollWidth, scrollHeight } = capturaRef.current
+      const blob = await domToBlob(capturaRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        width: scrollWidth,
+        height: scrollHeight,
+        style: { width: `${scrollWidth}px`, maxWidth: 'none' },
+      })
+      const nombreArchivo = `embolse_${finca.nombre}_semana${semanaRegistro}_${anioRegistro}.png`.replace(/\s+/g, '_')
+      const resultado = { blob, file: new File([blob], nombreArchivo, { type: 'image/png' }) }
+      setImagenLista(resultado)
+      return resultado
+    } catch {
+      return null
+    }
+  }
+
+  function programarRegeneracion() {
+    if (regenerarTimeoutRef.current) clearTimeout(regenerarTimeoutRef.current)
+    regenerarTimeoutRef.current = setTimeout(generarImagen, 800)
+  }
+
+  useEffect(() => {
+    generarImagen()
+    return () => {
+      if (regenerarTimeoutRef.current) clearTimeout(regenerarTimeoutRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function campo(loteId: string): Campos {
     return borrador[loteId] ?? { lunes: '', martes: '', miercoles: '', jueves: '', viernes: '', sabado: '', debunching: '' }
   }
@@ -315,15 +357,18 @@ function TablaRegistro({
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       await agregarEmbolseACola(payload)
       onGuardado()
+      programarRegeneracion()
       return
     }
     try {
       await conLimite(enviarEmbolse(payload), LIMITE_ENVIO_MS)
       onGuardado()
+      programarRegeneracion()
     } catch (err) {
       if (esErrorDeRed(err)) {
         await agregarEmbolseACola(payload)
         onGuardado()
+        programarRegeneracion()
       } else {
         setConError((prev) => ({ ...prev, [loteId]: err instanceof Error ? err.message : 'No se pudo guardar' }))
       }
@@ -337,36 +382,41 @@ function TablaRegistro({
     }))
   }
 
+  function descargarImagen(lista: { blob: Blob; file: File }) {
+    const url = URL.createObjectURL(lista.blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = lista.file.name
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function compartirEmbolse() {
-    if (!capturaRef.current) return
     setErrorCompartir(null)
     setCompartiendo(true)
     try {
-      const { scrollWidth, scrollHeight } = capturaRef.current
-      const blob = await domToBlob(capturaRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        width: scrollWidth,
-        height: scrollHeight,
-        style: { width: `${scrollWidth}px`, maxWidth: 'none' },
-      })
-      const nombreArchivo = `embolse_${finca.nombre}_semana${semanaRegistro}_${anioRegistro}.png`.replace(/\s+/g, '_')
-      const file = new File([blob], nombreArchivo, { type: 'image/png' })
+      // Si ya está lista (lo normal, generada en segundo plano), el share se
+      // llama de inmediato; si no, se genera ahora mismo (puede fallar el
+      // share nativo por el gesto del usuario, y en ese caso se descarga).
+      const lista = imagenLista ?? (await generarImagen())
+      if (!lista) {
+        setErrorCompartir('No se pudo generar la imagen.')
+        return
+      }
       const texto = `*REGISTRO DE EMBOLSE*\n*FINCA:* ${finca.nombre}\n*SEMANA:* ${semana}/${anio}`
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Registro de embolse', text: texto })
-      } else {
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = nombreArchivo
-        link.click()
-        URL.revokeObjectURL(url)
+      if (navigator.canShare?.({ files: [lista.file] })) {
+        try {
+          await navigator.share({ files: [lista.file], title: 'Registro de embolse', text: texto })
+          return
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') return // el usuario canceló, no es un error
+          // El share nativo falló (por ejemplo, por el gesto del usuario si la
+          // imagen se tuvo que generar justo ahora): se descarga en su lugar.
+        }
       }
+      descargarImagen(lista)
     } catch (err) {
-      if (!(err instanceof DOMException && err.name === 'AbortError')) {
-        setErrorCompartir(err instanceof Error ? err.message : 'No se pudo generar la imagen.')
-      }
+      setErrorCompartir(err instanceof Error ? err.message : 'No se pudo generar la imagen.')
     } finally {
       setCompartiendo(false)
     }
