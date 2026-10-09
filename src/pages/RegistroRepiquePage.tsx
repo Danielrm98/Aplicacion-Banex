@@ -27,9 +27,9 @@ import type { Finca } from '../types/finca'
 import type { Lote } from '../types/lote'
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
-// El repique se reporta hasta con esta cantidad de semanas de edad; de sobra
-// para cubrir el ciclo normal de cosecha (12 semanas) con margen.
-const EDADES = Array.from({ length: 13 }, (_, i) => i + 1)
+// Edad 0 (recién embolsado) a 12, igual a como BANEX ya lo cuenta en sus
+// propias planillas de repique.
+const EDADES = Array.from({ length: 13 }, (_, i) => i)
 
 export default function RegistroRepiquePage() {
   const { session } = useAuth()
@@ -94,10 +94,14 @@ export default function RegistroRepiquePage() {
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Registro de repique</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Reporta, por lote y por la edad en semanas que tenían los racimos al momento del repique, cuántos se
+        Reporta, por lote y por la edad (0 a 12 semanas) que tenían los racimos al momento del repique, cuántos se
         descartaron (viento, lluvia, problemas fisiológicos). Esto descuenta solo el inventario calculado en el menú
         Repiques — el conteo original de Embolses no se modifica. También se relaciona por lote la cantidad de
-        plantas paridas y sin parir de esta semana.
+        plantas paridas, sin parir, y racimos repicados sin identificar de esta semana.
+      </p>
+      <p className="mb-6 text-xs text-gray-400">
+        Igual que en Registro de embolse: la edad 0 (recién embolsado) usa la cinta de la semana SIGUIENTE a la que
+        elijas abajo, por eso el color de cada columna puede no coincidir con la semana que seleccionaste.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -203,7 +207,7 @@ function TablaRepique({
   embolses: { lote_id: string; anio: number; semana: number; cantidad: number }[]
   repiques: { lote_id: string; anio_embolse: number; semana_embolse: number; cantidad: number }[]
   pendientes: { payload: RepiqueInput }[]
-  censo: { lote_id: string; anio: number; semana: number; paridas: number; sin_parir: number }[]
+  censo: { lote_id: string; anio: number; semana: number; paridas: number; sin_parir: number; sin_identificar: number }[]
   pendientesCenso: { payload: CensoPlantasInput }[]
   userId: string
   onGuardado: () => void
@@ -250,11 +254,13 @@ function TablaRepique({
     return {
       paridas: pendiente?.paridas ?? servidor?.paridas ?? 0,
       sinParir: pendiente?.sin_parir ?? servidor?.sin_parir ?? 0,
+      sinIdentificar: pendiente?.sin_identificar ?? servidor?.sin_identificar ?? 0,
     }
   }
 
   const COL_PARIDAS = EDADES.length
   const COL_SIN_PARIR = EDADES.length + 1
+  const COL_SIN_IDENTIFICAR = EDADES.length + 2
 
   const [borrador, setBorrador] = useState<Record<string, string>>(() => {
     const inicial: Record<string, string> = {}
@@ -263,9 +269,10 @@ function TablaRepique({
         const { yaRepicado } = datosCelda(l.id, c)
         inicial[`${l.id}_${c.edad}`] = yaRepicado > 0 ? String(yaRepicado) : ''
       }
-      const { paridas, sinParir } = datosCensoCelda(l.id)
+      const { paridas, sinParir, sinIdentificar } = datosCensoCelda(l.id)
       inicial[`${l.id}_paridas`] = paridas > 0 ? String(paridas) : ''
       inicial[`${l.id}_sinparir`] = sinParir > 0 ? String(sinParir) : ''
+      inicial[`${l.id}_sinidentificar`] = sinIdentificar > 0 ? String(sinIdentificar) : ''
     }
     return inicial
   })
@@ -287,8 +294,16 @@ function TablaRepique({
     return borrador[`${loteId}_sinparir`] ?? ''
   }
 
+  function valorSinIdentificarDe(loteId: string) {
+    return borrador[`${loteId}_sinidentificar`] ?? ''
+  }
+
   function totalPlantas(loteId: string) {
-    return (Number(valorParidasDe(loteId)) || 0) + (Number(valorSinParirDe(loteId)) || 0)
+    return (
+      (Number(valorParidasDe(loteId)) || 0) +
+      (Number(valorSinParirDe(loteId)) || 0) +
+      (Number(valorSinIdentificarDe(loteId)) || 0)
+    )
   }
 
   function totalLote(loteId: string) {
@@ -298,7 +313,8 @@ function TablaRepique({
   const totalGeneral = lotes.reduce((sum, l) => sum + totalLote(l.id), 0)
   const totalGeneralParidas = lotes.reduce((sum, l) => sum + (Number(valorParidasDe(l.id)) || 0), 0)
   const totalGeneralSinParir = lotes.reduce((sum, l) => sum + (Number(valorSinParirDe(l.id)) || 0), 0)
-  const totalGeneralPlantas = totalGeneralParidas + totalGeneralSinParir
+  const totalGeneralSinIdentificar = lotes.reduce((sum, l) => sum + (Number(valorSinIdentificarDe(l.id)) || 0), 0)
+  const totalGeneralPlantas = totalGeneralParidas + totalGeneralSinParir + totalGeneralSinIdentificar
 
   async function guardarCelda(lote: Lote, info: CeldaInfo, valorTexto: string) {
     const clave = `${lote.id}_${info.edad}`
@@ -354,22 +370,26 @@ function TablaRepique({
     }
   }
 
-  async function guardarCenso(lote: Lote, campo: 'paridas' | 'sin_parir', valorTexto: string) {
-    const clave = `${lote.id}_${campo === 'paridas' ? 'paridas' : 'sinparir'}`
+  async function guardarCenso(lote: Lote, campo: 'paridas' | 'sin_parir' | 'sin_identificar', valorTexto: string) {
+    const claveCampo = campo === 'paridas' ? 'paridas' : campo === 'sin_parir' ? 'sinparir' : 'sinidentificar'
+    const clave = `${lote.id}_${claveCampo}`
     const valor = valorTexto.trim() === '' ? 0 : Number(valorTexto)
     if (Number.isNaN(valor) || valor < 0) {
       setConError((prev) => ({ ...prev, [clave]: 'Cantidad inválida' }))
       return
     }
 
-    // Se manda el par completo (paridas + sin parir), tomando del borrador en
-    // pantalla el campo que no se acaba de editar, para no pisarlo con lo
-    // último guardado si el operario ya había cambiado ese otro campo y
-    // todavía no salía de esa casilla.
+    // Se manda el trío completo (paridas + sin parir + sin identificar),
+    // tomando del borrador en pantalla los campos que no se acaban de
+    // editar, para no pisarlos con lo último guardado si el operario ya
+    // había cambiado algún otro campo y todavía no salía de esa casilla.
     const paridas = campo === 'paridas' ? valor : Number(valorParidasDe(lote.id)) || 0
     const sinParir = campo === 'sin_parir' ? valor : Number(valorSinParirDe(lote.id)) || 0
+    const sinIdentificar = campo === 'sin_identificar' ? valor : Number(valorSinIdentificarDe(lote.id)) || 0
     const guardado = datosCensoCelda(lote.id)
-    if (paridas === guardado.paridas && sinParir === guardado.sinParir) return
+    if (paridas === guardado.paridas && sinParir === guardado.sinParir && sinIdentificar === guardado.sinIdentificar) {
+      return
+    }
 
     setGuardando((prev) => new Set(prev).add(clave))
     setConError((prev) => {
@@ -377,7 +397,15 @@ function TablaRepique({
       return resto
     })
 
-    const payload: CensoPlantasInput = { lote_id: lote.id, anio, semana, paridas, sin_parir: sinParir, user_id: userId }
+    const payload: CensoPlantasInput = {
+      lote_id: lote.id,
+      anio,
+      semana,
+      paridas,
+      sin_parir: sinParir,
+      sin_identificar: sinIdentificar,
+      user_id: userId,
+    }
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       await agregarCensoPlantasACola(payload)
@@ -459,7 +487,7 @@ function TablaRepique({
       </h2>
 
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="border-collapse text-sm" style={{ width: `${160 + columnas.length * 72 + 3 * 92}px` }}>
+        <table className="border-collapse text-sm" style={{ width: `${160 + columnas.length * 72 + 4 * 92}px` }}>
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
               <th className="sticky left-0 z-10 w-[160px] border-r border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">Lote</th>
@@ -486,6 +514,9 @@ function TablaRepique({
               </th>
               <th className="w-[92px] border-r border-banex-100 bg-green-50 px-2 py-2 text-center font-medium">
                 Plantas sin parir
+              </th>
+              <th className="w-[92px] border-r border-banex-100 bg-green-50 px-2 py-2 text-center font-medium">
+                Sin identificar
               </th>
               <th className="w-[92px] border-r border-banex-100 bg-green-100 px-2 py-2 text-center font-medium">
                 Total plantas
@@ -552,6 +583,21 @@ function TablaRepique({
                     className={inputClass(`${l.id}_sinparir`)}
                   />
                 </td>
+                <td className="border-r border-banex-100 bg-green-50/40 p-0.5 text-center">
+                  <input
+                    type="number"
+                    min={0}
+                    value={valorSinIdentificarDe(l.id)}
+                    onChange={(e) => setBorrador((prev) => ({ ...prev, [`${l.id}_sinidentificar`]: e.target.value }))}
+                    onBlur={(e) => guardarCenso(l, 'sin_identificar', e.target.value)}
+                    onKeyDown={(e) => manejarFlechasCelda(e, fila, COL_SIN_IDENTIFICAR)}
+                    data-fila={fila}
+                    data-col={COL_SIN_IDENTIFICAR}
+                    disabled={guardando.has(`${l.id}_sinidentificar`)}
+                    title={conError[`${l.id}_sinidentificar`]}
+                    className={inputClass(`${l.id}_sinidentificar`)}
+                  />
+                </td>
                 <td className="border-r border-banex-100 bg-green-100/60 px-2 py-1.5 text-center font-semibold text-banex-800">
                   {totalPlantas(l.id).toLocaleString('es')}
                 </td>
@@ -574,6 +620,9 @@ function TablaRepique({
               </td>
               <td className="border-r border-banex-100 bg-green-100/60 px-2 py-1.5 text-center">
                 {totalGeneralSinParir.toLocaleString('es')}
+              </td>
+              <td className="border-r border-banex-100 bg-green-100/60 px-2 py-1.5 text-center">
+                {totalGeneralSinIdentificar.toLocaleString('es')}
               </td>
               <td className="border-r border-banex-100 bg-green-200/60 px-2 py-1.5 text-center">
                 {totalGeneralPlantas.toLocaleString('es')}
@@ -603,7 +652,7 @@ function TablaRepique({
         <div
           ref={capturaRef}
           className="rounded-lg bg-white p-8"
-          style={{ width: `${820 + columnas.length * 96 + 3 * 120}px` }}
+          style={{ width: `${820 + columnas.length * 96 + 4 * 120}px` }}
         >
           <div className="mb-5 flex items-center gap-3 border-b border-gray-100 pb-4">
             <img src={BANEX_LOGO_URL} alt="BANEX S.A." className="h-16 w-16 shrink-0 rounded-md object-contain" />
@@ -637,6 +686,7 @@ function TablaRepique({
                 })}
                 <th className="px-3 py-3 text-center font-medium">Paridas</th>
                 <th className="px-3 py-3 text-center font-medium">Sin parir</th>
+                <th className="px-3 py-3 text-center font-medium">Sin identificar</th>
                 <th className="px-3 py-3 text-center font-medium">Total plantas</th>
                 <th className="px-3 py-3 text-center font-medium">Total</th>
               </tr>
@@ -652,6 +702,7 @@ function TablaRepique({
                   ))}
                   <td className="px-3 py-3 text-center">{valorParidasDe(l.id) || '—'}</td>
                   <td className="px-3 py-3 text-center">{valorSinParirDe(l.id) || '—'}</td>
+                  <td className="px-3 py-3 text-center">{valorSinIdentificarDe(l.id) || '—'}</td>
                   <td className="px-3 py-3 text-center font-semibold text-banex-800">{totalPlantas(l.id).toLocaleString('es')}</td>
                   <td className="px-3 py-3 text-center font-semibold text-banex-800">{totalLote(l.id).toLocaleString('es')}</td>
                 </tr>
@@ -667,6 +718,7 @@ function TablaRepique({
                 ))}
                 <td className="px-3 py-3 text-center">{totalGeneralParidas.toLocaleString('es')}</td>
                 <td className="px-3 py-3 text-center">{totalGeneralSinParir.toLocaleString('es')}</td>
+                <td className="px-3 py-3 text-center">{totalGeneralSinIdentificar.toLocaleString('es')}</td>
                 <td className="px-3 py-3 text-center">{totalGeneralPlantas.toLocaleString('es')}</td>
                 <td className="px-3 py-3 text-center">{totalGeneral.toLocaleString('es')}</td>
               </tr>

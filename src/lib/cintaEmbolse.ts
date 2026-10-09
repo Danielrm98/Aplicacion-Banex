@@ -47,11 +47,13 @@ export function colorCintaDe(anio: number, semana: number): ColorCinta {
 /**
  * A qué semana de embolse (año/semana reales, mismas que usa la tabla
  * embolses) corresponde un racimo de cierta edad en semanas, reportado en
- * una semana dada. Una edad de 1 semana es la cinta de la semana que se está
- * reportando (recién embolsado); de ahí para atrás: edad 12 en la semana 41
- * es la semana 30 (41 - 12 + 1 = 30), igual a como BANEX ya lo cuenta en
- * campo.
+ * una semana dada. Edad 0 a 12, igual a como BANEX ya lo cuenta en sus
+ * propias planillas de repique. Igual que en Registro de embolse (donde el
+ * embolse de la semana N se registra con la cinta de la semana N+1), aquí
+ * edad 0 (recién embolsado) usa la cinta de la semana SIGUIENTE a la que se
+ * está reportando — confirmado cruzando los colores reales contra una
+ * planilla de BANEX de varias semanas distintas.
  */
 export function semanaEmbolseDeEdad(anioReporte: number, semanaReporte: number, edadSemanas: number): SemanaReal {
-  return sumarSemanas(anioReporte, semanaReporte, -(edadSemanas - 1))
+  return sumarSemanas(anioReporte, semanaReporte + 1, -edadSemanas)
 }

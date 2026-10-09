@@ -907,6 +907,10 @@ create table public.censo_plantas (
   semana integer not null check (semana between 1 and 53),
   paridas integer not null default 0 check (paridas >= 0),
   sin_parir integer not null default 0 check (sin_parir >= 0),
+  -- Racimos repicados cuya edad/color de cinta no se pudo identificar en
+  -- campo; conceptualmente es un conteo de racimos, no de plantas, pero se
+  -- reporta junto a paridas/sin_parir en la misma planilla semanal por lote.
+  sin_identificar integer not null default 0 check (sin_identificar >= 0),
   created_at timestamptz not null default now(),
   unique (lote_id, anio, semana)
 );

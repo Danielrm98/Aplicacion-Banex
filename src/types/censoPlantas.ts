@@ -6,6 +6,7 @@ export interface CensoPlantas {
   semana: number
   paridas: number
   sin_parir: number
+  sin_identificar: number
   created_at: string
 }
 
