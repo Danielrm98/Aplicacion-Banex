@@ -17,6 +17,7 @@ import EmbolsesPage from './pages/EmbolsesPage'
 import RegistroEmbolsePage from './pages/RegistroEmbolsePage'
 import RepiquesPage from './pages/RepiquesPage'
 import RegistroRepiquePage from './pages/RegistroRepiquePage'
+import RecobroPage from './pages/RecobroPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { session, loading } = useAuth()
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="/registro-embolse" element={<RegistroEmbolsePage />} />
         <Route path="/repiques" element={<RepiquesPage />} />
         <Route path="/registro-repique" element={<RegistroRepiquePage />} />
+        <Route path="/recobro" element={<RecobroPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

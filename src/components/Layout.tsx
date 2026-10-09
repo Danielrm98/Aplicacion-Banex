@@ -16,13 +16,14 @@ const navItems = [
   { to: '/embolses', label: 'Embolses', icon: '🎗️' },
   { to: '/registro-repique', label: 'Registro de repique', icon: '✂️' },
   { to: '/repiques', label: 'Repiques', icon: '📉' },
+  { to: '/recobro', label: 'Recobro', icon: '💹' },
   { to: '/registros', label: 'Historial', icon: '🗂️' },
   { to: '/reportes', label: 'Reportes', icon: '📈' },
   { to: '/especificaciones', label: 'Especificaciones', icon: '📄' },
   { to: '/catalogo', label: 'Catálogo', icon: '⚙️' },
 ]
 
-const SOLO_ADMIN = ['/catalogo', '/plan-general']
+const SOLO_ADMIN = ['/catalogo', '/plan-general', '/recobro']
 const CLAVE_EXPANDIDO = 'approban_menu_expandido'
 
 export default function Layout() {
