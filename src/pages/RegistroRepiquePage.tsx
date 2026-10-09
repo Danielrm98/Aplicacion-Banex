@@ -24,7 +24,7 @@ import type { Lote } from '../types/lote'
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 // El repique se reporta hasta con esta cantidad de semanas de edad; de sobra
 // para cubrir el ciclo normal de cosecha (12 semanas) con margen.
-const EDADES = Array.from({ length: 16 }, (_, i) => i + 1)
+const EDADES = Array.from({ length: 13 }, (_, i) => i + 1)
 
 export default function RegistroRepiquePage() {
   const { session } = useAuth()
