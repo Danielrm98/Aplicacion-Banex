@@ -4,6 +4,7 @@ import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
 import { useRepiques } from '../lib/useRepiques'
+import { useCosechaEmbolse } from '../lib/useCosechaEmbolse'
 import { semanasDelAnioEmbolses, anioEmbolsesDe, type SemanaReal } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { getIsoWeek } from '../lib/isoWeek'
@@ -54,6 +55,7 @@ export default function RepiquesPage() {
   const { lotes, loading: loadingLotes } = useLotes()
   const { embolses, loading: loadingEmbolses } = useEmbolses({ anioEmbolses })
   const { repiques, loading: loadingRepiques } = useRepiques({ anioEmbolses })
+  const { cosecha, loading: loadingCosecha } = useCosechaEmbolse({ anioEmbolses })
 
   const semanas = useMemo(() => semanasDelAnioEmbolses(anioEmbolses), [anioEmbolses])
 
@@ -89,6 +91,17 @@ export default function RepiquesPage() {
     return m
   }, [lotes])
 
+  // Registrar guarda los racimos cosechados por finca, sin lote — así que
+  // este descuento solo se puede calcular a nivel de finca, no por lote.
+  const cosechaPorFinca = useMemo(() => {
+    const m = new Map<string, Map<string, number>>()
+    for (const c of cosecha) {
+      if (!m.has(c.finca)) m.set(c.finca, new Map())
+      m.get(c.finca)!.set(claveSemana(c.anio_embolse, c.semana_embolse), c.cantidad)
+    }
+    return m
+  }, [cosecha])
+
   function embolsadoDe(loteId: string, s: SemanaReal): number {
     return embolsadoPorLote.get(loteId)?.get(claveSemana(s.anio, s.semana)) ?? 0
   }
@@ -99,6 +112,10 @@ export default function RepiquesPage() {
 
   function netoDe(loteId: string, s: SemanaReal): number {
     return embolsadoDe(loteId, s) - repicadoDe(loteId, s)
+  }
+
+  function cosechadoDe(finca: string, s: SemanaReal): number {
+    return cosechaPorFinca.get(finca)?.get(claveSemana(s.anio, s.semana)) ?? 0
   }
 
   function elegirFinca(nombre: string) {
@@ -114,7 +131,9 @@ export default function RepiquesPage() {
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Repiques</h1>
       <p className="mb-6 text-sm text-gray-500">
         Inventario neto de racimos embolsados por semana, lote y finca, ya descontando lo repicado (viento, lluvia,
-        problemas fisiológicos). El número grande es lo que queda; el pequeño, lo repicado de esa semana.
+        problemas fisiológicos) y lo cosechado en Registrar. El número grande es lo que queda; el pequeño, lo
+        repicado de esa semana. Lo cosechado se guarda por finca (sin lote en Registrar), así que solo se descuenta
+        en los totales de finca — no en cada lote por separado.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -146,10 +165,16 @@ export default function RepiquesPage() {
         </label>
       </div>
 
-      {loadingLotes || loadingEmbolses || loadingRepiques ? (
+      {loadingLotes || loadingEmbolses || loadingRepiques || loadingCosecha ? (
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
       ) : mostrarResumen ? (
-        <ResumenGeneral fincas={fincasOrdenadas} lotesPorFinca={lotesPorFinca} semanas={semanas} netoDe={netoDe} />
+        <ResumenGeneral
+          fincas={fincasOrdenadas}
+          lotesPorFinca={lotesPorFinca}
+          semanas={semanas}
+          netoDe={netoDe}
+          cosechadoDe={cosechadoDe}
+        />
       ) : finca ? (
         <DetalleFinca
           finca={finca}
@@ -158,6 +183,7 @@ export default function RepiquesPage() {
           embolsadoDe={embolsadoDe}
           repicadoDe={repicadoDe}
           netoDe={netoDe}
+          cosechadoDe={cosechadoDe}
         />
       ) : (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
@@ -185,14 +211,17 @@ function ResumenGeneral({
   lotesPorFinca,
   semanas,
   netoDe,
+  cosechadoDe,
 }: {
   fincas: Finca[]
   lotesPorFinca: Map<string, Lote[]>
   semanas: SemanaReal[]
   netoDe: (loteId: string, s: SemanaReal) => number
+  cosechadoDe: (finca: string, s: SemanaReal) => number
 }) {
   function totalFinca(finca: string, s: SemanaReal) {
-    return (lotesPorFinca.get(finca) ?? []).reduce((sum, l) => sum + netoDe(l.id, s), 0)
+    const sumaLotes = (lotesPorFinca.get(finca) ?? []).reduce((sum, l) => sum + netoDe(l.id, s), 0)
+    return sumaLotes - cosechadoDe(finca, s)
   }
 
   const grupos = useMemo(() => {
@@ -274,6 +303,7 @@ function DetalleFinca({
   embolsadoDe,
   repicadoDe,
   netoDe,
+  cosechadoDe,
 }: {
   finca: Finca
   lotes: Lote[]
@@ -281,9 +311,14 @@ function DetalleFinca({
   embolsadoDe: (loteId: string, s: SemanaReal) => number
   repicadoDe: (loteId: string, s: SemanaReal) => number
   netoDe: (loteId: string, s: SemanaReal) => number
+  cosechadoDe: (finca: string, s: SemanaReal) => number
 }) {
   function totalSemana(s: SemanaReal) {
     return lotes.reduce((sum, l) => sum + netoDe(l.id, s), 0)
+  }
+
+  function saldoFinca(s: SemanaReal) {
+    return totalSemana(s) - cosechadoDe(finca.nombre, s)
   }
 
   return (
@@ -331,10 +366,26 @@ function DetalleFinca({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL lotes</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {totalSemana(s).toLocaleString('es')}
+                  </td>
+                ))}
+              </tr>
+              <tr className="bg-red-50/50 text-red-700">
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-red-50/50 py-1.5 pr-3 pl-4">Cosechado (finca)</td>
+                {semanas.map((s) => (
+                  <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
+                    {cosechadoDe(finca.nombre, s) > 0 ? `-${cosechadoDe(finca.nombre, s).toLocaleString('es')}` : '—'}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-t-2 border-banex-200 bg-banex-100/50 font-semibold text-banex-900">
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-100/50 py-1.5 pr-3 pl-4">SALDO FINCA</td>
+                {semanas.map((s) => (
+                  <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
+                    {saldoFinca(s).toLocaleString('es')}
                   </td>
                 ))}
               </tr>

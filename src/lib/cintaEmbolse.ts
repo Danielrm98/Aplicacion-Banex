@@ -24,7 +24,7 @@ export const ESTILO_CINTA: Record<ColorCinta, { bg: string; texto: string }> = {
 }
 
 /** Lunes (en UTC, para no depender de la zona horaria del navegador) de una semana ISO. */
-function lunesDeSemanaIso(anio: number, semana: number): Date {
+export function lunesDeSemanaIso(anio: number, semana: number): Date {
   const cuatroDeEnero = new Date(Date.UTC(anio, 0, 4))
   const diaIso = (cuatroDeEnero.getUTCDay() + 6) % 7 // 0 = lunes
   const lunesSemana1 = new Date(cuatroDeEnero)
