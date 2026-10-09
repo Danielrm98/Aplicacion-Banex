@@ -38,7 +38,7 @@ export async function listarPendientesDetalle(): Promise<ItemPendienteDetalle[]>
   const repiques = (await leerColaRepiques()).map((r) => ({
     tipo: 'repique' as const,
     id: r.clave,
-    descripcion: `Repique — lote ${r.payload.lote_id} — semana ${r.payload.semana_embolse} de ${r.payload.anio_embolse} (edad ${r.payload.edad_semanas})`,
+    descripcion: `Repique — lote ${r.payload.lote_id} — reportado semana ${r.payload.semana_reporte} de ${r.payload.anio_reporte} (edad ${r.payload.edad_semanas})`,
     intentos: r.intentos,
     ultimoError: r.ultimoError,
   }))

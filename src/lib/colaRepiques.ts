@@ -5,7 +5,7 @@ import { ALMACEN_REPIQUES_PENDIENTES, EVENTO_COLA_CAMBIO, conAlmacen } from './b
 import type { RepiqueInput } from '../types/repique'
 
 function claveDe(payload: RepiqueInput): string {
-  return `${payload.lote_id}_${payload.anio_embolse}_${payload.semana_embolse}`
+  return `${payload.lote_id}_${payload.anio_reporte}_${payload.semana_reporte}_${payload.edad_semanas}`
 }
 
 export interface RepiquePendiente {
@@ -41,7 +41,7 @@ export async function leerColaRepiques(): Promise<RepiquePendiente[]> {
 export async function enviarRepique(payload: RepiqueInput): Promise<void> {
   const { error } = await supabase
     .from('repiques')
-    .upsert(payload, { onConflict: 'lote_id,anio_embolse,semana_embolse' })
+    .upsert(payload, { onConflict: 'lote_id,anio_reporte,semana_reporte,edad_semanas' })
   if (error) throw error
 }
 

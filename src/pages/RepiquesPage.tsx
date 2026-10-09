@@ -66,11 +66,16 @@ export default function RepiquesPage() {
     return m
   }, [embolses])
 
+  // Varias semanas de reporte pueden tocar la misma semana de embolse
+  // (la cinta va envejeciendo y cae en otra columna de edad cada semana),
+  // así que se suma lo repicado de todas, no se queda solo con la última.
   const repicadoPorLote = useMemo(() => {
     const m = new Map<string, Map<string, number>>()
     for (const r of repiques) {
       if (!m.has(r.lote_id)) m.set(r.lote_id, new Map())
-      m.get(r.lote_id)!.set(claveSemana(r.anio_embolse, r.semana_embolse), r.cantidad)
+      const porSemana = m.get(r.lote_id)!
+      const clave = claveSemana(r.anio_embolse, r.semana_embolse)
+      porSemana.set(clave, (porSemana.get(clave) ?? 0) + r.cantidad)
     }
     return m
   }, [repiques])

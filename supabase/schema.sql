@@ -824,22 +824,31 @@ create policy "Solo el admin elimina embolses"
 
 -- ============================================================
 -- Repiques: racimos ya embolsados que se descartan antes de cosecha
--- (viento, lluvia, problemas fisiológicos). Se registran por lote y por la
--- edad en semanas que tenían al repicarlos, lo que identifica a qué semana
--- de embolse (y color de cinta) pertenecían. El inventario neto se calcula
--- en la app restando esto de "embolses" — nunca se modifica ese conteo
--- original, que sigue siendo el reporte histórico de lo realmente embolsado.
+-- (viento, lluvia, problemas fisiológicos). Se registran por lote, por la
+-- semana en que se reporta el repique, y por la edad en semanas que tenían
+-- los racimos en ese momento — lo que identifica a qué semana de embolse
+-- (y color de cinta) pertenecían. Cada semana de reporte guarda su propia
+-- fila (como cualquier otra celda editable de la app: se corrige volviendo
+-- a guardar esa misma celda), para poder ver exactamente qué se registró
+-- en cada semana y dejar en blanco una semana nueva sin perder de vista lo
+-- ya reportado antes. El inventario neto se calcula en la app sumando todo
+-- lo repicado de una misma semana de embolse (sin importar en qué semana
+-- de reporte se fue registrando) y restándolo de "embolses" — nunca se
+-- modifica ese conteo original, que sigue siendo el reporte histórico de
+-- lo realmente embolsado.
 -- ============================================================
 create table public.repiques (
   id uuid primary key default gen_random_uuid(),
   lote_id uuid not null references public.lotes (id) on delete cascade,
   user_id uuid not null references auth.users (id) on delete cascade,
+  anio_reporte integer not null,
+  semana_reporte integer not null check (semana_reporte between 1 and 53),
   anio_embolse integer not null,
   semana_embolse integer not null check (semana_embolse between 1 and 53),
-  edad_semanas integer not null check (edad_semanas between 1 and 53),
+  edad_semanas integer not null check (edad_semanas between 0 and 53),
   cantidad integer not null default 0 check (cantidad >= 0),
   created_at timestamptz not null default now(),
-  unique (lote_id, anio_embolse, semana_embolse)
+  unique (lote_id, anio_reporte, semana_reporte, edad_semanas)
 );
 
 create index repiques_lote_idx on public.repiques (lote_id);
