@@ -531,7 +531,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Semana que corresponde</span>
+          <span className="mb-1 block text-sm font-medium text-gray-700">Semana en la que fueron producidas</span>
           <select
             value={semanaVenta}
             onChange={(e) => setSemanaElegida(Number(e.target.value))}
