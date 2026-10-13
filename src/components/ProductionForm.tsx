@@ -22,13 +22,16 @@ import {
   type ProduccionHeaderInput,
 } from '../types/produccion'
 
-// GOLONDRINA NUEVA y GOLONDRINA VIEJA se unificaron en LAS GOLONDRINAS a
-// partir de la semana 42/2026 (lunes 2026-10-12): ya no se puede registrar
-// producción nueva ahí desde esa fecha en adelante, pero lo ya registrado
-// (semana 41 y anteriores) se conserva tal cual para poder revisarlo por
-// separado.
-const FINCAS_UNIFICADAS = ['GOLONDRINA NUEVA', 'GOLONDRINA VIEJA']
-const FECHA_CORTE_FINCAS_UNIFICADAS = '2026-10-12'
+// GOLONDRINA NUEVA, GOLONDRINA VIEJA y LAS DELICIAS se unificaron en sus
+// fincas de destino a partir de la semana 42/2026 (lunes 2026-10-12): ya no
+// se puede registrar producción nueva ahí desde esa fecha en adelante, pero
+// lo ya registrado (semana 41 y anteriores) se conserva tal cual para poder
+// revisarlo por separado.
+const FINCAS_UNIFICADAS: Record<string, { destino: string; fechaCorte: string }> = {
+  'GOLONDRINA NUEVA': { destino: 'LAS GOLONDRINAS', fechaCorte: '2026-10-12' },
+  'GOLONDRINA VIEJA': { destino: 'LAS GOLONDRINAS', fechaCorte: '2026-10-12' },
+  'LAS DELICIAS': { destino: 'FLORIDA', fechaCorte: '2026-10-12' },
+}
 
 function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
@@ -182,8 +185,8 @@ export default function ProductionForm({
 
   const bloqueadoPorDuplicado = !esAdmin && (registroExistente !== null || pendienteLocal)
 
-  const bloqueadoPorUnificacion =
-    FINCAS_UNIFICADAS.includes(header.finca) && header.fecha >= FECHA_CORTE_FINCAS_UNIFICADAS
+  const unificacion = FINCAS_UNIFICADAS[header.finca]
+  const bloqueadoPorUnificacion = unificacion !== undefined && header.fecha >= unificacion.fechaCorte
 
   const bloqueado = bloqueadoPorUnificacion || bloqueadoPorDuplicado
 
@@ -290,9 +293,9 @@ export default function ProductionForm({
       return
     }
 
-    if (bloqueadoPorUnificacion) {
+    if (bloqueadoPorUnificacion && unificacion) {
       setError(
-        `${header.finca} se unificó en LAS GOLONDRINAS a partir de la semana 42. Ya no se puede registrar aquí — usa LAS GOLONDRINAS para fechas de esa semana en adelante.`,
+        `${header.finca} se unificó en ${unificacion.destino} a partir de la semana 42. Ya no se puede registrar aquí — usa ${unificacion.destino} para fechas de esa semana en adelante.`,
       )
       return
     }
@@ -441,13 +444,13 @@ export default function ProductionForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {bloqueadoPorUnificacion && (
+      {bloqueadoPorUnificacion && unificacion && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <p className="font-medium">🔒 Registro bloqueado para {header.finca}.</p>
           <p className="mt-0.5">
-            Esta finca se unificó en LAS GOLONDRINAS a partir de la semana 42. Ya no se pueden registrar datos nuevos
-            aquí para esta fecha en adelante — lo ya registrado hasta la semana 41 se conserva para revisarlo por
-            separado desde{' '}
+            Esta finca se unificó en {unificacion.destino} a partir de la semana 42. Ya no se pueden registrar datos
+            nuevos aquí para esta fecha en adelante — lo ya registrado hasta la semana 41 se conserva para revisarlo
+            por separado desde{' '}
             <Link to="/registros" className="font-medium underline underline-offset-2 hover:text-amber-950">
               Historial
             </Link>
