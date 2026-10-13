@@ -22,6 +22,14 @@ import {
   type ProduccionHeaderInput,
 } from '../types/produccion'
 
+// GOLONDRINA NUEVA y GOLONDRINA VIEJA se unificaron en LAS GOLONDRINAS a
+// partir de la semana 42/2026 (lunes 2026-10-12): ya no se puede registrar
+// producción nueva ahí desde esa fecha en adelante, pero lo ya registrado
+// (semana 41 y anteriores) se conserva tal cual para poder revisarlo por
+// separado.
+const FINCAS_UNIFICADAS = ['GOLONDRINA NUEVA', 'GOLONDRINA VIEJA']
+const FECHA_CORTE_FINCAS_UNIFICADAS = '2026-10-12'
+
 function campoRacimo(semana: (typeof SEMANAS_RACIMO)[number]) {
   return `racimos_semana_${semana}` as const
 }
@@ -174,6 +182,11 @@ export default function ProductionForm({
 
   const bloqueadoPorDuplicado = !esAdmin && (registroExistente !== null || pendienteLocal)
 
+  const bloqueadoPorUnificacion =
+    FINCAS_UNIFICADAS.includes(header.finca) && header.fecha >= FECHA_CORTE_FINCAS_UNIFICADAS
+
+  const bloqueado = bloqueadoPorUnificacion || bloqueadoPorDuplicado
+
   function limpiarFormulario() {
     const fecha = fechaLocalHoy()
     setHeader({ ...emptyHeader, finca, fecha, semana: getIsoWeek(fecha) })
@@ -274,6 +287,13 @@ export default function ProductionForm({
 
     if (!header.finca) {
       setError('Selecciona una finca.')
+      return
+    }
+
+    if (bloqueadoPorUnificacion) {
+      setError(
+        `${header.finca} se unificó en LAS GOLONDRINAS a partir de la semana 42. Ya no se puede registrar aquí — usa LAS GOLONDRINAS para fechas de esa semana en adelante.`,
+      )
       return
     }
 
@@ -421,7 +441,22 @@ export default function ProductionForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      {bloqueadoPorDuplicado &&
+      {bloqueadoPorUnificacion && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-medium">🔒 Registro bloqueado para {header.finca}.</p>
+          <p className="mt-0.5">
+            Esta finca se unificó en LAS GOLONDRINAS a partir de la semana 42. Ya no se pueden registrar datos nuevos
+            aquí para esta fecha en adelante — lo ya registrado hasta la semana 41 se conserva para revisarlo por
+            separado desde{' '}
+            <Link to="/registros" className="font-medium underline underline-offset-2 hover:text-amber-950">
+              Historial
+            </Link>
+            .
+          </p>
+        </div>
+      )}
+
+      {!bloqueadoPorUnificacion && bloqueadoPorDuplicado &&
         (pendienteLocal ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             <p className="font-medium">📶 Este registro quedó guardado en el celular, pendiente de enviarse.</p>
@@ -879,16 +914,18 @@ export default function ProductionForm({
       <div>
         <button
           type="submit"
-          disabled={saving || bloqueadoPorDuplicado}
+          disabled={saving || bloqueado}
           className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50 disabled:hover:bg-banex-600 disabled:hover:shadow-sm"
         >
           {saving
             ? 'Guardando...'
-            : bloqueadoPorDuplicado
-              ? pendienteLocal
-                ? 'Pendiente de enviar'
-                : 'Ya existe un registro este día'
-              : 'Guardar registro'}
+            : bloqueadoPorUnificacion
+              ? 'Registro bloqueado'
+              : bloqueadoPorDuplicado
+                ? pendienteLocal
+                  ? 'Pendiente de enviar'
+                  : 'Ya existe un registro este día'
+                : 'Guardar registro'}
         </button>
       </div>
     </form>
