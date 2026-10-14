@@ -17,6 +17,7 @@ import { esErrorDeRed, LIMITE_ENVIO_MS } from '../lib/colaRegistros'
 import { agregarEmbolseACola, enviarEmbolse, type DiasEmbolse, type PayloadEmbolse } from '../lib/colaEmbolses'
 import { useEmbolsesPendientes } from '../lib/useEmbolsesPendientes'
 import { manejarFlechasCelda } from '../lib/navegacionGrid'
+import { exportEmbolseToExcel } from '../lib/exportUtils'
 import type { Finca } from '../types/finca'
 import type { Lote } from '../types/lote'
 
@@ -248,6 +249,8 @@ function TablaRegistro({
   const capturaRef = useRef<HTMLDivElement>(null)
   const [compartiendo, setCompartiendo] = useState(false)
   const [errorCompartir, setErrorCompartir] = useState<string | null>(null)
+  const [exportando, setExportando] = useState(false)
+  const [errorExportar, setErrorExportar] = useState<string | null>(null)
 
   // navigator.share() exige llamarse dentro del mismo gesto del usuario (el
   // clic); generar la captura toma más tiempo del que el navegador
@@ -419,6 +422,61 @@ function TablaRegistro({
       setErrorCompartir(err instanceof Error ? err.message : 'No se pudo generar la imagen.')
     } finally {
       setCompartiendo(false)
+    }
+  }
+
+  async function exportarExcel() {
+    setErrorExportar(null)
+    setExportando(true)
+    try {
+      const nombreArchivo = `embolse_${finca.nombre}_semana${semanaRegistro}_${anioRegistro}.xlsx`.replace(/\s+/g, '_')
+      await exportEmbolseToExcel(
+        {
+          finca: finca.nombre,
+          semana,
+          anio,
+          semanaRegistro,
+          anioRegistro,
+          colorCinta: color.charAt(0) + color.slice(1).toLowerCase(),
+          filas: lotes.map((l) => {
+            const bll = bllPorHasDe(l)
+            return {
+              lote: l.nombre,
+              hectareas: l.hectareas ?? null,
+              lunes: Number(campo(l.id).lunes) || 0,
+              martes: Number(campo(l.id).martes) || 0,
+              miercoles: Number(campo(l.id).miercoles) || 0,
+              primera: primeraDe(l.id),
+              jueves: Number(campo(l.id).jueves) || 0,
+              viernes: Number(campo(l.id).viernes) || 0,
+              sabado: Number(campo(l.id).sabado) || 0,
+              segunda: segundaDe(l.id),
+              total: totalDe(l.id),
+              bllPorHas: bll != null ? Number(bll.toFixed(1)) : null,
+              debunching: Number(campo(l.id).debunching) || 0,
+            }
+          }),
+          totales: {
+            hectareas: totalHas,
+            lunes: lotes.reduce((sum, l) => sum + (Number(campo(l.id).lunes) || 0), 0),
+            martes: lotes.reduce((sum, l) => sum + (Number(campo(l.id).martes) || 0), 0),
+            miercoles: lotes.reduce((sum, l) => sum + (Number(campo(l.id).miercoles) || 0), 0),
+            primera: lotes.reduce((sum, l) => sum + primeraDe(l.id), 0),
+            jueves: lotes.reduce((sum, l) => sum + (Number(campo(l.id).jueves) || 0), 0),
+            viernes: lotes.reduce((sum, l) => sum + (Number(campo(l.id).viernes) || 0), 0),
+            sabado: lotes.reduce((sum, l) => sum + (Number(campo(l.id).sabado) || 0), 0),
+            segunda: lotes.reduce((sum, l) => sum + segundaDe(l.id), 0),
+            total: totalSemana,
+            bllPorHas: totalHas > 0 ? Number((totalSemana / totalHas).toFixed(1)) : null,
+            debunching: totalDebunching,
+          },
+        },
+        nombreArchivo,
+      )
+    } catch (err) {
+      setErrorExportar(err instanceof Error ? err.message : 'No se pudo exportar el Excel.')
+    } finally {
+      setExportando(false)
     }
   }
 
@@ -609,7 +667,7 @@ function TablaRegistro({
         </p>
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           onClick={compartirEmbolse}
           disabled={compartiendo}
@@ -617,8 +675,16 @@ function TablaRegistro({
         >
           {compartiendo ? 'Generando imagen...' : 'Compartir embolse'}
         </button>
-        {errorCompartir && <p className="mt-2 text-sm text-red-600">{errorCompartir}</p>}
+        <button
+          onClick={exportarExcel}
+          disabled={exportando}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-60"
+        >
+          {exportando ? 'Generando Excel...' : 'Exportar a Excel'}
+        </button>
       </div>
+      {errorCompartir && <p className="mt-2 text-sm text-red-600">{errorCompartir}</p>}
+      {errorExportar && <p className="mt-2 text-sm text-red-600">{errorExportar}</p>}
 
       {/* Fuera de pantalla: una versión de solo texto de la tabla (sin <input>, cuyo
           valor no queda reflejado al capturar la pantalla) que se convierte en la

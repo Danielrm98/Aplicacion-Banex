@@ -21,6 +21,7 @@ import { useCensoPlantas } from '../lib/useCensoPlantas'
 import { agregarCensoPlantasACola, enviarCensoPlantas } from '../lib/colaCensoPlantas'
 import { useCensoPlantasPendientes } from '../lib/useCensoPlantasPendientes'
 import { manejarFlechasCelda } from '../lib/navegacionGrid'
+import { exportRepiqueToExcel } from '../lib/exportUtils'
 import type { RepiqueInput } from '../types/repique'
 import type { CensoPlantasInput } from '../types/censoPlantas'
 import type { Finca } from '../types/finca'
@@ -315,6 +316,8 @@ function TablaRepique({
   const capturaRef = useRef<HTMLDivElement>(null)
   const [compartiendo, setCompartiendo] = useState(false)
   const [errorCompartir, setErrorCompartir] = useState<string | null>(null)
+  const [exportando, setExportando] = useState(false)
+  const [errorExportar, setErrorExportar] = useState<string | null>(null)
 
   // navigator.share() exige llamarse dentro del mismo gesto del usuario (el
   // clic); generar la captura de pantalla toma más tiempo del que el
@@ -563,6 +566,49 @@ function TablaRepique({
     }
   }
 
+  async function exportarExcel() {
+    setErrorExportar(null)
+    setExportando(true)
+    try {
+      const nombreArchivo = `repique_${finca.nombre}_semana${semana}_${anio}.xlsx`.replace(/\s+/g, '_')
+      await exportRepiqueToExcel(
+        {
+          finca: finca.nombre,
+          semana,
+          anio,
+          columnas: columnas.map((c) => ({
+            edad: c.edad,
+            semanaEmbolse: c.semanaEmbolse,
+            anioEmbolse: c.anioEmbolse,
+            color: c.color,
+          })),
+          filas: lotes.map((l) => ({
+            lote: l.nombre,
+            valoresPorEdad: columnas.map((c) => Number(valorDe(l.id, c.edad)) || 0),
+            paridas: Number(valorParidasDe(l.id)) || 0,
+            sinParir: Number(valorSinParirDe(l.id)) || 0,
+            sinIdentificar: Number(valorSinIdentificarDe(l.id)) || 0,
+            totalPlantas: totalPlantas(l.id),
+            totalLote: totalLote(l.id),
+          })),
+          totales: {
+            valoresPorEdad: columnas.map((c) => lotes.reduce((sum, l) => sum + (Number(valorDe(l.id, c.edad)) || 0), 0)),
+            paridas: totalGeneralParidas,
+            sinParir: totalGeneralSinParir,
+            sinIdentificar: totalGeneralSinIdentificar,
+            totalPlantas: totalGeneralPlantas,
+            totalLote: totalGeneral,
+          },
+        },
+        nombreArchivo,
+      )
+    } catch (err) {
+      setErrorExportar(err instanceof Error ? err.message : 'No se pudo exportar el Excel.')
+    } finally {
+      setExportando(false)
+    }
+  }
+
   function inputClass(clave: string) {
     const base =
       'w-full min-w-0 rounded-md border px-1 py-1 text-center text-xs text-gray-900 transition-colors focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:opacity-50'
@@ -729,7 +775,7 @@ function TablaRepique({
 
       {Object.entries(conError).length > 0 && <p className="mt-2 text-sm text-red-600">{Object.values(conError)[0]}</p>}
 
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           onClick={compartirRepique}
           disabled={compartiendo}
@@ -737,8 +783,16 @@ function TablaRepique({
         >
           {compartiendo ? 'Generando imagen...' : 'Compartir repique'}
         </button>
-        {errorCompartir && <p className="mt-2 text-sm text-red-600">{errorCompartir}</p>}
+        <button
+          onClick={exportarExcel}
+          disabled={exportando}
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-60"
+        >
+          {exportando ? 'Generando Excel...' : 'Exportar a Excel'}
+        </button>
       </div>
+      {errorCompartir && <p className="mt-2 text-sm text-red-600">{errorCompartir}</p>}
+      {errorExportar && <p className="mt-2 text-sm text-red-600">{errorExportar}</p>}
 
       <div className="pointer-events-none absolute top-0 -left-[9999px]">
         <div

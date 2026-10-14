@@ -250,6 +250,148 @@ function agregarHojaVentas(workbook: ExcelJS.Workbook, ventas: VentaParaExcel[])
   }
 }
 
+interface FilaExportEmbolse {
+  lote: string
+  hectareas: number | null
+  lunes: number
+  martes: number
+  miercoles: number
+  primera: number
+  jueves: number
+  viernes: number
+  sabado: number
+  segunda: number
+  total: number
+  bllPorHas: number | null
+  debunching: number
+}
+
+const columnasEmbolse: { header: string; key: keyof FilaExportEmbolse; width?: number }[] = [
+  { header: 'Lote', key: 'lote', width: 14 },
+  { header: 'Has', key: 'hectareas', width: 10 },
+  { header: 'Lunes', key: 'lunes', width: 10 },
+  { header: 'Martes', key: 'martes', width: 10 },
+  { header: 'Miércoles', key: 'miercoles', width: 10 },
+  { header: '1ra VTA', key: 'primera', width: 10 },
+  { header: 'Jueves', key: 'jueves', width: 10 },
+  { header: 'Viernes', key: 'viernes', width: 10 },
+  { header: 'Sábado', key: 'sabado', width: 10 },
+  { header: '2da VTA', key: 'segunda', width: 10 },
+  { header: 'Total', key: 'total', width: 10 },
+  { header: 'BLL/HAS', key: 'bllPorHas', width: 10 },
+  { header: 'Debunching', key: 'debunching', width: 12 },
+]
+
+export async function exportEmbolseToExcel(
+  params: {
+    finca: string
+    semana: number
+    anio: number
+    semanaRegistro: number
+    anioRegistro: number
+    colorCinta: string
+    filas: FilaExportEmbolse[]
+    totales: Omit<FilaExportEmbolse, 'lote'>
+  },
+  filename = 'embolse.xlsx',
+) {
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Embolse')
+
+  sheet.mergeCells(1, 1, 1, columnasEmbolse.length)
+  sheet.getCell(1, 1).value =
+    `${params.finca} · Semana ${params.semana}/${params.anio} · Cinta ${params.colorCinta} (semana ${params.semanaRegistro}/${params.anioRegistro})`
+  sheet.getCell(1, 1).font = { bold: true, size: 12 }
+  sheet.addRow([])
+
+  sheet.columns = columnasEmbolse.map((c) => ({ key: c.key as string, width: c.width }))
+  const filaEncabezado = sheet.addRow(columnasEmbolse.map((c) => c.header))
+  filaEncabezado.font = { bold: true }
+
+  for (const f of params.filas) {
+    sheet.addRow(columnasEmbolse.map((c) => f[c.key] ?? ''))
+  }
+
+  const filaTotal = sheet.addRow(
+    columnasEmbolse.map((c) => (c.key === 'lote' ? 'TOTAL' : (params.totales[c.key as keyof typeof params.totales] ?? ''))),
+  )
+  filaTotal.font = { bold: true }
+
+  sheet.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: columnasEmbolse.length } }
+  sheet.views = [{ state: 'frozen', xSplit: 1, ySplit: 3 }]
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
+}
+
+interface FilaExportRepique {
+  lote: string
+  valoresPorEdad: number[]
+  paridas: number
+  sinParir: number
+  sinIdentificar: number
+  totalPlantas: number
+  totalLote: number
+}
+
+export async function exportRepiqueToExcel(
+  params: {
+    finca: string
+    semana: number
+    anio: number
+    columnas: { edad: number; semanaEmbolse: number; anioEmbolse: number; color: string }[]
+    filas: FilaExportRepique[]
+    totales: Omit<FilaExportRepique, 'lote'>
+  },
+  filename = 'repique.xlsx',
+) {
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Repique')
+
+  const totalColumnas = 1 + params.columnas.length + 4
+  sheet.mergeCells(1, 1, 1, totalColumnas)
+  sheet.getCell(1, 1).value = `${params.finca} · Semana ${params.semana}/${params.anio}`
+  sheet.getCell(1, 1).font = { bold: true, size: 12 }
+  sheet.addRow([])
+
+  const encabezados = [
+    'Lote',
+    ...params.columnas.map(
+      (c) => `Edad ${c.edad} (${c.color.charAt(0) + c.color.slice(1).toLowerCase()}, sem. ${c.semanaEmbolse}/${c.anioEmbolse})`,
+    ),
+    'Plantas paridas',
+    'Plantas sin parir',
+    'Sin identificar',
+    'Total plantas',
+    'Total lote',
+  ]
+  sheet.getColumn(1).width = 16
+  for (let i = 2; i <= encabezados.length; i++) sheet.getColumn(i).width = 20
+  const filaEncabezado = sheet.addRow(encabezados)
+  filaEncabezado.font = { bold: true }
+
+  for (const f of params.filas) {
+    sheet.addRow([f.lote, ...f.valoresPorEdad, f.paridas, f.sinParir, f.sinIdentificar, f.totalPlantas, f.totalLote])
+  }
+
+  const filaTotal = sheet.addRow([
+    'TOTAL',
+    ...params.totales.valoresPorEdad,
+    params.totales.paridas,
+    params.totales.sinParir,
+    params.totales.sinIdentificar,
+    params.totales.totalPlantas,
+    params.totales.totalLote,
+  ])
+  filaTotal.font = { bold: true }
+
+  sheet.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: encabezados.length } }
+  sheet.views = [{ state: 'frozen', xSplit: 1, ySplit: 3 }]
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
+}
+
 export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_banano.pdf') {
   const filasOrdenadas = [...filas].sort(
     (a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca),
