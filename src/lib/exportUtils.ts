@@ -375,7 +375,7 @@ export async function exportRepiqueToExcel(
 
   const encabezados = [
     'Lote',
-    ...params.columnas.map((c) => `Edad ${c.edad} (${nombreCinta(c.color)}, sem. ${c.semanaEmbolse}/${c.anioEmbolse})`),
+    ...params.columnas.map((c) => `Edad ${c.edad} (${nombreCinta(c.color)})`),
     'Plantas paridas',
     'Plantas sin parir',
     'Sin identificar',
