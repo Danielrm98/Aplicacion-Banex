@@ -5,10 +5,8 @@ import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
 import { useCosechaEmbolse } from '../lib/useCosechaEmbolse'
-import { semanasDelAnioEmbolses, anioEmbolsesDe, type SemanaReal } from '../lib/anioEmbolses'
+import { semanasDelAnio, type SemanaReal } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
-import { getIsoWeek } from '../lib/isoWeek'
-import { fechaLocalHoy } from '../lib/fechaLocal'
 import { posicionFinca } from '../lib/ordenFincas'
 import type { Finca } from '../types/finca'
 
@@ -39,13 +37,11 @@ function RecobroContenido() {
   )
   const { lotes, loading: loadingLotes } = useLotes()
 
-  const [anioEmbolses, setAnioEmbolses] = useState(() =>
-    anioEmbolsesDe(new Date().getFullYear(), getIsoWeek(fechaLocalHoy())),
-  )
-  const { embolses, loading: loadingEmbolses } = useEmbolses({ anioEmbolses })
-  const { cosecha, loading: loadingCosecha } = useCosechaEmbolse({ anioEmbolses })
+  const [anio, setAnio] = useState(() => new Date().getFullYear())
+  const { embolses, loading: loadingEmbolses } = useEmbolses({ anios: [anio] })
+  const { cosecha, loading: loadingCosecha } = useCosechaEmbolse({ anio })
 
-  const semanas = useMemo(() => semanasDelAnioEmbolses(anioEmbolses), [anioEmbolses])
+  const semanas = useMemo(() => semanasDelAnio(anio), [anio])
 
   const fincaPorLote = useMemo(() => {
     const m = new Map<string, string>()
@@ -127,11 +123,11 @@ function RecobroContenido() {
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Año de embolses</span>
+          <span className="mb-1 block text-gray-600">Año</span>
           <input
             type="number"
-            value={anioEmbolses}
-            onChange={(e) => setAnioEmbolses(Number(e.target.value))}
+            value={anio}
+            onChange={(e) => setAnio(Number(e.target.value))}
             className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>

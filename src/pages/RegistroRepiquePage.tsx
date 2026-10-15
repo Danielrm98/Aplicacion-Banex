@@ -7,7 +7,6 @@ import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
 import { useRepiques } from '../lib/useRepiques'
-import { anioEmbolsesDe } from '../lib/anioEmbolses'
 import { colorCintaDe, semanaEmbolseDeEdad, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
@@ -62,9 +61,13 @@ export default function RegistroRepiquePage() {
   }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada])
 
   const { lotes, loading: loadingLotes } = useLotes()
-  const anioEmbolses = anioEmbolsesDe(anio, semana)
-  const { embolses, loading: loadingEmbolses } = useEmbolses({ anioEmbolses })
-  const { repiques, loading: loadingRepiques, refetchSilencioso } = useRepiques({ anioEmbolses })
+  // Las columnas de edad (0 a 12) pueden referirse a una semana de embolse
+  // del año anterior o siguiente al que se está reportando (ej.: reportando
+  // la semana 1 con edad 12, la cinta es de la semana 42 del año anterior),
+  // así que se traen los tres años para no dejar ninguna columna sin dato.
+  const anios = useMemo(() => [anio - 1, anio, anio + 1], [anio])
+  const { embolses, loading: loadingEmbolses } = useEmbolses({ anios })
+  const { repiques, loading: loadingRepiques, refetchSilencioso } = useRepiques({ anios })
   const { pendientes, cargado: pendientesCargados, recargar: recargarPendientes } = useRepiquesPendientes()
   const { censo, loading: loadingCenso, refetchSilencioso: refetchCensoSilencioso } = useCensoPlantas({ anio })
   const { pendientes: pendientesCenso, cargado: pendientesCensoCargados, recargar: recargarPendientesCenso } = useCensoPlantasPendientes()

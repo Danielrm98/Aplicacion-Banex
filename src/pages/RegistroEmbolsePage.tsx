@@ -6,7 +6,7 @@ import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
-import { anioEmbolsesDe, sumarSemanas } from '../lib/anioEmbolses'
+import { sumarSemanas } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
@@ -65,8 +65,7 @@ export default function RegistroEmbolsePage() {
   }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada])
 
   const { lotes, loading: loadingLotes } = useLotes()
-  const anioEmbolses = anioEmbolsesDe(semanaRegistro.anio, semanaRegistro.semana)
-  const { embolses, loading: loadingEmbolses, refetchSilencioso } = useEmbolses({ anioEmbolses })
+  const { embolses, loading: loadingEmbolses, refetchSilencioso } = useEmbolses({ anios: [semanaRegistro.anio] })
   const { pendientes, cargado: pendientesCargados, recargar: recargarPendientes } = useEmbolsesPendientes()
 
   const lotesFinca = useMemo(

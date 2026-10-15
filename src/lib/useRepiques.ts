@@ -8,14 +8,14 @@ const TAMANO_PAGINA = 1000
 const LIMITE_CONSULTA_MS = 15000
 
 /** PostgREST solo devuelve 1000 filas por consulta por defecto. */
-async function traerTodosLosRepiques(anioEmbolses: number): Promise<Repique[]> {
+async function traerTodosLosRepiques(anios: number[]): Promise<Repique[]> {
   const todos: Repique[] = []
   let desde = 0
   while (true) {
     const { data, error } = await supabase
       .from('repiques')
       .select('*')
-      .in('anio_embolse', [anioEmbolses, anioEmbolses + 1])
+      .in('anio_embolse', anios)
       .range(desde, desde + TAMANO_PAGINA - 1)
     if (error) throw new Error(error.message)
     todos.push(...(data ?? []))
@@ -28,8 +28,8 @@ async function traerTodosLosRepiques(anioEmbolses: number): Promise<Repique[]> {
 /** Mismo patrón que useEmbolses: se muestra primero lo guardado en el
  * celular (IndexedDB) y la red actualiza después, para que sin señal el
  * menú abra de inmediato con la última versión conocida. */
-export function useRepiques({ anioEmbolses }: { anioEmbolses: number }) {
-  const clave = `approban_cache_repiques_${anioEmbolses}`
+export function useRepiques({ anios }: { anios: number[] }) {
+  const clave = `approban_cache_repiques_${anios.join('_')}`
   const [repiques, setRepiques] = useState<Repique[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export function useRepiques({ anioEmbolses }: { anioEmbolses: number }) {
       return
     }
     try {
-      const data = await conLimite(traerTodosLosRepiques(anioEmbolses), LIMITE_CONSULTA_MS)
+      const data = await conLimite(traerTodosLosRepiques(anios), LIMITE_CONSULTA_MS)
       setRepiques(data)
       setError(null)
       await guardarCacheIdb(clave, data)
@@ -49,7 +49,8 @@ export function useRepiques({ anioEmbolses }: { anioEmbolses: number }) {
     } finally {
       setLoading(false)
     }
-  }, [anioEmbolses, clave])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anios.join('_'), clave])
 
   useEffect(() => {
     let cancelado = false

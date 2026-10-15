@@ -5,10 +5,8 @@ import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
 import { useRepiques } from '../lib/useRepiques'
 import { useCosechaEmbolse } from '../lib/useCosechaEmbolse'
-import { semanasDelAnioEmbolses, anioEmbolsesDe, type SemanaReal } from '../lib/anioEmbolses'
+import { semanasDelAnio, type SemanaReal } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
-import { getIsoWeek } from '../lib/isoWeek'
-import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import type { Finca } from '../types/finca'
@@ -35,9 +33,7 @@ export default function RepiquesPage() {
   )
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
-  const [anioEmbolses, setAnioEmbolses] = useState(() =>
-    anioEmbolsesDe(new Date().getFullYear(), getIsoWeek(fechaLocalHoy())),
-  )
+  const [anio, setAnio] = useState(() => new Date().getFullYear())
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string>('')
 
   useEffect(() => {
@@ -53,11 +49,11 @@ export default function RepiquesPage() {
   }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada, esAdmin])
 
   const { lotes, loading: loadingLotes } = useLotes()
-  const { embolses, loading: loadingEmbolses } = useEmbolses({ anioEmbolses })
-  const { repiques, loading: loadingRepiques } = useRepiques({ anioEmbolses })
-  const { cosecha, loading: loadingCosecha } = useCosechaEmbolse({ anioEmbolses })
+  const { embolses, loading: loadingEmbolses } = useEmbolses({ anios: [anio] })
+  const { repiques, loading: loadingRepiques } = useRepiques({ anios: [anio] })
+  const { cosecha, loading: loadingCosecha } = useCosechaEmbolse({ anio })
 
-  const semanas = useMemo(() => semanasDelAnioEmbolses(anioEmbolses), [anioEmbolses])
+  const semanas = useMemo(() => semanasDelAnio(anio), [anio])
 
   const embolsadoPorLote = useMemo(() => {
     const m = new Map<string, Map<string, number>>()
@@ -155,11 +151,11 @@ export default function RepiquesPage() {
         </label>
 
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Año de embolses</span>
+          <span className="mb-1 block text-gray-600">Año</span>
           <input
             type="number"
-            value={anioEmbolses}
-            onChange={(e) => setAnioEmbolses(Number(e.target.value))}
+            value={anio}
+            onChange={(e) => setAnio(Number(e.target.value))}
             className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>

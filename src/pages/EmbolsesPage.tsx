@@ -4,10 +4,8 @@ import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
-import { semanasDelAnioEmbolses, anioEmbolsesDe, type SemanaReal } from '../lib/anioEmbolses'
+import { semanasDelAnio, type SemanaReal } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
-import { getIsoWeek } from '../lib/isoWeek'
-import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import { supabase } from '../lib/supabaseClient'
@@ -41,9 +39,7 @@ export default function EmbolsesPage() {
   )
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
-  const [anioEmbolses, setAnioEmbolses] = useState(() =>
-    anioEmbolsesDe(new Date().getFullYear(), getIsoWeek(fechaLocalHoy())),
-  )
+  const [anio, setAnio] = useState(() => new Date().getFullYear())
   const [fincaSeleccionada, setFincaSeleccionada] = useState<string>('')
 
   // El perfil (y por lo tanto fincaUnicaOperador/fincasDisponibles) carga de
@@ -63,9 +59,9 @@ export default function EmbolsesPage() {
   }, [fincaUnicaOperador, fincasDisponibles, fincaSeleccionada, esAdmin])
 
   const { lotes, loading: loadingLotes } = useLotes()
-  const { embolses, loading: loadingEmbolses, refetchSilencioso: refetchEmbolses } = useEmbolses({ anioEmbolses })
+  const { embolses, loading: loadingEmbolses, refetchSilencioso: refetchEmbolses } = useEmbolses({ anios: [anio] })
 
-  const semanas = useMemo(() => semanasDelAnioEmbolses(anioEmbolses), [anioEmbolses])
+  const semanas = useMemo(() => semanasDelAnio(anio), [anio])
 
   const porLote = useMemo(() => {
     const m = new Map<string, Map<string, number>>()
@@ -124,17 +120,15 @@ export default function EmbolsesPage() {
         </label>
 
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Año de embolses</span>
+          <span className="mb-1 block text-gray-600">Año</span>
           <input
             type="number"
-            value={anioEmbolses}
-            onChange={(e) => setAnioEmbolses(Number(e.target.value))}
+            value={anio}
+            onChange={(e) => setAnio(Number(e.target.value))}
             className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>
-        <p className="text-xs text-gray-400">
-          Va de la semana 42/{anioEmbolses} a la semana 52/{anioEmbolses + 1}.
-        </p>
+        <p className="text-xs text-gray-400">Semanas 1 a 52 de {anio}.</p>
       </div>
 
       {loadingLotes || loadingEmbolses ? (
@@ -143,7 +137,7 @@ export default function EmbolsesPage() {
         <ResumenGeneral fincas={fincasOrdenadas} lotesPorFinca={lotesPorFinca} semanas={semanas} cantidadLote={cantidadLote} />
       ) : finca ? (
         <DetalleFinca
-          key={`${finca.nombre}-${anioEmbolses}`}
+          key={`${finca.nombre}-${anio}`}
           finca={finca}
           lotes={lotesPorFinca.get(finca.nombre) ?? []}
           semanas={semanas}

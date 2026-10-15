@@ -36,11 +36,12 @@ interface FilaProduccion {
  * no por lote — se usa la misma fórmula de edad→semana de embolse que ya
  * usa Repique.
  */
-async function traerCosecha(anioEmbolses: number): Promise<CosechaFinca[]> {
-  // Nada de lo cosechado antes del arranque del año de embolses (semana 42
-  // del año anterior) puede afectar a este año de embolses, así que no hace
-  // falta traer producciones de más atrás.
-  const desdeFecha = lunesDeSemanaIso(anioEmbolses, 42).toISOString().slice(0, 10)
+async function traerCosecha(anio: number): Promise<CosechaFinca[]> {
+  // Nada cosechado antes del 1 de enero de ese año puede corresponder a un
+  // embolse de ese mismo año (la edad mínima de cosecha son 7 semanas, así
+  // que ninguna fecha anterior "empuja" hacia atrás hasta el año anterior),
+  // así que no hace falta traer producciones de más atrás.
+  const desdeFecha = lunesDeSemanaIso(anio, 1).toISOString().slice(0, 10)
 
   const filas: FilaProduccion[] = []
   let desde = 0
@@ -75,8 +76,8 @@ async function traerCosecha(anioEmbolses: number): Promise<CosechaFinca[]> {
 }
 
 /** Mismo patrón que useEmbolses/useRepiques: lo guardado en el celular se muestra de una vez; la red actualiza después. */
-export function useCosechaEmbolse({ anioEmbolses }: { anioEmbolses: number }) {
-  const clave = `approban_cache_cosecha_embolse_${anioEmbolses}`
+export function useCosechaEmbolse({ anio }: { anio: number }) {
+  const clave = `approban_cache_cosecha_embolse_${anio}`
   const [cosecha, setCosecha] = useState<CosechaFinca[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +88,7 @@ export function useCosechaEmbolse({ anioEmbolses }: { anioEmbolses: number }) {
       return
     }
     try {
-      const data = await conLimite(traerCosecha(anioEmbolses), LIMITE_CONSULTA_MS)
+      const data = await conLimite(traerCosecha(anio), LIMITE_CONSULTA_MS)
       setCosecha(data)
       setError(null)
       await guardarCacheIdb(clave, data)
@@ -96,7 +97,7 @@ export function useCosechaEmbolse({ anioEmbolses }: { anioEmbolses: number }) {
     } finally {
       setLoading(false)
     }
-  }, [anioEmbolses, clave])
+  }, [anio, clave])
 
   useEffect(() => {
     let cancelado = false

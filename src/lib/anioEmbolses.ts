@@ -15,7 +15,21 @@ export interface SemanaReal {
   semana: number
 }
 
-/** Lista ordenada de semanas reales (año/semana) que componen un "año de embolses". */
+/** Las 52 semanas (1 a 52) de un año calendario simple, sin dividir por
+ * temporadas — para los menús de consulta (Embolses, Repiques, Recobro),
+ * donde cada año se ve completo hasta que se cierra, sin importar que la
+ * cinta/edad de un registro individual pueda referirse a una semana del año
+ * anterior o siguiente. */
+export function semanasDelAnio(anio: number): SemanaReal[] {
+  const semanas: SemanaReal[] = []
+  for (let s = 1; s <= 52; s++) semanas.push({ anio, semana: s })
+  return semanas
+}
+
+/** Lista ordenada de semanas reales (año/semana) que componen un "año de
+ * embolses" — se sigue usando solo para el ciclo de cinta al registrar
+ * (Registro de embolse / Registro de repique), donde sí hace falta ver unas
+ * semanas del año anterior o siguiente dentro de la misma pantalla. */
 export function semanasDelAnioEmbolses(anioEmbolses: number): SemanaReal[] {
   const semanas: SemanaReal[] = []
   const anioSiguiente = anioEmbolses + 1
