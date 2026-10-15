@@ -13,6 +13,9 @@ import { posicionFinca } from '../lib/ordenFincas'
 import { supabase } from '../lib/supabaseClient'
 import { conLimite } from '../lib/promesaConLimite'
 import { LIMITE_ENVIO_MS } from '../lib/colaRegistros'
+import TabButton from '../components/TabButton'
+import ChartCard from '../components/charts/ChartCard'
+import SingleLineChart from '../components/charts/SingleLineChart'
 import type { Finca } from '../types/finca'
 import type { Lote } from '../types/lote'
 
@@ -341,6 +344,7 @@ function DetalleFinca({
   onGuardado: () => void
   soloLectura: boolean
 }) {
+  const [vista, setVista] = useState<'tabla' | 'grafico'>('tabla')
   const [borrador, setBorrador] = useState<Record<string, string>>(() => {
     const inicial: Record<string, string> = {}
     for (const l of lotes) {
@@ -406,14 +410,22 @@ function DetalleFinca({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-banex-800">
           {finca.nombre}
           {finca.hectareas != null && <span className="ml-2 font-normal text-gray-500">{finca.hectareas.toLocaleString('es')} ha</span>}
         </h2>
+        <div className="flex gap-1 border-b border-gray-200">
+          <TabButton active={vista === 'tabla'} onClick={() => setVista('tabla')}>
+            Tabla
+          </TabButton>
+          <TabButton active={vista === 'grafico'} onClick={() => setVista('grafico')}>
+            Gráfico por lote
+          </TabButton>
+        </div>
       </div>
 
-      {soloLectura && (
+      {soloLectura && vista === 'tabla' && (
         <p className="mb-3 text-xs text-gray-500">
           Esta tabla se actualiza sola con lo que se registre en Registro de embolse — aquí no se edita.
         </p>
@@ -423,6 +435,8 @@ function DetalleFinca({
         <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
           Esta finca todavía no tiene lotes. Créalos en Catálogo → Lotes.
         </p>
+      ) : vista === 'grafico' ? (
+        <GraficoLotes lotes={lotes} semanas={semanas} cantidadLote={cantidadLote} />
       ) : (
         <div className="max-h-[75vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
           <table className="w-full table-fixed border-collapse text-sm">
@@ -498,6 +512,43 @@ function DetalleFinca({
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+function GraficoLotes({
+  lotes,
+  semanas,
+  cantidadLote,
+}: {
+  lotes: Lote[]
+  semanas: SemanaReal[]
+  cantidadLote: (loteId: string, s: SemanaReal) => number
+}) {
+  return (
+    <div>
+      <p className="mb-3 text-xs text-gray-400">
+        Racimos embolsados por semana en cada lote — un vistazo rápido para detectar si una semana quedó muy por
+        debajo de la anterior.
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {lotes.map((l) => {
+          const data = semanas.map((s) => ({ semana: s.semana, cantidad: cantidadLote(l.id, s) }))
+          return (
+            <ChartCard key={l.id} title={`Lote ${l.nombre}`} subtitle={l.hectareas != null ? `${l.hectareas.toLocaleString('es')} ha` : undefined}>
+              <SingleLineChart
+                data={data}
+                xKey="semana"
+                yKey="cantidad"
+                seriesName="racimos embolsados"
+                xLabelFormatter={(v) => `S${v}`}
+                compact
+                height={160}
+              />
+            </ChartCard>
+          )
+        })}
+      </div>
     </div>
   )
 }
