@@ -18,6 +18,7 @@ import RegistroEmbolsePage from './pages/RegistroEmbolsePage'
 import RepiquesPage from './pages/RepiquesPage'
 import RegistroRepiquePage from './pages/RegistroRepiquePage'
 import RecobroPage from './pages/RecobroPage'
+import RegistroLluviaPage from './pages/RegistroLluviaPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { session, loading } = useAuth()
@@ -50,6 +51,7 @@ function AppRoutes() {
         }
       >
         <Route path="/" element={<EntryPage />} />
+        <Route path="/registro-lluvia" element={<RegistroLluviaPage />} />
         <Route path="/registros" element={<RecordsPage />} />
         <Route path="/reportes" element={<DashboardPage />} />
         <Route path="/catalogo" element={<CatalogPage />} />

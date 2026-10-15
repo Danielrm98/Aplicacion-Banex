@@ -2,33 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { conCacheLocal, leerCacheLocal } from './consultaConCache'
 import { conLimite } from './promesaConLimite'
+import type { LluviaReportada } from '../types/lluvia'
 
 const LIMITE_MS = 6000
-import type { LluviaHistorialDia } from './useClima'
-import type { LluviaReportada } from '../types/lluvia'
 
 function claveCache(finca: string): string {
   return `approban_cache_lluvia_${finca}`
 }
 
-export interface LluviaHistorialConFuente extends LluviaHistorialDia {
-  fuente: 'reportado' | 'estimado'
-}
-
-/** El dato reportado manualmente en finca reemplaza al estimado del pronóstico. */
-export function combinarHistorialLluvia(
-  historialApi: LluviaHistorialDia[],
-  reportes: LluviaReportada[],
-): LluviaHistorialConFuente[] {
-  const reportesPorFecha = new Map(reportes.map((r) => [r.fecha, r.milimetros]))
-  return historialApi.map((dia) => {
-    const reportado = reportesPorFecha.get(dia.fecha)
-    return reportado !== undefined
-      ? { fecha: dia.fecha, mm: reportado, fuente: 'reportado' as const }
-      : { ...dia, fuente: 'estimado' as const }
-  })
-}
-
+/** Todo el historial reportado de una finca (sin límite de filas, para el
+ * menú Registro de lluvia — a diferencia del panel de clima en Registrar,
+ * que solo necesitaba los últimos reportes). */
 export function useLluviaReportada(finca: string | null) {
   const [reportes, setReportes] = useState<LluviaReportada[]>(
     () => (finca ? leerCacheLocal<LluviaReportada[]>(claveCache(finca)) : null) ?? [],
@@ -43,7 +27,7 @@ export function useLluviaReportada(finca: string | null) {
       return
     }
     const { data, error } = await conCacheLocal<LluviaReportada[]>(claveCache(finca), () =>
-      supabase.from('lluvia_reportada').select('*').eq('finca', finca).order('fecha', { ascending: false }).limit(30),
+      supabase.from('lluvia_reportada').select('*').eq('finca', finca).order('fecha', { ascending: false }),
     )
 
     if (error) {
@@ -87,4 +71,15 @@ export async function guardarLluviaReportada(finca: string, fecha: string, milim
 export async function eliminarLluviaReportada(id: string) {
   const { error } = await conLimite(supabase.from('lluvia_reportada').delete().eq('id', id), LIMITE_MS)
   if (error) throw error
+}
+
+/** Historial completo de todas las fincas (solo admin, por RLS) — para el
+ * botón de exportar todo a Excel desde "Todas las fincas". */
+export async function obtenerTodaLaLluviaReportada(): Promise<LluviaReportada[]> {
+  const { data, error } = await conLimite(
+    supabase.from('lluvia_reportada').select('*').order('finca', { ascending: true }).order('fecha', { ascending: true }),
+    LIMITE_MS,
+  )
+  if (error) throw error
+  return data ?? []
 }

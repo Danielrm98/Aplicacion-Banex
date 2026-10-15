@@ -438,3 +438,59 @@ export function exportToPdf(filas: FilaProduccion[], filename = 'produccion_bana
 
   doc.save(filename)
 }
+
+const MESES = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+]
+
+interface FilaExportLluvia {
+  finca: string
+  fecha: string
+  milimetros: number
+}
+
+const columnasLluvia = [
+  { header: 'Finca', key: 'finca', width: 20 },
+  { header: 'Año', key: 'anio', width: 10 },
+  { header: 'Número de mes', key: 'numeroMes', width: 14 },
+  { header: 'Mes', key: 'mes', width: 14 },
+  { header: 'Día', key: 'dia', width: 8 },
+  { header: 'Milímetros', key: 'milimetros', width: 12 },
+]
+
+export async function exportLluviaToExcel(filas: FilaExportLluvia[], filename = 'lluvia.xlsx') {
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Lluvia')
+
+  sheet.columns = columnasLluvia.map((c) => ({ header: c.header, key: c.key, width: c.width }))
+  sheet.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheet, columnasLluvia)
+
+  const ordenadas = [...filas].sort((a, b) => posicionFinca(a.finca) - posicionFinca(b.finca) || a.fecha.localeCompare(b.fecha))
+  for (const f of ordenadas) {
+    const [anioTexto, mesTexto, diaTexto] = f.fecha.split('-')
+    const numeroMes = Number(mesTexto)
+    sheet.addRow({
+      finca: f.finca,
+      anio: Number(anioTexto),
+      numeroMes,
+      mes: MESES[numeroMes - 1],
+      dia: Number(diaTexto),
+      milimetros: f.milimetros,
+    })
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
+}
