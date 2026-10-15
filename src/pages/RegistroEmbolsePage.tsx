@@ -437,7 +437,7 @@ function TablaRegistro({
           anio,
           semanaRegistro,
           anioRegistro,
-          colorCinta: color.charAt(0) + color.slice(1).toLowerCase(),
+          colorCinta: color,
           filas: lotes.map((l) => {
             const bll = bllPorHasDe(l)
             return {

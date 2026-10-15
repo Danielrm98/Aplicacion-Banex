@@ -7,6 +7,16 @@ import type { VentaCanastilla } from '../types/ventaCanastilla'
 import { diaSemana } from './diaSemana'
 import { posicionFinca } from './ordenFincas'
 import { anioDeSemana } from './isoWeek'
+import { ESTILO_CINTA, type ColorCinta } from './cintaEmbolse'
+
+function nombreCinta(color: ColorCinta): string {
+  return color.charAt(0) + color.slice(1).toLowerCase()
+}
+
+/** Quita el "#" de un color hex para el formato ARGB (con alfa fijo FF) que espera ExcelJS. */
+function argbDe(colorHex: string): string {
+  return `FF${colorHex.replace('#', '').toUpperCase()}`
+}
 
 const columns: { header: string; key: keyof FilaProduccion; width?: number }[] = [
   { header: 'Fecha', key: 'fecha', width: 14 },
@@ -289,7 +299,7 @@ export async function exportEmbolseToExcel(
     anio: number
     semanaRegistro: number
     anioRegistro: number
-    colorCinta: string
+    colorCinta: ColorCinta
     filas: FilaExportEmbolse[]
     totales: Omit<FilaExportEmbolse, 'lote'>
   },
@@ -298,10 +308,19 @@ export async function exportEmbolseToExcel(
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Embolse')
 
-  sheet.mergeCells(1, 1, 1, columnasEmbolse.length)
-  sheet.getCell(1, 1).value =
-    `${params.finca} · Semana ${params.semana}/${params.anio} · Cinta ${params.colorCinta} (semana ${params.semanaRegistro}/${params.anioRegistro})`
+  sheet.mergeCells(1, 1, 1, columnasEmbolse.length - 2)
+  sheet.getCell(1, 1).value = `${params.finca} · Semana ${params.semana}/${params.anio}`
   sheet.getCell(1, 1).font = { bold: true, size: 12 }
+
+  // Celda con el color real de la cinta (igual al badge que se ve en la app).
+  const estiloCinta = ESTILO_CINTA[params.colorCinta]
+  sheet.mergeCells(1, columnasEmbolse.length - 1, 1, columnasEmbolse.length)
+  const celdaCinta = sheet.getCell(1, columnasEmbolse.length - 1)
+  celdaCinta.value = `Cinta ${nombreCinta(params.colorCinta)} (semana ${params.semanaRegistro}/${params.anioRegistro})`
+  celdaCinta.font = { bold: true, color: { argb: argbDe(estiloCinta.texto) } }
+  celdaCinta.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argbDe(estiloCinta.bg) } }
+  celdaCinta.alignment = { horizontal: 'center', vertical: 'middle' }
+
   sheet.addRow([])
 
   sheet.columns = columnasEmbolse.map((c) => ({ key: c.key as string, width: c.width }))
@@ -339,7 +358,7 @@ export async function exportRepiqueToExcel(
     finca: string
     semana: number
     anio: number
-    columnas: { edad: number; semanaEmbolse: number; anioEmbolse: number; color: string }[]
+    columnas: { edad: number; semanaEmbolse: number; anioEmbolse: number; color: ColorCinta }[]
     filas: FilaExportRepique[]
     totales: Omit<FilaExportRepique, 'lote'>
   },
@@ -356,9 +375,7 @@ export async function exportRepiqueToExcel(
 
   const encabezados = [
     'Lote',
-    ...params.columnas.map(
-      (c) => `Edad ${c.edad} (${c.color.charAt(0) + c.color.slice(1).toLowerCase()}, sem. ${c.semanaEmbolse}/${c.anioEmbolse})`,
-    ),
+    ...params.columnas.map((c) => `Edad ${c.edad} (${nombreCinta(c.color)}, sem. ${c.semanaEmbolse}/${c.anioEmbolse})`),
     'Plantas paridas',
     'Plantas sin parir',
     'Sin identificar',
@@ -369,6 +386,16 @@ export async function exportRepiqueToExcel(
   for (let i = 2; i <= encabezados.length; i++) sheet.getColumn(i).width = 20
   const filaEncabezado = sheet.addRow(encabezados)
   filaEncabezado.font = { bold: true }
+
+  // Pinta cada encabezado "Edad N" con el color real de esa cinta, igual al
+  // badge que se ve en la app.
+  params.columnas.forEach((c, i) => {
+    const estilo = ESTILO_CINTA[c.color]
+    const celda = filaEncabezado.getCell(2 + i)
+    celda.font = { bold: true, color: { argb: argbDe(estilo.texto) } }
+    celda.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: argbDe(estilo.bg) } }
+    celda.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  })
 
   for (const f of params.filas) {
     sheet.addRow([f.lote, ...f.valoresPorEdad, f.paridas, f.sinParir, f.sinIdentificar, f.totalPlantas, f.totalLote])
