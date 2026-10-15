@@ -17,7 +17,7 @@ async function traerTodosLosEmbolses(anioEmbolses: number): Promise<Embolse[]> {
     const { data, error } = await supabase
       .from('embolses')
       .select('*')
-      .in('anio', [anioEmbolses - 1, anioEmbolses])
+      .in('anio', [anioEmbolses, anioEmbolses + 1])
       .range(desde, desde + TAMANO_PAGINA - 1)
     if (error) throw new Error(error.message)
     todos.push(...(data ?? []))
@@ -29,8 +29,8 @@ async function traerTodosLosEmbolses(anioEmbolses: number): Promise<Embolse[]> {
 
 /** Trae los embolses de los dos años calendario que componen un "año de
  * embolses" (ver anioEmbolses.ts); el filtro exacto por semana (42+ del año
- * anterior, 1-41 del año actual) se hace en quien consuma estos datos. RLS ya
- * limita lo que ve un operario a los lotes de su(s) finca(s).
+ * en que arranca, 1-41 del año siguiente) se hace en quien consuma estos
+ * datos. RLS ya limita lo que ve un operario a los lotes de su(s) finca(s).
  *
  * Se muestra primero lo guardado en el celular (IndexedDB) y la red actualiza
  * después: sin señal el menú abre de inmediato con la última versión conocida. */

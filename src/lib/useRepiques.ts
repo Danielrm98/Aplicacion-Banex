@@ -15,7 +15,7 @@ async function traerTodosLosRepiques(anioEmbolses: number): Promise<Repique[]> {
     const { data, error } = await supabase
       .from('repiques')
       .select('*')
-      .in('anio_embolse', [anioEmbolses - 1, anioEmbolses])
+      .in('anio_embolse', [anioEmbolses, anioEmbolses + 1])
       .range(desde, desde + TAMANO_PAGINA - 1)
     if (error) throw new Error(error.message)
     todos.push(...(data ?? []))

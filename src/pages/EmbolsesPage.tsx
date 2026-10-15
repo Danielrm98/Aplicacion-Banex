@@ -133,7 +133,7 @@ export default function EmbolsesPage() {
           />
         </label>
         <p className="text-xs text-gray-400">
-          Va de la semana 42/{anioEmbolses - 1} a la semana 52/{anioEmbolses}.
+          Va de la semana 42/{anioEmbolses} a la semana 52/{anioEmbolses + 1}.
         </p>
       </div>
 

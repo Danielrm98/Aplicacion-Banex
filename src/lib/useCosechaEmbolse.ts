@@ -40,7 +40,7 @@ async function traerCosecha(anioEmbolses: number): Promise<CosechaFinca[]> {
   // Nada de lo cosechado antes del arranque del año de embolses (semana 42
   // del año anterior) puede afectar a este año de embolses, así que no hace
   // falta traer producciones de más atrás.
-  const desdeFecha = lunesDeSemanaIso(anioEmbolses - 1, 42).toISOString().slice(0, 10)
+  const desdeFecha = lunesDeSemanaIso(anioEmbolses, 42).toISOString().slice(0, 10)
 
   const filas: FilaProduccion[] = []
   let desde = 0
