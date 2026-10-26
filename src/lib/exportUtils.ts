@@ -479,7 +479,10 @@ export async function exportLluviaToExcel(filas: FilaExportLluvia[], filename = 
   sheet.getRow(1).font = { bold: true }
   fijarEncabezadoYFiltro(sheet, columnasLluvia)
 
-  const ordenadas = [...filas].sort((a, b) => posicionFinca(a.finca) - posicionFinca(b.finca) || a.fecha.localeCompare(b.fecha))
+  // Por día primero (y dentro de un mismo día, en el orden fijo de fincas):
+  // así se ve qué fincas reportaron lluvia cada día, en vez de agrupar todo
+  // el historial de una finca antes de pasar a la siguiente.
+  const ordenadas = [...filas].sort((a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca))
   for (const f of ordenadas) {
     const [anioTexto, mesTexto, diaTexto] = f.fecha.split('-')
     const numeroMes = Number(mesTexto)
