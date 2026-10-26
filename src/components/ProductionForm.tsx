@@ -80,6 +80,7 @@ const emptyHeader: ProduccionHeaderInput = {
   racimos_recusados: 0,
   promedio_manos: null,
   canastillas: 0,
+  fruta_no_vendida: 0,
   notas: '',
 }
 
@@ -279,10 +280,12 @@ export default function ProductionForm({
   const totalCajas20kg = items.reduce((sum, item) => sum + (cajas20kgDe(item) ?? 0), 0)
   const kilosCajas20kg = totalCajas20kg * CAJA_20KG_KG
   const kilosCanastillas = (header.canastillas || 0) * CANASTILLA_KG
-  const pesoNetoRacimo = totalRacimos > 0 ? (kilosCajas20kg + kilosCanastillas) / totalRacimos : null
+  const kilosFrutaNoVendida = (header.fruta_no_vendida || 0) * CANASTILLA_KG
+  const kilosMerma = kilosCanastillas + kilosFrutaNoVendida
+  const pesoNetoRacimo = totalRacimos > 0 ? (kilosCajas20kg + kilosMerma) / totalRacimos : null
   const ratio = totalRacimos > 0 ? totalCajas20kg / totalRacimos : null
   const pesoTotalRacimos = pesoNetoRacimo !== null ? totalRacimos * pesoNetoRacimo : null
-  const merma = pesoTotalRacimos !== null && pesoTotalRacimos > 0 ? (kilosCanastillas / pesoTotalRacimos) * 100 : null
+  const merma = pesoTotalRacimos !== null && pesoTotalRacimos > 0 ? (kilosMerma / pesoTotalRacimos) * 100 : null
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -391,6 +394,8 @@ export default function ProductionForm({
       totalRacimosProcesados,
       canastillas: header.canastillas || 0,
       kilosCanastillas,
+      frutaNoVendida: header.fruta_no_vendida || 0,
+      kilosFrutaNoVendida,
       referencias: items.map((it) => ({
         referencia: it.referencia,
         cajas: it.cantidad_cajas,
@@ -657,6 +662,24 @@ export default function ProductionForm({
               className={`${inputClass} bg-gray-50`}
             />
           </Field>
+          <Field label="Fruta no vendida">
+            <input
+              type="number"
+              min={0}
+              step="1"
+              value={header.fruta_no_vendida || ''}
+              onChange={(e) => updateHeader('fruta_no_vendida', Number(e.target.value))}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Total kilos (fruta no vendida)">
+            <input
+              type="text"
+              disabled
+              value={kilosFrutaNoVendida.toFixed(2)}
+              className={`${inputClass} bg-gray-50`}
+            />
+          </Field>
         </div>
       </div>
 
@@ -765,6 +788,9 @@ export default function ProductionForm({
           </Field>
           <Field label="Kilos canastillas">
             <input type="text" disabled value={kilosCanastillas.toFixed(2)} className={`${inputClass} !bg-white`} />
+          </Field>
+          <Field label="Kilos fruta no vendida">
+            <input type="text" disabled value={kilosFrutaNoVendida.toFixed(2)} className={`${inputClass} !bg-white`} />
           </Field>
           <Field label="Peso neto de racimo (kg)">
             <input

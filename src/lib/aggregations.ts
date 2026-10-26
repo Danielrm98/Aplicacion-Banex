@@ -90,6 +90,7 @@ export interface ResumenRegistro {
   cajas20kg: number
   kilosCajas20kg: number
   kilosCanastillas: number
+  kilosFrutaNoVendida: number
   racimosCosechados: number
   racimosPorEdad: Record<number, number>
 }
@@ -109,6 +110,7 @@ export function resumenPorRegistro(registros: Produccion[]): ResumenRegistro[] {
       cajas20kg,
       kilosCajas20kg: cajas20kg * CAJA_20KG_KG,
       kilosCanastillas: r.canastillas * CANASTILLA_KG,
+      kilosFrutaNoVendida: r.fruta_no_vendida * CANASTILLA_KG,
       racimosCosechados,
       racimosPorEdad,
     }
@@ -143,6 +145,7 @@ interface AcumuladoRatioMerma {
   racimos: number
   kilosCajas20kg: number
   kilosCanastillas: number
+  kilosFrutaNoVendida: number
 }
 
 function ratioDe(a: AcumuladoRatioMerma) {
@@ -150,8 +153,9 @@ function ratioDe(a: AcumuladoRatioMerma) {
 }
 
 function mermaDe(a: AcumuladoRatioMerma) {
-  const pesoTotal = a.kilosCajas20kg + a.kilosCanastillas
-  return pesoTotal > 0 ? (a.kilosCanastillas / pesoTotal) * 100 : null
+  const kilosMerma = a.kilosCanastillas + a.kilosFrutaNoVendida
+  const pesoTotal = a.kilosCajas20kg + kilosMerma
+  return pesoTotal > 0 ? (kilosMerma / pesoTotal) * 100 : null
 }
 
 export interface PuntoRatioMermaFinca {
@@ -163,11 +167,18 @@ export interface PuntoRatioMermaFinca {
 export function ratioMermaPorFinca(resumenes: ResumenRegistro[]): PuntoRatioMermaFinca[] {
   const map = new Map<string, AcumuladoRatioMerma>()
   for (const r of resumenes) {
-    const acc = map.get(r.finca) ?? { cajas20kg: 0, racimos: 0, kilosCajas20kg: 0, kilosCanastillas: 0 }
+    const acc = map.get(r.finca) ?? {
+      cajas20kg: 0,
+      racimos: 0,
+      kilosCajas20kg: 0,
+      kilosCanastillas: 0,
+      kilosFrutaNoVendida: 0,
+    }
     acc.cajas20kg += r.cajas20kg
     acc.racimos += r.racimosCosechados
     acc.kilosCajas20kg += r.kilosCajas20kg
     acc.kilosCanastillas += r.kilosCanastillas
+    acc.kilosFrutaNoVendida += r.kilosFrutaNoVendida
     map.set(r.finca, acc)
   }
   return Array.from(map.entries())
@@ -184,11 +195,18 @@ export interface PuntoRatioMermaSemana {
 export function ratioMermaPorSemana(resumenes: ResumenRegistro[]): PuntoRatioMermaSemana[] {
   const map = new Map<number, AcumuladoRatioMerma>()
   for (const r of resumenes) {
-    const acc = map.get(r.semana) ?? { cajas20kg: 0, racimos: 0, kilosCajas20kg: 0, kilosCanastillas: 0 }
+    const acc = map.get(r.semana) ?? {
+      cajas20kg: 0,
+      racimos: 0,
+      kilosCajas20kg: 0,
+      kilosCanastillas: 0,
+      kilosFrutaNoVendida: 0,
+    }
     acc.cajas20kg += r.cajas20kg
     acc.racimos += r.racimosCosechados
     acc.kilosCajas20kg += r.kilosCajas20kg
     acc.kilosCanastillas += r.kilosCanastillas
+    acc.kilosFrutaNoVendida += r.kilosFrutaNoVendida
     map.set(r.semana, acc)
   }
   return Array.from(map.entries())
@@ -215,6 +233,8 @@ export interface ResumenDiaFinca {
   promedioManos: number | null
   canastillas: number
   kilosCanastillas: number
+  frutaNoVendida: number
+  kilosFrutaNoVendida: number
   pesoNetoRacimo: number | null
   ratio: number | null
   merma: number | null
@@ -231,6 +251,8 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
     const cajas20kgTotal = r.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
     const kilosCajas20kg = cajas20kgTotal * CAJA_20KG_KG
     const kilosCanastillas = r.canastillas * CANASTILLA_KG
+    const kilosFrutaNoVendida = r.fruta_no_vendida * CANASTILLA_KG
+    const kilosMerma = kilosCanastillas + kilosFrutaNoVendida
     const racimosCosechados = SEMANAS_RACIMO.reduce((sum, s) => sum + r[`racimos_semana_${s}` as const], 0)
     const racimosProcesados = racimosCosechados - r.racimos_recusados
     const gradosRegistrados = SEMANAS_RACIMO.map((s) => r[`grado_semana_${s}` as const]).filter(
@@ -238,10 +260,10 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
     )
     const gradoPromedio =
       gradosRegistrados.length > 0 ? gradosRegistrados.reduce((sum, g) => sum + g, 0) / gradosRegistrados.length : null
-    const pesoTotal = kilosCajas20kg + kilosCanastillas
+    const pesoTotal = kilosCajas20kg + kilosMerma
     const pesoNetoRacimo = racimosCosechados > 0 ? pesoTotal / racimosCosechados : null
     const ratio = racimosCosechados > 0 ? cajas20kgTotal / racimosCosechados : null
-    const merma = pesoTotal > 0 ? (kilosCanastillas / pesoTotal) * 100 : null
+    const merma = pesoTotal > 0 ? (kilosMerma / pesoTotal) * 100 : null
     const transporte = r.transportes
       .map((t) => {
         const partes = [t.tipo, t.placa, t.hora_llegada && t.hora_salida ? `${t.hora_llegada}-${t.hora_salida}` : t.hora_llegada]
@@ -268,6 +290,8 @@ export function resumenPorDiaFinca(registros: Produccion[]): ResumenDiaFinca[] {
       promedioManos: r.promedio_manos,
       canastillas: r.canastillas,
       kilosCanastillas,
+      frutaNoVendida: r.fruta_no_vendida,
+      kilosFrutaNoVendida,
       pesoNetoRacimo,
       ratio,
       merma,

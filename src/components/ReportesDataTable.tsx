@@ -25,6 +25,8 @@ export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) 
                 <th className="py-1.5 pr-3 font-medium">Racimos proc.</th>
                 <th className="py-1.5 pr-3 font-medium">Canastillas</th>
                 <th className="py-1.5 pr-3 font-medium">Kilos canast.</th>
+                <th className="py-1.5 pr-3 font-medium">Fruta no vendida</th>
+                <th className="py-1.5 pr-3 font-medium">Kilos fruta no vend.</th>
                 <th className="py-1.5 pr-3 font-medium">Peso neto racimo</th>
                 <th className="py-1.5 pr-3 font-medium">Ratio</th>
                 <th className="py-1.5 pr-3 font-medium">Merma</th>
@@ -48,6 +50,8 @@ export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) 
                   <td className="py-1.5 pr-3">{f.racimosProcesados}</td>
                   <td className="py-1.5 pr-3">{f.canastillas}</td>
                   <td className="py-1.5 pr-3">{f.kilosCanastillas.toFixed(2)}</td>
+                  <td className="py-1.5 pr-3">{f.frutaNoVendida}</td>
+                  <td className="py-1.5 pr-3">{f.kilosFrutaNoVendida.toFixed(2)}</td>
                   <td className="py-1.5 pr-3">{f.pesoNetoRacimo !== null ? f.pesoNetoRacimo.toFixed(2) : '—'}</td>
                   <td className="py-1.5 pr-3">{f.ratio !== null ? f.ratio.toFixed(2) : '—'}</td>
                   <td className="py-1.5 pr-3">{f.merma !== null ? `${f.merma.toFixed(1)}%` : '—'}</td>

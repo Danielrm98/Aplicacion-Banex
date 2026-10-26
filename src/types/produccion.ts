@@ -69,6 +69,7 @@ export interface Produccion {
   racimos_recusados: number
   promedio_manos: number | null
   canastillas: number
+  fruta_no_vendida: number
   notas: string | null
   created_at: string
   items: ProduccionItem[]
@@ -99,5 +100,6 @@ export type ProduccionHeaderInput = Pick<
   | 'racimos_recusados'
   | 'promedio_manos'
   | 'canastillas'
+  | 'fruta_no_vendida'
   | 'notas'
 >

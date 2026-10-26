@@ -342,6 +342,7 @@ create table public.producciones (
   racimos_recusados integer not null default 0 check (racimos_recusados >= 0),
   promedio_manos numeric check (promedio_manos >= 0),
   canastillas integer not null default 0 check (canastillas >= 0),
+  fruta_no_vendida integer not null default 0 check (fruta_no_vendida >= 0),
   notas text,
   created_at timestamptz not null default now()
 );

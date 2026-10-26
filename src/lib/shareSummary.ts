@@ -37,6 +37,8 @@ export interface RegistroResumenCompartir {
   totalRacimosProcesados: number
   canastillas: number
   kilosCanastillas: number
+  frutaNoVendida: number
+  kilosFrutaNoVendida: number
   referencias: ReferenciaResumen[]
   totalCajas: number
   totalCajas20kg: number
@@ -60,12 +62,14 @@ export function resumenDesdeProduccion(
   const cajas20kgTotal = r.items.reduce((sum, it) => sum + it.cajas_20kg, 0)
   const kilosCajas20kg = cajas20kgTotal * CAJA_20KG_KG
   const kilosCanastillas = r.canastillas * CANASTILLA_KG
+  const kilosFrutaNoVendida = r.fruta_no_vendida * CANASTILLA_KG
+  const kilosMerma = kilosCanastillas + kilosFrutaNoVendida
   const totalRacimos = SEMANAS_RACIMO.reduce((sum, s) => sum + r[`racimos_semana_${s}` as const], 0)
   const totalRacimosProcesados = totalRacimos - r.racimos_recusados
-  const pesoTotal = kilosCajas20kg + kilosCanastillas
+  const pesoTotal = kilosCajas20kg + kilosMerma
   const pesoNetoRacimo = totalRacimos > 0 ? pesoTotal / totalRacimos : null
   const ratio = totalRacimos > 0 ? cajas20kgTotal / totalRacimos : null
-  const merma = pesoTotal > 0 ? (kilosCanastillas / pesoTotal) * 100 : null
+  const merma = pesoTotal > 0 ? (kilosMerma / pesoTotal) * 100 : null
   const porcentajeDia = opts.areaTotal && r.area_recorrida !== null ? (r.area_recorrida / opts.areaTotal) * 100 : null
 
   return {
@@ -87,6 +91,8 @@ export function resumenDesdeProduccion(
     totalRacimosProcesados,
     canastillas: r.canastillas,
     kilosCanastillas,
+    frutaNoVendida: r.fruta_no_vendida,
+    kilosFrutaNoVendida,
     referencias: r.items.map((it) => ({
       referencia: it.referencia,
       cajas: it.cantidad_cajas,
@@ -120,6 +126,7 @@ export function mensajeWhatsapp(r: RegistroResumenCompartir): string {
   lineas.push(`*FECHA:* ${r.fecha}`)
   lineas.push(`*FIN CORTE:* ${r.horaFinalizacion ?? ''}`)
   lineas.push(`*CANASTILLAS:* ${r.canastillas}`)
+  lineas.push(`*FRUTA NO VENDIDA:* ${r.frutaNoVendida}`)
 
   if (r.areaRecorrida !== null) {
     const total = r.areaTotal !== null ? r.areaTotal : '—'

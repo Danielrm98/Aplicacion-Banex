@@ -48,6 +48,7 @@ interface HeaderDraft {
   racimos_recusados: number
   promedio_manos: number | null
   canastillas: number
+  fruta_no_vendida: number
   notas: string
 }
 
@@ -73,6 +74,7 @@ function headerDraftDe(registro: Produccion): HeaderDraft {
     racimos_recusados: registro.racimos_recusados,
     promedio_manos: registro.promedio_manos,
     canastillas: registro.canastillas,
+    fruta_no_vendida: registro.fruta_no_vendida,
     notas: registro.notas ?? '',
   }
 }
@@ -148,10 +150,12 @@ function RegistroCard({
   const totalRacimosProcesados = totalRacimos - racimosSource.racimos_recusados
   const kilosCajas20kg = totalCajas20kg * CAJA_20KG_KG
   const kilosCanastillas = racimosSource.canastillas * CANASTILLA_KG
-  const pesoNetoRacimo = totalRacimos > 0 ? (kilosCajas20kg + kilosCanastillas) / totalRacimos : null
+  const kilosFrutaNoVendida = racimosSource.fruta_no_vendida * CANASTILLA_KG
+  const kilosMerma = kilosCanastillas + kilosFrutaNoVendida
+  const pesoNetoRacimo = totalRacimos > 0 ? (kilosCajas20kg + kilosMerma) / totalRacimos : null
   const ratio = totalRacimos > 0 ? totalCajas20kg / totalRacimos : null
   const pesoTotalRacimos = pesoNetoRacimo !== null ? totalRacimos * pesoNetoRacimo : null
-  const merma = pesoTotalRacimos !== null && pesoTotalRacimos > 0 ? (kilosCanastillas / pesoTotalRacimos) * 100 : null
+  const merma = pesoTotalRacimos !== null && pesoTotalRacimos > 0 ? (kilosMerma / pesoTotalRacimos) * 100 : null
 
   async function removeRegistro() {
     if (!confirm('¿Eliminar todo el registro del día (todas sus referencias)? No se puede deshacer.')) return
@@ -204,6 +208,7 @@ function RegistroCard({
         racimos_recusados: headerDraft.racimos_recusados,
         promedio_manos: headerDraft.promedio_manos,
         canastillas: headerDraft.canastillas,
+        fruta_no_vendida: headerDraft.fruta_no_vendida,
         notas: headerDraft.notas || null,
       })
       .eq('id', registro.id)
@@ -456,6 +461,23 @@ function RegistroCard({
                       className={`${smallInput} bg-gray-50`}
                     />
                   </MiniField>
+                  <MiniField label="Fruta no vendida">
+                    <input
+                      type="number"
+                      min={0}
+                      value={headerDraft.fruta_no_vendida || ''}
+                      onChange={(e) => setHeaderDraft((d) => ({ ...d, fruta_no_vendida: Number(e.target.value) }))}
+                      className={smallInput}
+                    />
+                  </MiniField>
+                  <MiniField label="Kilos (calc.)">
+                    <input
+                      type="text"
+                      disabled
+                      value={kilosFrutaNoVendida.toFixed(2)}
+                      className={`${smallInput} bg-gray-50`}
+                    />
+                  </MiniField>
                 </div>
               </Seccion>
 
@@ -552,6 +574,14 @@ function RegistroCard({
                   <span>
                     <span className="text-gray-400">Kilos: </span>
                     {kilosCanastillas.toLocaleString('es', { maximumFractionDigits: 2 })} kg
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Fruta no vendida: </span>
+                    {registro.fruta_no_vendida.toLocaleString('es')}
+                  </span>
+                  <span>
+                    <span className="text-gray-400">Kilos: </span>
+                    {kilosFrutaNoVendida.toLocaleString('es', { maximumFractionDigits: 2 })} kg
                   </span>
                 </div>
               </Seccion>

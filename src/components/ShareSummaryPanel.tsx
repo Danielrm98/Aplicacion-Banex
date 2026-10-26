@@ -160,6 +160,7 @@ export default function ShareSummaryPanel({
               <CasillaSeccion titulo="Canastillas">
                 <div className="grid grid-cols-3 gap-1.5">
                   <Casilla label="Cantidad" valor={resumen.canastillas} />
+                  <Casilla label="Fruta no vendida" valor={resumen.frutaNoVendida} />
                 </div>
               </CasillaSeccion>
             </div>
