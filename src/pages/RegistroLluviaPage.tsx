@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import {
@@ -137,9 +137,11 @@ function DetalleFinca({
 }) {
   const [fecha, setFecha] = useState(fechaLocalAyer())
   const [milimetros, setMilimetros] = useState('')
+  const [editandoId, setEditandoId] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [exportando, setExportando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const datosGrafico = useMemo(
     () => [...reportes].sort((a, b) => a.fecha.localeCompare(b.fecha)).map((r) => ({ fecha: r.fecha, milimetros: r.milimetros })),
@@ -163,6 +165,7 @@ function DetalleFinca({
     try {
       await guardarLluviaReportada(finca, fecha, valor)
       setMilimetros('')
+      setEditandoId(null)
       onCambio()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar el reporte.')
@@ -174,6 +177,16 @@ function DetalleFinca({
   function editar(r: LluviaReportada) {
     setFecha(r.fecha)
     setMilimetros(String(r.milimetros))
+    setEditandoId(r.id)
+    setError(null)
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function cancelarEdicion() {
+    setFecha(fechaLocalAyer())
+    setMilimetros('')
+    setEditandoId(null)
+    setError(null)
   }
 
   async function eliminar(id: string) {
@@ -216,10 +229,28 @@ function DetalleFinca({
         <LluviaRegistradaChart data={datosGrafico} />
       </div>
 
-      <div className="mb-4 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-        <p className="mb-2 text-xs font-semibold text-gray-600">
-          Reportar lluvia real observada en finca (puedes registrarla o corregirla el día que sea)
-        </p>
+      <div
+        ref={formRef}
+        className={`mb-4 rounded-xl border p-4 shadow-sm transition-colors ${
+          editandoId ? 'border-banex-300 bg-banex-50' : 'border-gray-100 bg-white'
+        }`}
+      >
+        {editandoId ? (
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-banex-800">Editando el reporte del {fecha}</p>
+            <button
+              type="button"
+              onClick={cancelarEdicion}
+              className="text-xs font-medium text-gray-500 hover:text-gray-700 hover:underline"
+            >
+              Cancelar edición
+            </button>
+          </div>
+        ) : (
+          <p className="mb-2 text-xs font-semibold text-gray-600">
+            Reportar lluvia real observada en finca (puedes registrarla o corregirla el día que sea)
+          </p>
+        )}
         <form onSubmit={guardar} className="flex flex-wrap items-end gap-2">
           <label className="text-sm">
             <span className="mb-0.5 block text-gray-500">Fecha</span>
@@ -248,7 +279,7 @@ function DetalleFinca({
             disabled={guardando}
             className="rounded-md bg-banex-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
           >
-            {guardando ? 'Guardando...' : 'Guardar'}
+            {guardando ? (editandoId ? 'Actualizando...' : 'Guardando...') : editandoId ? 'Actualizar' : 'Guardar'}
           </button>
         </form>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
