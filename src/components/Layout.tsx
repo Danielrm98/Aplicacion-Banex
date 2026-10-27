@@ -17,6 +17,7 @@ const navItems = [
   { to: '/embolses', label: 'Embolses', icon: '🎗️' },
   { to: '/registro-repique', label: 'Registro de repique', icon: '✂️' },
   { to: '/repiques', label: 'Repiques', icon: '📉' },
+  { to: '/evaluacion-banda', label: 'Evaluación de banda', icon: '🔍' },
   { to: '/recobro', label: 'Recobro', icon: '💹' },
   { to: '/registros', label: 'Historial', icon: '🗂️' },
   { to: '/reportes', label: 'Reportes', icon: '📈' },
