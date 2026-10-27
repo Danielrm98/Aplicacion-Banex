@@ -248,7 +248,7 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
           cantidad: cantidadDe(grupo, defecto),
         })),
       )
-      const id = await guardarEvaluacionBanda({
+      await guardarEvaluacionBanda({
         idExistente: evaluacionIdActual,
         finca,
         fecha,
@@ -256,8 +256,10 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
         mermaFinca: mermaFincaValida ? mermaFincaNumero : null,
         items,
       })
-      setEvaluacionIdActual(id)
-      setMensajeExito('Evaluación guardada.')
+      // Queda lista para la siguiente evaluación del día, en vez de dejar
+      // la información anterior para borrarla a mano.
+      nuevaEvaluacion(fecha)
+      setMensajeExito('Evaluación guardada. El formulario quedó listo para una nueva.')
       refetch()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la evaluación.')
