@@ -15,19 +15,39 @@ function formatoPct(v: number): string {
 // barra y otra junto al punto de la línea, que terminaban encimándose
 // cuando ambos valores eran chicos): así los dos números de un mismo grupo
 // siempre quedan juntos y nunca se cruzan con la línea ni entre ellos.
-function EtiquetaCombinada(props: { x?: number; y?: number; width?: number; payload?: PuntoMermaGrupo }) {
-  const { x, y, width, payload } = props
-  if (x === undefined || y === undefined || width === undefined || !payload) return null
+//
+// Recharts no reenvía el "payload" completo del punto a un label custom de
+// <Bar> (solo x/y/width/value, que sí son propiedades de SVG), así que acá
+// se busca el resto del dato por índice en la lista ordenada, pasada como
+// prop propio ("datos") que Recharts no toca al clonar el elemento.
+function EtiquetaCombinada(props: { x?: number; y?: number; width?: number; index?: number; datos?: PuntoMermaGrupo[] }) {
+  const { x, y, width, index, datos } = props
+  if (x === undefined || y === undefined || width === undefined || index === undefined || !datos) return null
+  const punto = datos[index]
+  if (!punto) return null
   const cx = x + width / 2
   return (
     <g>
       <text x={cx} y={y - 21} textAnchor="middle" fontSize={11} fontWeight={700} fill={chartColors.blue}>
-        {formatoPct(payload.porcentajeMerma)}
+        {formatoPct(punto.porcentajeMerma)}
       </text>
       <text x={cx} y={y - 8} textAnchor="middle" fontSize={11} fontWeight={700} fill={chartColors.orange}>
-        {formatoPct(payload.mermaDeFinca)}
+        {formatoPct(punto.mermaDeFinca)}
       </text>
     </g>
+  )
+}
+
+// Nombres de grupo en diagonal (en vez de horizontal): con 6 grupos el
+// nombre más largo (ENFERMEDAD) no cabe plano sin que alguno se recorte o
+// se pierda.
+function TickGrupo(props: { x?: number; y?: number; payload?: { value: string } }) {
+  const { x, y, payload } = props
+  if (x === undefined || y === undefined || !payload) return null
+  return (
+    <text x={x} y={y} dy={10} textAnchor="end" transform={`rotate(-35, ${x}, ${y})`} fontSize={11} fill={chartColors.mutedText}>
+      {payload.value}
+    </text>
   )
 }
 
@@ -84,47 +104,57 @@ export default function MermaGrupoChart({ data }: { data: PuntoMermaGrupo[] }) {
   const maximo = Math.max(10, ...ordenados.map((d) => Math.max(d.porcentajeMerma, d.mermaDeFinca)))
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={ordenados} margin={{ top: 34, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid vertical={false} stroke={chartColors.gridline} />
-        <XAxis
-          dataKey="grupo"
-          tick={{ fontSize: 11, fill: chartColors.mutedText }}
-          axisLine={{ stroke: chartColors.axis }}
-          tickLine={false}
-        />
-        <YAxis
-          domain={[0, Math.ceil(maximo / 10) * 10]}
-          tickFormatter={(v: number) => `${v}%`}
-          tick={{ fontSize: 11, fill: chartColors.mutedText }}
-          axisLine={false}
-          tickLine={false}
-          width={40}
-        />
-        <Tooltip content={<TooltipMermaGrupo />} cursor={{ fill: chartColors.gridline, opacity: 0.4 }} />
-        <Legend
-          formatter={(value) => <span style={{ color: chartColors.secondaryText, fontSize: 12 }}>{value}</span>}
-          iconType="square"
-          wrapperStyle={{ fontSize: 12 }}
-        />
-        <Bar
-          dataKey="porcentajeMerma"
-          name="% merma (del total evaluado)"
-          fill={chartColors.blue}
-          radius={[4, 4, 0, 0]}
-          maxBarSize={44}
-          label={<EtiquetaCombinada />}
-        />
-        <Line
-          dataKey="mermaDeFinca"
-          name="% merma de finca"
-          type="monotone"
-          stroke={chartColors.orange}
-          strokeWidth={2}
-          dot={{ r: 4, fill: chartColors.orange, stroke: chartColors.surface, strokeWidth: 2 }}
-          activeDot={{ r: 5 }}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    // Ancho mínimo propio y scroll horizontal: en celular, 6 grupos con sus
+    // dos números cada uno no caben bien en el ancho de la pantalla — mejor
+    // un gráfico más ancho que se desliza, a que los nombres o los
+    // porcentajes se encimen o se corten en los extremos.
+    <div className="overflow-x-auto">
+      <div style={{ minWidth: 600 }}>
+        <ResponsiveContainer width="100%" height={330}>
+          <ComposedChart data={ordenados} margin={{ top: 34, right: 24, left: 8, bottom: 30 }}>
+            <CartesianGrid vertical={false} stroke={chartColors.gridline} />
+            <XAxis
+              dataKey="grupo"
+              tick={<TickGrupo />}
+              axisLine={{ stroke: chartColors.axis }}
+              tickLine={false}
+              interval={0}
+              padding={{ left: 16, right: 16 }}
+            />
+            <YAxis
+              domain={[0, Math.ceil(maximo / 10) * 10]}
+              tickFormatter={(v: number) => `${v}%`}
+              tick={{ fontSize: 11, fill: chartColors.mutedText }}
+              axisLine={false}
+              tickLine={false}
+              width={40}
+            />
+            <Tooltip content={<TooltipMermaGrupo />} cursor={{ fill: chartColors.gridline, opacity: 0.4 }} />
+            <Legend
+              formatter={(value) => <span style={{ color: chartColors.secondaryText, fontSize: 12 }}>{value}</span>}
+              iconType="square"
+              wrapperStyle={{ fontSize: 12 }}
+            />
+            <Bar
+              dataKey="porcentajeMerma"
+              name="% merma (del total evaluado)"
+              fill={chartColors.blue}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={44}
+              label={<EtiquetaCombinada datos={ordenados} />}
+            />
+            <Line
+              dataKey="mermaDeFinca"
+              name="% merma de finca"
+              type="monotone"
+              stroke={chartColors.orange}
+              strokeWidth={2}
+              dot={{ r: 4, fill: chartColors.orange, stroke: chartColors.surface, strokeWidth: 2 }}
+              activeDot={{ r: 5 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   )
 }
