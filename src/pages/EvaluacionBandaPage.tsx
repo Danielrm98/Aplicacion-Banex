@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useAuth } from '../lib/AuthContext'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
+import { esErrorDeRed } from '../lib/colaRegistros'
+import { agregarEvaluacionBandaACola } from '../lib/colaEvaluacionBanda'
 import { DEFECTOS_POR_GRUPO, GRUPOS_EVALUACION_BANDA, type GrupoEvaluacionBanda } from '../lib/catalogoEvaluacionBanda'
-import { eliminarEvaluacionBanda, guardarEvaluacionBanda, useEvaluacionesBanda } from '../lib/useEvaluacionesBanda'
+import {
+  eliminarEvaluacionBanda,
+  guardarEvaluacionBanda,
+  useEvaluacionesBanda,
+  type EvaluacionBandaPayload,
+} from '../lib/useEvaluacionesBanda'
 import SectionHeading from '../components/SectionHeading'
 import MermaGrupoChart from '../components/charts/MermaGrupoChart'
 import type { EvaluacionBanda } from '../types/evaluacionBanda'
@@ -97,6 +105,7 @@ function esGrupoValido(grupo: string): grupo is GrupoEvaluacionBanda {
 }
 
 function FormularioEvaluacionBanda({ finca }: { finca: string }) {
+  const { session } = useAuth()
   const { evaluaciones, refetch } = useEvaluacionesBanda(finca)
 
   const [fecha, setFecha] = useState(fechaLocalHoy())
@@ -228,6 +237,31 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
     [totalDedos, porcentajeMerma, mermaDeFincaPorGrupo],
   )
 
+  // Mismo desglose que "Merma de finca", pero por defecto individual en vez
+  // de por grupo — para ver cuáles defectos puntuales son los que más están
+  // pesando dentro de la merma real, no solo a qué grupo pertenecen.
+  const defectosRegistrados = useMemo(() => {
+    const filas: {
+      grupo: GrupoEvaluacionBanda
+      defecto: string
+      cantidad: number
+      porcentajeTotal: number | null
+      porcentajeMermaFinca: number | null
+    }[] = []
+    for (const grupo of GRUPOS_EVALUACION_BANDA) {
+      for (const defecto of [...DEFECTOS_POR_GRUPO[grupo], ...defectosExtra[grupo]]) {
+        const cantidad = cantidadDe(grupo, defecto)
+        if (cantidad <= 0) continue
+        const porcentajeTotal = totalDedos > 0 ? (cantidad / totalDedos) * 100 : null
+        const porcentajeMermaFinca =
+          porcentajeTotal !== null && mermaFincaValida ? (porcentajeTotal * (mermaFincaNumero as number)) / 100 : null
+        filas.push({ grupo, defecto, cantidad, porcentajeTotal, porcentajeMermaFinca })
+      }
+    }
+    return filas.sort((a, b) => (b.porcentajeTotal ?? 0) - (a.porcentajeTotal ?? 0))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cantidades, defectosExtra, totalDedos, mermaFincaValida, mermaFincaNumero])
+
   async function guardar() {
     setError(null)
     if (mermaFincaTexto !== '' && !mermaFincaValida) {
@@ -239,30 +273,60 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
       return
     }
 
+    // Se toma de la sesión ya cargada en la app (con respaldo local si no
+    // hay señal), no de una consulta nueva a Supabase: esa sí necesita
+    // conexión y es lo que hacía fallar el guardado sin internet.
+    const user = session?.user
+    if (!user) {
+      setError('No hay sesión activa.')
+      return
+    }
+
+    const items = GRUPOS_EVALUACION_BANDA.flatMap((grupo) =>
+      [...DEFECTOS_POR_GRUPO[grupo], ...defectosExtra[grupo]].map((defecto) => ({
+        grupo,
+        defecto,
+        cantidad: cantidadDe(grupo, defecto),
+      })),
+    )
+    // El id siempre se genera en el celular (no se espera a que la base de
+    // datos lo asigne), así el mismo guardado sirve tanto si hay señal
+    // ahora mismo como si queda pendiente para sincronizarse después.
+    const payload: EvaluacionBandaPayload = {
+      id: evaluacionIdActual ?? crypto.randomUUID(),
+      userId: user.id,
+      finca,
+      fecha,
+      semana,
+      mermaFinca: mermaFincaValida ? mermaFincaNumero : null,
+      items,
+    }
+
     setGuardando(true)
+
+    if (!navigator.onLine) {
+      await agregarEvaluacionBandaACola(payload)
+      setGuardando(false)
+      nuevaEvaluacion(fecha)
+      setMensajeExito('Guardada sin conexión — se enviará sola cuando vuelva la señal.')
+      return
+    }
+
     try {
-      const items = GRUPOS_EVALUACION_BANDA.flatMap((grupo) =>
-        [...DEFECTOS_POR_GRUPO[grupo], ...defectosExtra[grupo]].map((defecto) => ({
-          grupo,
-          defecto,
-          cantidad: cantidadDe(grupo, defecto),
-        })),
-      )
-      await guardarEvaluacionBanda({
-        idExistente: evaluacionIdActual,
-        finca,
-        fecha,
-        semana,
-        mermaFinca: mermaFincaValida ? mermaFincaNumero : null,
-        items,
-      })
+      await guardarEvaluacionBanda(payload)
       // Queda lista para la siguiente evaluación del día, en vez de dejar
       // la información anterior para borrarla a mano.
       nuevaEvaluacion(fecha)
       setMensajeExito('Evaluación guardada. El formulario quedó listo para una nueva.')
       refetch()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la evaluación.')
+      if (esErrorDeRed(err)) {
+        await agregarEvaluacionBandaACola(payload)
+        nuevaEvaluacion(fecha)
+        setMensajeExito('Guardada sin conexión — se enviará sola cuando vuelva la señal.')
+      } else {
+        setError(err instanceof Error ? err.message : 'No se pudo guardar la evaluación.')
+      }
     } finally {
       setGuardando(false)
     }
@@ -484,6 +548,46 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <SectionHeading>Merma por grupo: % del total vs % merma de finca</SectionHeading>
         <MermaGrupoChart data={datosChart} />
+      </div>
+
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <SectionHeading>Defectos registrados sobre la merma de finca</SectionHeading>
+        <p className="mb-2 text-xs text-gray-500">
+          Cada defecto con cantidad registrada, qué tanto pesa dentro de lo evaluado y qué tanto representa dentro de
+          la merma real de la finca.
+        </p>
+        {defectosRegistrados.length === 0 ? (
+          <p className="py-6 text-center text-xs text-gray-400">Registra cantidades para ver el detalle por defecto.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-500">
+                  <th className="py-1.5 pr-3 font-medium">Defecto</th>
+                  <th className="py-1.5 pr-3 font-medium">Grupo</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">Dedos</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">% del total</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">% merma de finca</th>
+                </tr>
+              </thead>
+              <tbody>
+                {defectosRegistrados.map((f) => (
+                  <tr key={claveDefecto(f.grupo, f.defecto)} className="border-b border-gray-100 last:border-0">
+                    <td className="py-1.5 pr-3 text-gray-900">{f.defecto}</td>
+                    <td className="py-1.5 pr-3 text-gray-500">{f.grupo}</td>
+                    <td className="py-1.5 pr-3 text-right text-gray-900">{f.cantidad}</td>
+                    <td className="py-1.5 pr-3 text-right text-gray-900">
+                      {f.porcentajeTotal !== null ? `${f.porcentajeTotal.toFixed(2)}%` : '—'}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right font-medium text-banex-800">
+                      {f.porcentajeMermaFinca !== null ? `${f.porcentajeMermaFinca.toFixed(2)}%` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
