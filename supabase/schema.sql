@@ -985,6 +985,11 @@ create policy "Solo el admin elimina censo de plantas"
 -- no calculado por la app) para que la app reparta esa merma entre los
 -- grupos según el peso de cada uno dentro de lo evaluado.
 -- ============================================================
+-- No es un registro histórico: es solo informativa para el día en curso
+-- (una finca puede guardar varias evaluaciones el mismo día, al menos 3
+-- durante el proceso). La propia app purga lo de días anteriores de esa
+-- finca cada vez que se guarda una nueva, por eso el borrado no queda
+-- reservado al admin.
 create table public.evaluaciones_banda (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -992,24 +997,13 @@ create table public.evaluaciones_banda (
   fecha date not null,
   semana integer not null check (semana between 1 and 53),
   merma_finca numeric check (merma_finca >= 0 and merma_finca <= 100),
-  created_at timestamptz not null default now(),
-  unique (finca, fecha)
+  created_at timestamptz not null default now()
 );
 
 create index evaluaciones_banda_finca_fecha_idx
   on public.evaluaciones_banda (finca, fecha desc);
 
 alter table public.evaluaciones_banda enable row level security;
-
-create or replace function public.existe_evaluacion_banda_mismo_dia(p_finca text, p_fecha date)
-returns boolean
-language sql stable security definer set search_path = public
-as $$
-  select exists (
-    select 1 from public.evaluaciones_banda
-    where finca = p_finca and fecha = p_fecha
-  );
-$$;
 
 create policy "Ver evaluaciones de banda según rol"
   on public.evaluaciones_banda for select
@@ -1019,13 +1013,7 @@ create policy "Insertar evaluaciones de banda según rol"
   on public.evaluaciones_banda for insert
   with check (
     auth.uid() = user_id
-    and (
-      public.es_admin(auth.uid())
-      or (
-        finca = any (public.fincas_de(auth.uid()))
-        and not public.existe_evaluacion_banda_mismo_dia(finca, fecha)
-      )
-    )
+    and (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
   );
 
 create policy "Actualizar evaluaciones de banda según rol"
@@ -1033,9 +1021,9 @@ create policy "Actualizar evaluaciones de banda según rol"
   using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())))
   with check (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
-create policy "Solo el admin elimina evaluaciones de banda"
+create policy "Eliminar evaluaciones de banda según rol"
   on public.evaluaciones_banda for delete
-  using (public.es_admin(auth.uid()));
+  using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
 create table public.evaluacion_banda_items (
   id uuid primary key default gen_random_uuid(),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { getIsoWeek } from '../lib/isoWeek'
@@ -13,7 +13,6 @@ import type { EvaluacionBanda } from '../types/evaluacionBanda'
 
 export default function EvaluacionBandaPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
-  const esAdmin = perfil?.rol === 'admin'
   const esOperador = perfil?.rol === 'operador'
   const { fincas: todasLasFincas } = useFincas()
   const fincasDisponibles = esOperador
@@ -73,7 +72,7 @@ export default function EvaluacionBandaPage() {
       {!fincaSeleccionada ? (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
       ) : (
-        <FormularioEvaluacionBanda key={fincaSeleccionada} finca={fincaSeleccionada} esAdmin={esAdmin} />
+        <FormularioEvaluacionBanda key={fincaSeleccionada} finca={fincaSeleccionada} />
       )}
     </div>
   )
@@ -83,8 +82,12 @@ function claveDefecto(grupo: string, defecto: string): string {
   return `${grupo}::${defecto}`
 }
 
-function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin: boolean }) {
-  const { evaluaciones, loading, refetch } = useEvaluacionesBanda(finca)
+function horaCorta(createdAt: string): string {
+  return new Date(createdAt).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })
+}
+
+function FormularioEvaluacionBanda({ finca }: { finca: string }) {
+  const { evaluaciones, refetch } = useEvaluacionesBanda(finca)
 
   const [fecha, setFecha] = useState(fechaLocalHoy())
   const [cantidades, setCantidades] = useState<Record<string, number>>({})
@@ -95,32 +98,32 @@ function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin:
   const [mensajeExito, setMensajeExito] = useState<string | null>(null)
 
   const semana = getIsoWeek(fecha)
+  const evaluacionesHoy = evaluaciones.filter((e) => e.fecha === fechaLocalHoy()).length
 
-  function cargarFecha(fechaStr: string, lista: EvaluacionBanda[] = evaluaciones) {
-    const existente = lista.find((e) => e.fecha === fechaStr) ?? null
+  // Una finca puede guardar varias evaluaciones el mismo día (al menos 3
+  // durante el proceso), así que la fecha ya no identifica una sola — para
+  // corregir una en particular hay que abrirla desde la lista de abajo.
+  function nuevaEvaluacion(fechaStr: string = fecha) {
     setFecha(fechaStr)
-    setEvaluacionIdActual(existente?.id ?? null)
-    setMermaFincaTexto(existente?.merma_finca !== null && existente?.merma_finca !== undefined ? String(existente.merma_finca) : '')
+    setEvaluacionIdActual(null)
+    setCantidades({})
+    setMermaFincaTexto('')
+    setError(null)
+    setMensajeExito(null)
+  }
+
+  function abrirEvaluacion(ev: EvaluacionBanda) {
+    setFecha(ev.fecha)
+    setEvaluacionIdActual(ev.id)
+    setMermaFincaTexto(ev.merma_finca !== null ? String(ev.merma_finca) : '')
     const nuevasCantidades: Record<string, number> = {}
-    for (const it of existente?.items ?? []) {
+    for (const it of ev.items) {
       nuevasCantidades[claveDefecto(it.grupo, it.defecto)] = it.cantidad
     }
     setCantidades(nuevasCantidades)
     setError(null)
     setMensajeExito(null)
   }
-
-  // Al terminar de cargar el historial por primera vez, si la fecha de hoy
-  // ya tenía una evaluación guardada, se precarga sola (igual que el resto
-  // de la app: reabrir una fecha ya registrada la deja lista para corregir).
-  const cargoInicialRef = useRef(false)
-  useEffect(() => {
-    if (!loading && !cargoInicialRef.current) {
-      cargoInicialRef.current = true
-      cargarFecha(fecha, evaluaciones)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading])
 
   function cantidadDe(grupo: string, defecto: string) {
     return cantidades[claveDefecto(grupo, defecto)] ?? 0
@@ -217,7 +220,7 @@ function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin:
     if (!confirm('¿Eliminar esta evaluación? No se puede deshacer.')) return
     try {
       await eliminarEvaluacionBanda(id)
-      if (id === evaluacionIdActual) cargarFecha(fecha, evaluaciones.filter((e) => e.id !== id))
+      if (id === evaluacionIdActual) nuevaEvaluacion()
       refetch()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'No se pudo eliminar.')
@@ -233,7 +236,7 @@ function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin:
               type="date"
               value={fecha}
               max={fechaLocalHoy()}
-              onChange={(e) => cargarFecha(e.target.value)}
+              onChange={(e) => nuevaEvaluacion(e.target.value)}
               className={inputClass}
             />
           </Field>
@@ -244,8 +247,23 @@ function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin:
             <input type="text" disabled value={totalDedos} className={`${inputClass} bg-gray-50 font-semibold`} />
           </Field>
         </div>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-gray-500">
+            Llevas {evaluacionesHoy} evaluación{evaluacionesHoy === 1 ? '' : 'es'} guardada{evaluacionesHoy === 1 ? '' : 's'} hoy — se
+            puede guardar más de una en el mismo día.
+          </p>
+          {(evaluacionIdActual || totalDedos > 0 || mermaFincaTexto !== '') && (
+            <button
+              type="button"
+              onClick={() => nuevaEvaluacion()}
+              className="text-xs font-medium text-banex-700 hover:underline"
+            >
+              + Nueva evaluación
+            </button>
+          )}
+        </div>
         {evaluacionIdActual && (
-          <p className="mt-2 text-xs text-banex-700">Editando la evaluación ya guardada para esta fecha.</p>
+          <p className="mt-1 text-xs text-banex-700">Editando una evaluación ya guardada de esta finca y fecha.</p>
         )}
       </div>
 
@@ -360,12 +378,17 @@ function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin:
 
       {evaluaciones.length > 0 && (
         <div>
-          <SectionHeading>Evaluaciones anteriores de esta finca</SectionHeading>
+          <SectionHeading>Evaluaciones guardadas</SectionHeading>
+          <p className="mb-2 text-xs text-gray-500">
+            Es solo información del día en curso, no queda como historial: al guardar una evaluación nueva se borra lo
+            de días anteriores de esta finca.
+          </p>
           <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
                   <th className="py-2 px-3 font-medium">Fecha</th>
+                  <th className="py-2 px-3 font-medium">Hora</th>
                   <th className="py-2 px-3 font-medium">Semana</th>
                   <th className="py-2 px-3 font-medium">Suma de dedos</th>
                   <th className="py-2 px-3 font-medium">Merma de finca</th>
@@ -374,20 +397,19 @@ function FormularioEvaluacionBanda({ finca, esAdmin }: { finca: string; esAdmin:
               </thead>
               <tbody>
                 {evaluaciones.map((ev) => (
-                  <tr key={ev.id} className={`border-b border-gray-100 ${ev.fecha === fecha ? 'bg-banex-50/60' : ''}`}>
+                  <tr key={ev.id} className={`border-b border-gray-100 ${ev.id === evaluacionIdActual ? 'bg-banex-50/60' : ''}`}>
                     <td className="py-1.5 px-3">{ev.fecha}</td>
+                    <td className="py-1.5 px-3">{horaCorta(ev.created_at)}</td>
                     <td className="py-1.5 px-3">{ev.semana}</td>
                     <td className="py-1.5 px-3">{ev.items.reduce((s, it) => s + it.cantidad, 0)}</td>
                     <td className="py-1.5 px-3">{ev.merma_finca !== null ? `${ev.merma_finca}%` : '—'}</td>
                     <td className="py-1.5 px-3 text-right whitespace-nowrap">
-                      <button onClick={() => cargarFecha(ev.fecha)} className="text-xs font-medium text-banex-700 hover:underline">
+                      <button onClick={() => abrirEvaluacion(ev)} className="text-xs font-medium text-banex-700 hover:underline">
                         Abrir
                       </button>
-                      {esAdmin && (
-                        <button onClick={() => eliminar(ev.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
-                          Eliminar
-                        </button>
-                      )}
+                      <button onClick={() => eliminar(ev.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))}

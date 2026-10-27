@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { conLimite } from './promesaConLimite'
+import { fechaLocalHoy } from './fechaLocal'
 import type { EvaluacionBanda } from '../types/evaluacionBanda'
 
 const LIMITE_MS = 8000
 
-/** Todo el historial de evaluaciones de banda de una finca (con sus items),
- * del más reciente al más antiguo — igual que useLluviaReportada: se trae
- * de una vez para poder reabrir cualquier fecha anterior sin otra consulta. */
+/** Evaluaciones de banda de una finca que todavía no se han purgado (con
+ * sus items), de la más reciente a la más antigua. No es un historial: al
+ * guardar una evaluación nueva se borra lo de días anteriores de esa
+ * finca, así que normalmente esto solo trae las del día en curso. */
 export function useEvaluacionesBanda(finca: string | null) {
   const [evaluaciones, setEvaluaciones] = useState<EvaluacionBanda[]>([])
   const [loading, setLoading] = useState(() => !!finca)
@@ -25,7 +27,7 @@ export function useEvaluacionesBanda(finca: string | null) {
         .from('evaluaciones_banda')
         .select('*, items:evaluacion_banda_items(*)')
         .eq('finca', finca)
-        .order('fecha', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(60),
       LIMITE_MS,
     )
@@ -45,10 +47,14 @@ export function useEvaluacionesBanda(finca: string | null) {
   return { evaluaciones, loading, error, refetch }
 }
 
-/** Guarda (crea o corrige) la evaluación completa de una finca/fecha: la
- * cabecera con la merma real de finca, y toda la cuadrícula de defectos de
- * una vez (se reemplazan los items existentes, en vez de ir celda por
- * celda, porque el formulario se llena y se envía completo). */
+/** Guarda (crea o corrige) una evaluación completa: la cabecera con la
+ * merma real de finca, y toda la cuadrícula de defectos de una vez (se
+ * reemplazan los items existentes, en vez de ir celda por celda, porque el
+ * formulario se llena y se envía completo). Una finca puede tener varias
+ * evaluaciones el mismo día (no es un upsert por fecha) — cada guardado de
+ * una nueva evaluación de paso purga, de esa misma finca, lo que haya
+ * quedado de días anteriores: esto es solo informativo para el día en
+ * curso, no un historial que haya que conservar. */
 export async function guardarEvaluacionBanda(params: {
   idExistente: string | null
   finca: string
@@ -61,6 +67,16 @@ export async function guardarEvaluacionBanda(params: {
     data: { user },
   } = await conLimite(supabase.auth.getUser(), LIMITE_MS)
   if (!user) throw new Error('No hay sesión activa.')
+
+  try {
+    await conLimite(
+      supabase.from('evaluaciones_banda').delete().eq('finca', params.finca).lt('fecha', fechaLocalHoy()),
+      LIMITE_MS,
+    )
+  } catch {
+    // Purga de días anteriores: es solo housekeeping, no debe bloquear el
+    // guardado de la evaluación de hoy si falla.
+  }
 
   let evaluacionId = params.idExistente
 
