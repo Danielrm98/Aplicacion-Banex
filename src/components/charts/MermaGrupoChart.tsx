@@ -38,14 +38,14 @@ function EtiquetaCombinada(props: { x?: number; y?: number; width?: number; inde
   )
 }
 
-// Nombres de grupo en diagonal (en vez de horizontal): con 6 grupos el
-// nombre más largo (ENFERMEDAD) no cabe plano sin que alguno se recorte o
-// se pierda.
+// Nombres de grupo horizontales pero chicos: con 6 grupos y el ancho fijo
+// de la tarjeta, el nombre más largo (ENFERMEDAD) no cabe al tamaño normal
+// de los demás ejes, así que esta etiqueta va un poco más pequeña.
 function TickGrupo(props: { x?: number; y?: number; payload?: { value: string } }) {
   const { x, y, payload } = props
   if (x === undefined || y === undefined || !payload) return null
   return (
-    <text x={x} y={y} dy={10} textAnchor="end" transform={`rotate(-35, ${x}, ${y})`} fontSize={11} fill={chartColors.mutedText}>
+    <text x={x} y={y} dy={11} textAnchor="middle" fontSize={6.8} fill={chartColors.mutedText}>
       {payload.value}
     </text>
   )
@@ -104,57 +104,49 @@ export default function MermaGrupoChart({ data }: { data: PuntoMermaGrupo[] }) {
   const maximo = Math.max(10, ...ordenados.map((d) => Math.max(d.porcentajeMerma, d.mermaDeFinca)))
 
   return (
-    // Ancho mínimo propio y scroll horizontal: en celular, 6 grupos con sus
-    // dos números cada uno no caben bien en el ancho de la pantalla — mejor
-    // un gráfico más ancho que se desliza, a que los nombres o los
-    // porcentajes se encimen o se corten en los extremos.
-    <div className="overflow-x-auto">
-      <div style={{ minWidth: 600 }}>
-        <ResponsiveContainer width="100%" height={330}>
-          <ComposedChart data={ordenados} margin={{ top: 34, right: 24, left: 8, bottom: 30 }}>
-            <CartesianGrid vertical={false} stroke={chartColors.gridline} />
-            <XAxis
-              dataKey="grupo"
-              tick={<TickGrupo />}
-              axisLine={{ stroke: chartColors.axis }}
-              tickLine={false}
-              interval={0}
-              padding={{ left: 16, right: 16 }}
-            />
-            <YAxis
-              domain={[0, Math.ceil(maximo / 10) * 10]}
-              tickFormatter={(v: number) => `${v}%`}
-              tick={{ fontSize: 11, fill: chartColors.mutedText }}
-              axisLine={false}
-              tickLine={false}
-              width={40}
-            />
-            <Tooltip content={<TooltipMermaGrupo />} cursor={{ fill: chartColors.gridline, opacity: 0.4 }} />
-            <Legend
-              formatter={(value) => <span style={{ color: chartColors.secondaryText, fontSize: 12 }}>{value}</span>}
-              iconType="square"
-              wrapperStyle={{ fontSize: 12 }}
-            />
-            <Bar
-              dataKey="porcentajeMerma"
-              name="% merma (del total evaluado)"
-              fill={chartColors.blue}
-              radius={[4, 4, 0, 0]}
-              maxBarSize={44}
-              label={<EtiquetaCombinada datos={ordenados} />}
-            />
-            <Line
-              dataKey="mermaDeFinca"
-              name="% merma de finca"
-              type="monotone"
-              stroke={chartColors.orange}
-              strokeWidth={2}
-              dot={{ r: 4, fill: chartColors.orange, stroke: chartColors.surface, strokeWidth: 2 }}
-              activeDot={{ r: 5 }}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={300}>
+      <ComposedChart data={ordenados} margin={{ top: 34, right: 16, left: 0, bottom: 2 }}>
+        <CartesianGrid vertical={false} stroke={chartColors.gridline} />
+        <XAxis
+          dataKey="grupo"
+          tick={<TickGrupo />}
+          axisLine={{ stroke: chartColors.axis }}
+          tickLine={false}
+          interval={0}
+          padding={{ left: 4, right: 4 }}
+        />
+        <YAxis
+          domain={[0, Math.ceil(maximo / 10) * 10]}
+          tickFormatter={(v: number) => `${v}%`}
+          tick={{ fontSize: 11, fill: chartColors.mutedText }}
+          axisLine={false}
+          tickLine={false}
+          width={40}
+        />
+        <Tooltip content={<TooltipMermaGrupo />} cursor={{ fill: chartColors.gridline, opacity: 0.4 }} />
+        <Legend
+          formatter={(value) => <span style={{ color: chartColors.secondaryText, fontSize: 12 }}>{value}</span>}
+          iconType="square"
+          wrapperStyle={{ fontSize: 12 }}
+        />
+        <Bar
+          dataKey="porcentajeMerma"
+          name="% merma (del total evaluado)"
+          fill={chartColors.blue}
+          radius={[4, 4, 0, 0]}
+          maxBarSize={44}
+          label={<EtiquetaCombinada datos={ordenados} />}
+        />
+        <Line
+          dataKey="mermaDeFinca"
+          name="% merma de finca"
+          type="monotone"
+          stroke={chartColors.orange}
+          strokeWidth={2}
+          dot={{ r: 4, fill: chartColors.orange, stroke: chartColors.surface, strokeWidth: 2 }}
+          activeDot={{ r: 5 }}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
   )
 }
