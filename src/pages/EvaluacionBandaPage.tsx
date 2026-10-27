@@ -86,6 +86,16 @@ function horaCorta(createdAt: string): string {
   return new Date(createdAt).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })
 }
 
+function defectosExtraVacio(): Record<GrupoEvaluacionBanda, string[]> {
+  const vacio = {} as Record<GrupoEvaluacionBanda, string[]>
+  for (const grupo of GRUPOS_EVALUACION_BANDA) vacio[grupo] = []
+  return vacio
+}
+
+function esGrupoValido(grupo: string): grupo is GrupoEvaluacionBanda {
+  return (GRUPOS_EVALUACION_BANDA as readonly string[]).includes(grupo)
+}
+
 function FormularioEvaluacionBanda({ finca }: { finca: string }) {
   const { evaluaciones, refetch } = useEvaluacionesBanda(finca)
 
@@ -96,6 +106,11 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mensajeExito, setMensajeExito] = useState<string | null>(null)
+  // Defectos que el operario agrega a mano porque no están en la lista fija
+  // del formato en papel — se guardan igual que cualquier otro defecto.
+  const [defectosExtra, setDefectosExtra] = useState<Record<GrupoEvaluacionBanda, string[]>>(defectosExtraVacio)
+  const [nuevoDefectoTexto, setNuevoDefectoTexto] = useState('')
+  const [agregandoDefectoEn, setAgregandoDefectoEn] = useState<GrupoEvaluacionBanda | null>(null)
 
   const semana = getIsoWeek(fecha)
   const evaluacionesHoy = evaluaciones.filter((e) => e.fecha === fechaLocalHoy()).length
@@ -108,6 +123,9 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
     setEvaluacionIdActual(null)
     setCantidades({})
     setMermaFincaTexto('')
+    setDefectosExtra(defectosExtraVacio())
+    setAgregandoDefectoEn(null)
+    setNuevoDefectoTexto('')
     setError(null)
     setMensajeExito(null)
   }
@@ -117,10 +135,17 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
     setEvaluacionIdActual(ev.id)
     setMermaFincaTexto(ev.merma_finca !== null ? String(ev.merma_finca) : '')
     const nuevasCantidades: Record<string, number> = {}
+    const nuevosExtra = defectosExtraVacio()
     for (const it of ev.items) {
       nuevasCantidades[claveDefecto(it.grupo, it.defecto)] = it.cantidad
+      if (esGrupoValido(it.grupo) && !DEFECTOS_POR_GRUPO[it.grupo].includes(it.defecto)) {
+        if (!nuevosExtra[it.grupo].includes(it.defecto)) nuevosExtra[it.grupo].push(it.defecto)
+      }
     }
     setCantidades(nuevasCantidades)
+    setDefectosExtra(nuevosExtra)
+    setAgregandoDefectoEn(null)
+    setNuevoDefectoTexto('')
     setError(null)
     setMensajeExito(null)
   }
@@ -134,14 +159,35 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
     setMensajeExito(null)
   }
 
+  function agregarDefectoExtra(grupo: GrupoEvaluacionBanda) {
+    const nombre = nuevoDefectoTexto.trim().toUpperCase()
+    if (!nombre) return
+    const yaExiste = DEFECTOS_POR_GRUPO[grupo].includes(nombre) || defectosExtra[grupo].includes(nombre)
+    if (!yaExiste) {
+      setDefectosExtra((prev) => ({ ...prev, [grupo]: [...prev[grupo], nombre] }))
+    }
+    setNuevoDefectoTexto('')
+    setAgregandoDefectoEn(null)
+  }
+
+  function quitarDefectoExtra(grupo: GrupoEvaluacionBanda, defecto: string) {
+    setDefectosExtra((prev) => ({ ...prev, [grupo]: prev[grupo].filter((d) => d !== defecto) }))
+    setCantidades((prev) => {
+      const copia = { ...prev }
+      delete copia[claveDefecto(grupo, defecto)]
+      return copia
+    })
+  }
+
   const grupoDedos = useMemo(() => {
     const map = {} as Record<GrupoEvaluacionBanda, number>
     for (const grupo of GRUPOS_EVALUACION_BANDA) {
-      map[grupo] = DEFECTOS_POR_GRUPO[grupo].reduce((sum, defecto) => sum + cantidadDe(grupo, defecto), 0)
+      const defectos = [...DEFECTOS_POR_GRUPO[grupo], ...defectosExtra[grupo]]
+      map[grupo] = defectos.reduce((sum, defecto) => sum + cantidadDe(grupo, defecto), 0)
     }
     return map
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cantidades])
+  }, [cantidades, defectosExtra])
 
   const totalDedos = useMemo(() => Object.values(grupoDedos).reduce((a, b) => a + b, 0), [grupoDedos])
 
@@ -196,7 +242,11 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
     setGuardando(true)
     try {
       const items = GRUPOS_EVALUACION_BANDA.flatMap((grupo) =>
-        DEFECTOS_POR_GRUPO[grupo].map((defecto) => ({ grupo, defecto, cantidad: cantidadDe(grupo, defecto) })),
+        [...DEFECTOS_POR_GRUPO[grupo], ...defectosExtra[grupo]].map((defecto) => ({
+          grupo,
+          defecto,
+          cantidad: cantidadDe(grupo, defecto),
+        })),
       )
       const id = await guardarEvaluacionBanda({
         idExistente: evaluacionIdActual,
@@ -292,6 +342,76 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
                     />
                   </label>
                 ))}
+                {defectosExtra[grupo].map((defecto) => (
+                  <label key={defecto} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex min-w-0 items-center gap-1 text-gray-600">
+                      <span className="truncate">{defecto}</span>
+                      <button
+                        type="button"
+                        onClick={() => quitarDefectoExtra(grupo, defecto)}
+                        title="Quitar este defecto"
+                        className="shrink-0 text-gray-400 hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={cantidadDe(grupo, defecto) || ''}
+                      onChange={(e) => setCantidad(grupo, defecto, Math.max(0, Number(e.target.value)))}
+                      className="w-20 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-right text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20"
+                    />
+                  </label>
+                ))}
+
+                {agregandoDefectoEn === grupo ? (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={nuevoDefectoTexto}
+                      onChange={(e) => setNuevoDefectoTexto(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          agregarDefectoExtra(grupo)
+                        }
+                      }}
+                      placeholder="Nombre del defecto"
+                      className="min-w-0 flex-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => agregarDefectoExtra(grupo)}
+                      className="shrink-0 rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700"
+                    >
+                      Agregar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAgregandoDefectoEn(null)
+                        setNuevoDefectoTexto('')
+                      }}
+                      className="shrink-0 text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAgregandoDefectoEn(grupo)
+                      setNuevoDefectoTexto('')
+                    }}
+                    className="mt-1 text-left text-xs font-medium text-banex-700 hover:underline"
+                  >
+                    + Agregar otro defecto
+                  </button>
+                )}
               </div>
             </div>
           ))}

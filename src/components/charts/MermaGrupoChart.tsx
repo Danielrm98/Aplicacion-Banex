@@ -11,23 +11,23 @@ function formatoPct(v: number): string {
   return `${v.toFixed(1)}%`
 }
 
-function EtiquetaBarra(props: { x?: number; y?: number; width?: number; value?: number }) {
-  const { x, y, width, value } = props
-  if (x === undefined || y === undefined || width === undefined || value === undefined) return null
+// Un solo bloque de 2 líneas por barra (en vez de una etiqueta junto a la
+// barra y otra junto al punto de la línea, que terminaban encimándose
+// cuando ambos valores eran chicos): así los dos números de un mismo grupo
+// siempre quedan juntos y nunca se cruzan con la línea ni entre ellos.
+function EtiquetaCombinada(props: { x?: number; y?: number; width?: number; payload?: PuntoMermaGrupo }) {
+  const { x, y, width, payload } = props
+  if (x === undefined || y === undefined || width === undefined || !payload) return null
+  const cx = x + width / 2
   return (
-    <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={11} fontWeight={600} fill={chartColors.primaryText}>
-      {formatoPct(value)}
-    </text>
-  )
-}
-
-function EtiquetaLinea(props: { x?: number; y?: number; value?: number }) {
-  const { x, y, value } = props
-  if (x === undefined || y === undefined || value === undefined) return null
-  return (
-    <text x={x} y={y - 10} textAnchor="middle" fontSize={11} fontWeight={600} fill={chartColors.orange}>
-      {formatoPct(value)}
-    </text>
+    <g>
+      <text x={cx} y={y - 21} textAnchor="middle" fontSize={11} fontWeight={700} fill={chartColors.blue}>
+        {formatoPct(payload.porcentajeMerma)}
+      </text>
+      <text x={cx} y={y - 8} textAnchor="middle" fontSize={11} fontWeight={700} fill={chartColors.orange}>
+        {formatoPct(payload.mermaDeFinca)}
+      </text>
+    </g>
   )
 }
 
@@ -78,11 +78,14 @@ export default function MermaGrupoChart({ data }: { data: PuntoMermaGrupo[] }) {
   }
 
   const ordenados = [...data].sort((a, b) => b.porcentajeMerma - a.porcentajeMerma)
-  const maximo = Math.max(100, ...ordenados.map((d) => Math.max(d.porcentajeMerma, d.mermaDeFinca)))
+  // Sin piso artificial de 100%: si el grupo más grande pesa, por ejemplo,
+  // 58%, el eje llega hasta 60% (no hasta 100%) para que las barras chicas
+  // no queden aplastadas contra el eje con su etiqueta sin espacio.
+  const maximo = Math.max(10, ...ordenados.map((d) => Math.max(d.porcentajeMerma, d.mermaDeFinca)))
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={ordenados} margin={{ top: 24, right: 16, left: 0, bottom: 0 }}>
+      <ComposedChart data={ordenados} margin={{ top: 34, right: 16, left: 0, bottom: 0 }}>
         <CartesianGrid vertical={false} stroke={chartColors.gridline} />
         <XAxis
           dataKey="grupo"
@@ -110,7 +113,7 @@ export default function MermaGrupoChart({ data }: { data: PuntoMermaGrupo[] }) {
           fill={chartColors.blue}
           radius={[4, 4, 0, 0]}
           maxBarSize={44}
-          label={<EtiquetaBarra />}
+          label={<EtiquetaCombinada />}
         />
         <Line
           dataKey="mermaDeFinca"
@@ -120,7 +123,6 @@ export default function MermaGrupoChart({ data }: { data: PuntoMermaGrupo[] }) {
           strokeWidth={2}
           dot={{ r: 4, fill: chartColors.orange, stroke: chartColors.surface, strokeWidth: 2 }}
           activeDot={{ r: 5 }}
-          label={<EtiquetaLinea />}
         />
       </ComposedChart>
     </ResponsiveContainer>
