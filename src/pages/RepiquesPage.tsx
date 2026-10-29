@@ -280,8 +280,6 @@ function ResumenGeneral({
               </tr>
             </Fragment>
           ))}
-        </tbody>
-        <tfoot>
           <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
             <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">Total general</td>
             {semanas.map((s) => (
@@ -290,7 +288,7 @@ function ResumenGeneral({
               </td>
             ))}
           </tr>
-        </tfoot>
+        </tbody>
       </table>
     </div>
   )
@@ -364,8 +362,10 @@ function DetalleFinca({
                   })}
                 </tr>
               ))}
-            </tbody>
-            <tfoot>
+              {/* Filas de totales como <tr> normales dentro del mismo tbody
+                  (no en <tfoot>): con celdas sticky, un <tfoot> aparte hace
+                  que Chrome en Android las posicione mal al desplazar y el
+                  texto termine montado sobre el de las columnas. */}
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
                 <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL lotes</td>
                 {semanas.map((s) => (
@@ -390,7 +390,7 @@ function DetalleFinca({
                   </td>
                 ))}
               </tr>
-            </tfoot>
+            </tbody>
           </table>
         </div>
       )}
