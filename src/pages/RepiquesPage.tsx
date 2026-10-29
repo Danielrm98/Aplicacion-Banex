@@ -240,7 +240,11 @@ function ResumenGeneral({
 
   return (
     <div className="max-h-[75vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-      <table className="w-full table-fixed border-collapse text-sm">
+      {/* border-separate (no border-collapse): con las celdas sticky de la
+          primera columna y del encabezado, border-collapse hace que el
+          navegador pinte mal los bordes al desplazar y el texto de una
+          fila se monta sobre el de otra. */}
+      <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
         <thead>
           <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
             <th className="sticky top-0 left-0 z-[3] w-[160px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
@@ -330,7 +334,8 @@ function DetalleFinca({
         </p>
       ) : (
         <div className="max-h-[75vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-          <table className="w-full table-fixed border-collapse text-sm">
+          {/* border-separate: ver nota en ResumenGeneral más arriba. */}
+          <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
                 <th className="sticky top-0 left-0 z-[3] w-[120px] border border-gray-200 bg-gray-50 py-2 pr-3 pl-4 font-medium">
