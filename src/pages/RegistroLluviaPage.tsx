@@ -8,6 +8,7 @@ import {
   obtenerTodaLaLluviaReportada,
 } from '../lib/useLluviaReportada'
 import { fechaLocalAyer, fechaLocalHoy } from '../lib/fechaLocal'
+import { getIsoWeek, getIsoYear } from '../lib/isoWeek'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import { exportLluviaToExcel } from '../lib/exportUtils'
@@ -147,6 +148,19 @@ function DetalleFinca({
     () => [...reportes].sort((a, b) => a.fecha.localeCompare(b.fecha)).map((r) => ({ fecha: r.fecha, milimetros: r.milimetros })),
     [reportes],
   )
+
+  const gruposPorSemana = useMemo(() => {
+    const map = new Map<string, GrupoSemana>()
+    for (const r of reportes) {
+      const anio = getIsoYear(r.fecha)
+      const semana = getIsoWeek(r.fecha)
+      const clave = `${anio}-${semana}`
+      const grupo = map.get(clave)
+      if (grupo) grupo.reportes.push(r)
+      else map.set(clave, { anio, semana, reportes: [r] })
+    }
+    return Array.from(map.values()).sort((a, b) => b.anio - a.anio || b.semana - a.semana)
+  }, [reportes])
 
   async function guardar(e: FormEvent) {
     e.preventDefault()
@@ -290,25 +304,91 @@ function DetalleFinca({
           Esta finca todavía no tiene lluvia reportada.
         </p>
       ) : (
-        <div className="max-h-[60vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-3">
+          {gruposPorSemana.map((grupo, idx) => (
+            <GrupoSemanaLluvia
+              key={`${grupo.anio}-${grupo.semana}`}
+              grupo={grupo}
+              defaultExpanded={idx === 0}
+              onEditar={editar}
+              onEliminar={eliminar}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface GrupoSemana {
+  anio: number
+  semana: number
+  reportes: LluviaReportada[]
+}
+
+function GrupoSemanaLluvia({
+  grupo,
+  defaultExpanded,
+  onEditar,
+  onEliminar,
+}: {
+  grupo: GrupoSemana
+  defaultExpanded: boolean
+  onEditar: (r: LluviaReportada) => void
+  onEliminar: (id: string) => void
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
+  const total = grupo.reportes.reduce((sum, r) => sum + r.milimetros, 0)
+  const fechas = [...grupo.reportes.map((r) => r.fecha)].sort()
+  const fechaMin = fechas[0]
+  const fechaMax = fechas[fechas.length - 1]
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex items-center gap-2 text-sm font-semibold text-banex-800">
+            <span className="h-3.5 w-1 shrink-0 rounded-full bg-banana-500" />
+            Semana {grupo.semana} · {grupo.anio}
+          </span>
+          <span className="text-xs text-gray-500">
+            {grupo.reportes.length} reporte{grupo.reportes.length === 1 ? '' : 's'}
+            {fechaMin && ` · ${fechaMin === fechaMax ? fechaMin : `${fechaMin} a ${fechaMax}`}`}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-sm font-semibold text-banex-800">
+            {total.toLocaleString('es', { maximumFractionDigits: 1 })} mm acumulados
+          </span>
+          <span className="rounded-md border border-banex-200 px-2 py-1 text-xs font-medium text-banex-700">
+            {expanded ? 'Colapsar ▲' : 'Ver reportes ▼'}
+          </span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-100">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="sticky top-0 border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+              <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
                 <th className="py-2 pr-3 pl-4 font-medium">Fecha</th>
                 <th className="px-2 py-2 text-center font-medium">Milímetros</th>
                 <th className="px-2 py-2 text-right font-medium"></th>
               </tr>
             </thead>
             <tbody>
-              {reportes.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100">
+              {grupo.reportes.map((r) => (
+                <tr key={r.id} className="border-b border-gray-100 last:border-0">
                   <td className="py-1.5 pr-3 pl-4 text-gray-900">{r.fecha}</td>
                   <td className="px-2 py-1.5 text-center text-gray-900">{r.milimetros}</td>
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
-                    <button onClick={() => editar(r)} className="text-xs font-medium text-banex-700 hover:underline">
+                    <button onClick={() => onEditar(r)} className="text-xs font-medium text-banex-700 hover:underline">
                       Editar
                     </button>
-                    <button onClick={() => eliminar(r.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
+                    <button onClick={() => onEliminar(r.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
                       Eliminar
                     </button>
                   </td>
