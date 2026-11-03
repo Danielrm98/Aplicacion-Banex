@@ -271,7 +271,7 @@ function ResumenGeneral({
                 </tr>
               ))}
               <tr className="border-b-2 border-banex-100 bg-banex-50/40 font-semibold text-banex-800">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/40 py-1.5 pr-3 pl-4">{empresa} - TOTAL</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4">{empresa} - TOTAL</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {totalEmpresa(fincasEmpresa, s).toLocaleString('es')}
@@ -281,7 +281,7 @@ function ResumenGeneral({
             </Fragment>
           ))}
           <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-            <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">Total general</td>
+            <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4">Total general</td>
             {semanas.map((s) => (
               <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                 {totalGeneral(s).toLocaleString('es')}
@@ -379,7 +379,7 @@ function DetalleFinca({
                 ))}
               </tr>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL lotes</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4">TOTAL lotes</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {totalSemana(s).toLocaleString('es')}
@@ -387,7 +387,7 @@ function DetalleFinca({
                 ))}
               </tr>
               <tr className="bg-red-50/50 text-red-700">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-red-50/50 py-1.5 pr-3 pl-4">Cosechado (finca)</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-red-50 py-1.5 pr-3 pl-4">Cosechado (finca)</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {cosechadoDe(finca.nombre, s) > 0 ? `-${cosechadoDe(finca.nombre, s).toLocaleString('es')}` : '—'}
@@ -395,7 +395,7 @@ function DetalleFinca({
                 ))}
               </tr>
               <tr className="border-t-2 border-banex-200 bg-banex-100/50 font-semibold text-banex-900">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-100/50 py-1.5 pr-3 pl-4">SALDO FINCA</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-100 py-1.5 pr-3 pl-4">SALDO FINCA</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {saldoFinca(s).toLocaleString('es')}
