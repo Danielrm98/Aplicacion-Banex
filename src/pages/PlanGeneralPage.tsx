@@ -383,7 +383,7 @@ export default function PlanGeneralPage() {
               {columnas.length > 0 && (
                 <tfoot>
                   <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                    <td className="sticky left-0 z-10 bg-banex-50/50 py-1.5 pr-3 pl-4">Total</td>
+                    <td className="sticky left-0 z-10 bg-banex-50 py-1.5 pr-3 pl-4">Total</td>
                     {columnas.map((ref) => (
                       <td key={ref} className="px-2 py-1.5 text-center">
                         {totalColumnaPallets(ref).toLocaleString('es', { maximumFractionDigits: 2 })}

@@ -175,7 +175,7 @@ function RecobroContenido() {
                     </tr>
                   ))}
                   <tr className="border-b-2 border-banex-100 bg-banex-50/40 font-semibold text-banex-800">
-                    <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/40 py-1.5 pr-3 pl-4">{empresa} - TOTAL</td>
+                    <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4">{empresa} - TOTAL</td>
                     {semanas.map((s) => (
                       <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                         {formatoPorcentaje(totalEmpresa(fincasEmpresa, s))}
@@ -187,7 +187,7 @@ function RecobroContenido() {
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">Total general</td>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4">Total general</td>
                 {semanas.map((s) => (
                   <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
                     {formatoPorcentaje(totalGeneral(s))}

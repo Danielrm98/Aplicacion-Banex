@@ -249,7 +249,7 @@ function ResumenGeneral({
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-            <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4" colSpan={2}>
+            <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4" colSpan={2}>
               Total general
             </td>
             {semanas.map((s) => (
@@ -305,7 +305,7 @@ function GrupoEmpresa({
         </tr>
       ))}
       <tr className="border-b-2 border-banex-100 bg-banex-50/40 font-semibold text-banex-800">
-        <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/40 py-1.5 pr-3 pl-4" colSpan={2}>
+        <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4" colSpan={2}>
           {empresa} - TOTAL
         </td>
         {semanas.map((s) => (
@@ -490,7 +490,7 @@ function DetalleFinca({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
-                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4" colSpan={2}>
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50 py-1.5 pr-3 pl-4" colSpan={2}>
                   TOTAL
                 </td>
                 {semanas.map((s) => (
