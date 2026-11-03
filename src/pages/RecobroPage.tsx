@@ -4,6 +4,7 @@ import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
 import { useEmbolses } from '../lib/useEmbolses'
+import { useRepiques } from '../lib/useRepiques'
 import { useCosechaEmbolse } from '../lib/useCosechaEmbolse'
 import { semanasDelAnio, type SemanaReal } from '../lib/anioEmbolses'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
@@ -39,6 +40,7 @@ function RecobroContenido() {
 
   const [anio, setAnio] = useState(() => new Date().getFullYear())
   const { embolses, loading: loadingEmbolses } = useEmbolses({ anios: [anio] })
+  const { repiques, loading: loadingRepiques } = useRepiques({ anios: [anio] })
   const { cosecha, loading: loadingCosecha } = useCosechaEmbolse({ anio })
 
   const semanas = useMemo(() => semanasDelAnio(anio), [anio])
@@ -73,6 +75,21 @@ function RecobroContenido() {
     return m
   }, [cosecha])
 
+  // Igual que embolsadoPorFinca: el repique es por lote, se agrega a nivel
+  // de finca para poder sumarlo junto con lo cosechado.
+  const repicadoPorFinca = useMemo(() => {
+    const m = new Map<string, Map<string, number>>()
+    for (const r of repiques) {
+      const finca = fincaPorLote.get(r.lote_id)
+      if (!finca) continue
+      if (!m.has(finca)) m.set(finca, new Map())
+      const porSemana = m.get(finca)!
+      const clave = claveSemana(r.anio_embolse, r.semana_embolse)
+      porSemana.set(clave, (porSemana.get(clave) ?? 0) + r.cantidad)
+    }
+    return m
+  }, [repiques, fincaPorLote])
+
   function embolsadoDe(finca: string, s: SemanaReal): number {
     return embolsadoPorFinca.get(finca)?.get(claveSemana(s.anio, s.semana)) ?? 0
   }
@@ -81,9 +98,15 @@ function RecobroContenido() {
     return cosechadoPorFinca.get(finca)?.get(claveSemana(s.anio, s.semana)) ?? 0
   }
 
-  function recobroDe(embolsado: number, cosechado: number): number | null {
+  function repicadoDe(finca: string, s: SemanaReal): number {
+    return repicadoPorFinca.get(finca)?.get(claveSemana(s.anio, s.semana)) ?? 0
+  }
+
+  // Recobro = (cosechado + repicado) ÷ embolsado — el repique también
+  // cuenta como recobrado de esa semana de embolse, no solo lo cosechado.
+  function recobroDe(embolsado: number, cosechado: number, repicado: number): number | null {
     if (embolsado <= 0) return null
-    return (cosechado / embolsado) * 100
+    return ((cosechado + repicado) / embolsado) * 100
   }
 
   const grupos = useMemo(() => {
@@ -99,13 +122,15 @@ function RecobroContenido() {
   function totalEmpresa(fincasEmpresa: Finca[], s: SemanaReal) {
     const embolsado = fincasEmpresa.reduce((sum, f) => sum + embolsadoDe(f.nombre, s), 0)
     const cosechado = fincasEmpresa.reduce((sum, f) => sum + cosechadoDe(f.nombre, s), 0)
-    return recobroDe(embolsado, cosechado)
+    const repicado = fincasEmpresa.reduce((sum, f) => sum + repicadoDe(f.nombre, s), 0)
+    return recobroDe(embolsado, cosechado, repicado)
   }
 
   function totalGeneral(s: SemanaReal) {
     const embolsado = fincasOrdenadas.reduce((sum, f) => sum + embolsadoDe(f.nombre, s), 0)
     const cosechado = fincasOrdenadas.reduce((sum, f) => sum + cosechadoDe(f.nombre, s), 0)
-    return recobroDe(embolsado, cosechado)
+    const repicado = fincasOrdenadas.reduce((sum, f) => sum + repicadoDe(f.nombre, s), 0)
+    return recobroDe(embolsado, cosechado, repicado)
   }
 
   function formatoPorcentaje(valor: number | null) {
@@ -116,9 +141,9 @@ function RecobroContenido() {
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Recobro</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Porcentaje de recuperación de cada semana de embolse: cuánto de lo embolsado se llegó a cosechar (Cosechado ÷
-        Embolsado), por finca. Como Registrar guarda la cosecha por finca (sin lote), este reporte es por finca, no
-        por lote.
+        Porcentaje de recuperación de cada semana de embolse: cuánto de lo embolsado se llegó a cosechar o se repicó
+        ((Cosechado + Repicado) ÷ Embolsado), por finca. Como Registrar guarda la cosecha por finca (sin lote), este
+        reporte es por finca, no por lote.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -133,7 +158,7 @@ function RecobroContenido() {
         </label>
       </div>
 
-      {loadingLotes || loadingEmbolses || loadingCosecha ? (
+      {loadingLotes || loadingEmbolses || loadingRepiques || loadingCosecha ? (
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
       ) : (
         <div className="max-h-[75vh] overflow-auto rounded-xl border border-gray-100 bg-white shadow-sm">
@@ -169,7 +194,7 @@ function RecobroContenido() {
                       </td>
                       {semanas.map((s) => (
                         <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
-                          {formatoPorcentaje(recobroDe(embolsadoDe(f.nombre, s), cosechadoDe(f.nombre, s)))}
+                          {formatoPorcentaje(recobroDe(embolsadoDe(f.nombre, s), cosechadoDe(f.nombre, s), repicadoDe(f.nombre, s)))}
                         </td>
                       ))}
                     </tr>
