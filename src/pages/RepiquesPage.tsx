@@ -311,6 +311,10 @@ function DetalleFinca({
   netoDe: (loteId: string, s: SemanaReal) => number
   cosechadoDe: (finca: string, s: SemanaReal) => number
 }) {
+  function totalRepicadoSemana(s: SemanaReal) {
+    return lotes.reduce((sum, l) => sum + repicadoDe(l.id, s), 0)
+  }
+
   function totalSemana(s: SemanaReal) {
     return lotes.reduce((sum, l) => sum + netoDe(l.id, s), 0)
   }
@@ -366,6 +370,14 @@ function DetalleFinca({
                   (no en <tfoot>): con celdas sticky, un <tfoot> aparte hace
                   que Chrome en Android las posicione mal al desplazar y el
                   texto termine montado sobre el de las columnas. */}
+              <tr className="border-t-2 border-gray-200 bg-gray-50 text-gray-600">
+                <td className="sticky left-0 z-[1] border border-gray-200 bg-gray-50 py-1.5 pr-3 pl-4">Total repicado</td>
+                {semanas.map((s) => (
+                  <td key={claveSemana(s.anio, s.semana)} className="border border-gray-200 px-2 py-1.5 text-center">
+                    {totalRepicadoSemana(s) > 0 ? `-${totalRepicadoSemana(s).toLocaleString('es')}` : '—'}
+                  </td>
+                ))}
+              </tr>
               <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
                 <td className="sticky left-0 z-[1] border border-gray-200 bg-banex-50/50 py-1.5 pr-3 pl-4">TOTAL lotes</td>
                 {semanas.map((s) => (
