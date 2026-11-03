@@ -13,6 +13,7 @@ import {
 } from '../types/produccion'
 import type { Finca } from '../types/finca'
 import { resumenDesdeProduccion } from '../lib/shareSummary'
+import { normalizarReferencia } from '../lib/normalizarReferencia'
 import ShareSummaryPanel from './ShareSummaryPanel'
 
 function horaRegistro(createdAt: string): string {
@@ -733,7 +734,7 @@ function ItemRow({
   const [busy, setBusy] = useState(false)
 
   function catalogoDe(referencia: string) {
-    const limpia = referencia.replace(/\s/g, '')
+    const limpia = normalizarReferencia(referencia)
     return referencias.find((r) => r.marca === limpia) ?? null
   }
 
@@ -820,7 +821,7 @@ function ItemRow({
           list="referencias-catalogo"
           autoComplete="off"
           value={draft.referencia}
-          onChange={(e) => setDraft((d) => ({ ...d, referencia: e.target.value.replace(/\s/g, '') }))}
+          onChange={(e) => setDraft((d) => ({ ...d, referencia: e.target.value }))}
           className={cellInput}
         />
       </td>
@@ -868,7 +869,7 @@ function NuevaReferenciaRow({
   const [error, setError] = useState<string | null>(null)
 
   function catalogoDe(valor: string) {
-    const limpia = valor.replace(/\s/g, '')
+    const limpia = normalizarReferencia(valor)
     return referencias.find((r) => r.marca === limpia) ?? null
   }
 
@@ -912,7 +913,7 @@ function NuevaReferenciaRow({
             autoComplete="off"
             placeholder="Referencia"
             value={referencia}
-            onChange={(e) => setReferencia(e.target.value.replace(/\s/g, ''))}
+            onChange={(e) => setReferencia(e.target.value)}
             className={cellInput}
           />
         </td>

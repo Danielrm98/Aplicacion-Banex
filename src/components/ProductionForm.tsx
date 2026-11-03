@@ -21,6 +21,7 @@ import {
   TIPOS_TRANSPORTE,
   type ProduccionHeaderInput,
 } from '../types/produccion'
+import { normalizarReferencia } from '../lib/normalizarReferencia'
 
 // GOLONDRINA NUEVA, GOLONDRINA VIEJA y LAS DELICIAS se unificaron en sus
 // fincas de destino a partir de la semana 42/2026 (lunes 2026-10-12): ya no
@@ -262,12 +263,12 @@ export default function ProductionForm({
   }
 
   function pesoDe(referencia: string) {
-    const limpia = referencia.replace(/\s/g, '')
+    const limpia = normalizarReferencia(referencia)
     return referencias.find((r) => r.marca === limpia)?.peso_neto_kg ?? null
   }
 
   function factorDe(referencia: string) {
-    const limpia = referencia.replace(/\s/g, '')
+    const limpia = normalizarReferencia(referencia)
     return referencias.find((r) => r.marca === limpia)?.factor_conversion ?? null
   }
 
@@ -356,7 +357,7 @@ export default function ProductionForm({
       header,
       items: items.map((item) => ({
         id: crypto.randomUUID(),
-        referencia: item.referencia.replace(/\s/g, ''),
+        referencia: normalizarReferencia(item.referencia),
         cantidad_cajas: item.cantidad_cajas,
         peso_neto_kg: pesoDe(item.referencia) ?? 0,
         cajas_20kg: cajas20kgDe(item) ?? 0,
@@ -705,7 +706,7 @@ export default function ProductionForm({
                         list="referencias-catalogo"
                         autoComplete="off"
                         value={item.referencia}
-                        onChange={(e) => updateItem(item.key, 'referencia', e.target.value.replace(/\s/g, ''))}
+                        onChange={(e) => updateItem(item.key, 'referencia', e.target.value)}
                         className={inputClass}
                         placeholder={loadingReferencias ? 'Cargando...' : 'Escribe o elige una referencia'}
                       />
