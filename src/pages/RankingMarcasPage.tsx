@@ -135,23 +135,23 @@ function CajasPorHectareaTab() {
     return todas.filter((f) => f.fecha.slice(0, 4) === String(anio))
   }, [registros, anio])
 
-  const cajasPorFinca = useMemo(() => sumarCajasPorClave(filasAnio, (f) => f.finca), [filasAnio])
+  const cajas20kgPorFinca = useMemo(() => sumarCajas20kgPorClave(filasAnio, (f) => f.finca), [filasAnio])
 
-  const cajasPorFincaYMes = useMemo(
-    () => sumarCajasPorClave(filasAnio, (f) => claveFincaPeriodo(f.finca, Number(f.fecha.slice(5, 7)))),
+  const cajas20kgPorFincaYMes = useMemo(
+    () => sumarCajas20kgPorClave(filasAnio, (f) => claveFincaPeriodo(f.finca, Number(f.fecha.slice(5, 7)))),
     [filasAnio],
   )
 
-  const cajasPorFincaYSemana = useMemo(
-    () => sumarCajasPorClave(filasAnio, (f) => claveFincaPeriodo(f.finca, f.semana)),
+  const cajas20kgPorFincaYSemana = useMemo(
+    () => sumarCajas20kgPorClave(filasAnio, (f) => claveFincaPeriodo(f.finca, f.semana)),
     [filasAnio],
   )
 
   const semanas = useMemo(() => semanasDelAnio(anio), [anio])
 
-  function cajasHaDe(finca: Finca, cajas: number): number | null {
+  function cajasHaDe(finca: Finca, cajas20kg: number): number | null {
     if (!finca.hectareas || finca.hectareas <= 0) return null
-    return cajas / finca.hectareas
+    return cajas20kg / finca.hectareas
   }
 
   function formatoCajasHa(valor: number | null) {
@@ -161,8 +161,8 @@ function CajasPorHectareaTab() {
   return (
     <div>
       <p className="mb-4 text-sm text-gray-500">
-        Cajas producidas por cada hectárea de finca (Cajas ÷ Hectáreas), para comparar el rendimiento entre fincas sin
-        importar su tamaño.
+        Cajas de 20kg producidas por cada hectárea de finca (Cajas 20kg ÷ Hectáreas), para comparar el rendimiento
+        entre fincas sin importar su tamaño.
       </p>
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -196,12 +196,12 @@ function CajasPorHectareaTab() {
       ) : fincasOrdenadas.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay fincas en el catálogo.</p>
       ) : agrupacion === 'anio' ? (
-        <TablaAnioCompleto fincas={fincasOrdenadas} cajasPorFinca={cajasPorFinca} cajasHaDe={cajasHaDe} />
+        <TablaAnioCompleto fincas={fincasOrdenadas} cajas20kgPorFinca={cajas20kgPorFinca} cajasHaDe={cajasHaDe} />
       ) : agrupacion === 'mes' ? (
         <TablaMatriz
           fincas={fincasOrdenadas}
           columnas={MESES_CORTO.map((nombre, idx) => ({ clave: idx + 1, titulo: nombre }))}
-          cajasPorFincaYPeriodo={cajasPorFincaYMes}
+          cajas20kgPorFincaYPeriodo={cajas20kgPorFincaYMes}
           cajasHaDe={cajasHaDe}
           formatoCajasHa={formatoCajasHa}
         />
@@ -209,7 +209,7 @@ function CajasPorHectareaTab() {
         <TablaMatriz
           fincas={fincasOrdenadas}
           columnas={semanas.map((s) => ({ clave: s.semana, titulo: String(s.semana) }))}
-          cajasPorFincaYPeriodo={cajasPorFincaYSemana}
+          cajas20kgPorFincaYPeriodo={cajas20kgPorFincaYSemana}
           cajasHaDe={cajasHaDe}
           formatoCajasHa={formatoCajasHa}
         />
@@ -218,32 +218,32 @@ function CajasPorHectareaTab() {
   )
 }
 
-function sumarCajasPorClave(filas: FilaProduccion[], claveDe: (f: FilaProduccion) => string): Map<string, number> {
+function sumarCajas20kgPorClave(filas: FilaProduccion[], claveDe: (f: FilaProduccion) => string): Map<string, number> {
   const map = new Map<string, number>()
   for (const f of filas) {
-    map.set(claveDe(f), (map.get(claveDe(f)) ?? 0) + f.cantidad_cajas)
+    map.set(claveDe(f), (map.get(claveDe(f)) ?? 0) + f.cajas_20kg)
   }
   return map
 }
 
 function TablaAnioCompleto({
   fincas,
-  cajasPorFinca,
+  cajas20kgPorFinca,
   cajasHaDe,
 }: {
   fincas: Finca[]
-  cajasPorFinca: Map<string, number>
-  cajasHaDe: (finca: Finca, cajas: number) => number | null
+  cajas20kgPorFinca: Map<string, number>
+  cajasHaDe: (finca: Finca, cajas20kg: number) => number | null
 }) {
   const filas = useMemo(
     () =>
       fincas
         .map((f) => {
-          const cajas = cajasPorFinca.get(f.nombre) ?? 0
-          return { finca: f, cajas, cajasHa: cajasHaDe(f, cajas) }
+          const cajas20kg = cajas20kgPorFinca.get(f.nombre) ?? 0
+          return { finca: f, cajas20kg, cajasHa: cajasHaDe(f, cajas20kg) }
         })
         .sort((a, b) => (b.cajasHa ?? -1) - (a.cajasHa ?? -1)),
-    [fincas, cajasPorFinca, cajasHaDe],
+    [fincas, cajas20kgPorFinca, cajasHaDe],
   )
 
   return (
@@ -254,8 +254,8 @@ function TablaAnioCompleto({
             <th className="py-2 pr-3 pl-4 font-medium">#</th>
             <th className="py-2 pr-3 font-medium">Finca</th>
             <th className="py-2 pr-3 text-right font-medium">Hectáreas</th>
-            <th className="py-2 pr-3 text-right font-medium">Cajas (año)</th>
-            <th className="py-2 pr-4 text-right font-medium">Cajas/ha</th>
+            <th className="py-2 pr-3 text-right font-medium">Cajas 20kg (año)</th>
+            <th className="py-2 pr-4 text-right font-medium">Cajas 20kg/ha</th>
           </tr>
         </thead>
         <tbody>
@@ -266,7 +266,9 @@ function TablaAnioCompleto({
               <td className="py-1.5 pr-3 text-right text-gray-500">
                 {f.finca.hectareas != null ? f.finca.hectareas.toLocaleString('es') : '—'}
               </td>
-              <td className="py-1.5 pr-3 text-right text-gray-700">{f.cajas.toLocaleString('es')}</td>
+              <td className="py-1.5 pr-3 text-right text-gray-700">
+                {f.cajas20kg.toLocaleString('es', { maximumFractionDigits: 2 })}
+              </td>
               <td className="py-1.5 pr-4 text-right font-semibold text-banex-800">
                 {f.cajasHa !== null ? f.cajasHa.toLocaleString('es', { maximumFractionDigits: 1 }) : '—'}
               </td>
@@ -281,14 +283,14 @@ function TablaAnioCompleto({
 function TablaMatriz({
   fincas,
   columnas,
-  cajasPorFincaYPeriodo,
+  cajas20kgPorFincaYPeriodo,
   cajasHaDe,
   formatoCajasHa,
 }: {
   fincas: Finca[]
   columnas: { clave: number; titulo: string }[]
-  cajasPorFincaYPeriodo: Map<string, number>
-  cajasHaDe: (finca: Finca, cajas: number) => number | null
+  cajas20kgPorFincaYPeriodo: Map<string, number>
+  cajasHaDe: (finca: Finca, cajas20kg: number) => number | null
   formatoCajasHa: (valor: number | null) => string
 }) {
   return (
@@ -316,8 +318,8 @@ function TablaMatriz({
                 {f.nombre}
               </td>
               {columnas.map((c) => {
-                const cajas = cajasPorFincaYPeriodo.get(claveFincaPeriodo(f.nombre, c.clave)) ?? 0
-                const cajasHa = cajas > 0 ? cajasHaDe(f, cajas) : f.hectareas && f.hectareas > 0 ? 0 : null
+                const cajas20kg = cajas20kgPorFincaYPeriodo.get(claveFincaPeriodo(f.nombre, c.clave)) ?? 0
+                const cajasHa = cajas20kg > 0 ? cajasHaDe(f, cajas20kg) : f.hectareas && f.hectareas > 0 ? 0 : null
                 return (
                   <td key={c.clave} className="border border-gray-200 px-2 py-1.5 text-center">
                     {formatoCajasHa(cajasHa)}
