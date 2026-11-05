@@ -20,6 +20,7 @@ import RegistroRepiquePage from './pages/RegistroRepiquePage'
 import RecobroPage from './pages/RecobroPage'
 import RegistroLluviaPage from './pages/RegistroLluviaPage'
 import EvaluacionBandaPage from './pages/EvaluacionBandaPage'
+import RankingMarcasPage from './pages/RankingMarcasPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
   const { session, loading } = useAuth()
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="/registro-repique" element={<RegistroRepiquePage />} />
         <Route path="/recobro" element={<RecobroPage />} />
         <Route path="/evaluacion-banda" element={<EvaluacionBandaPage />} />
+        <Route path="/ranking-marcas" element={<RankingMarcasPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

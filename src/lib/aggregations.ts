@@ -30,6 +30,32 @@ export function flattenItems(registros: Produccion[]): FilaProduccion[] {
   )
 }
 
+export interface PuntoReferencia {
+  referencia: string
+  cajas: number
+  cajas20kg: number
+  fincas: number
+}
+
+/** Para el ranking de marcas: cuántas cajas se produjeron de cada
+ * referencia, de mayor a menor. "fincas" es cuántas fincas distintas
+ * llegaron a producir esa marca, dentro del mismo filtro. */
+export function cajasPorReferencia(filas: FilaProduccion[]): PuntoReferencia[] {
+  const map = new Map<string, { cajas: number; cajas20kg: number; fincas: Set<string> }>()
+
+  for (const f of filas) {
+    const acc = map.get(f.referencia) ?? { cajas: 0, cajas20kg: 0, fincas: new Set<string>() }
+    acc.cajas += f.cantidad_cajas
+    acc.cajas20kg += f.cajas_20kg
+    acc.fincas.add(f.finca)
+    map.set(f.referencia, acc)
+  }
+
+  return Array.from(map.entries())
+    .map(([referencia, acc]) => ({ referencia, cajas: acc.cajas, cajas20kg: acc.cajas20kg, fincas: acc.fincas.size }))
+    .sort((a, b) => b.cajas - a.cajas)
+}
+
 export function porFecha(filas: FilaProduccion[]): PuntoFecha[] {
   const map = new Map<string, number>()
 

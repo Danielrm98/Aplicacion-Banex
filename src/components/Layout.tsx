@@ -21,6 +21,7 @@ const navItems = [
   { to: '/recobro', label: 'Recobro', icon: '💹' },
   { to: '/registros', label: 'Historial', icon: '🗂️' },
   { to: '/reportes', label: 'Reportes', icon: '📈' },
+  { to: '/ranking-marcas', label: 'Ranking de marcas', icon: '🏆' },
   { to: '/especificaciones', label: 'Especificaciones', icon: '📄' },
   { to: '/catalogo', label: 'Catálogo', icon: '⚙️' },
 ]
