@@ -1,8 +1,9 @@
 import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import type { FilaCompleta, FilaProduccion, ResumenDiaFinca } from './aggregations'
-import type { Produccion } from '../types/produccion'
+import { resumenPorDiaFinca, type FilaCompleta, type FilaProduccion, type ResumenDiaFinca } from './aggregations'
+import { SEMANAS_RACIMO, type Produccion } from '../types/produccion'
+import type { Finca } from '../types/finca'
 import type { VentaCanastilla } from '../types/ventaCanastilla'
 import { diaSemana } from './diaSemana'
 import { posicionFinca } from './ordenFincas'
@@ -212,6 +213,158 @@ export async function exportFilaCompletaToExcel(
 
   agregarHojaTransporte(workbook, registros)
   agregarHojaVentas(workbook, ventas)
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
+}
+
+interface FilaBanasanDetalle {
+  grupo: string
+  semana: number
+  diaCorte: string
+  finca: string
+  referencia: string
+  cantidad: number
+}
+
+const columnasBanasanDetalle: { header: string; key: keyof FilaBanasanDetalle; width?: number }[] = [
+  { header: 'Grupo', key: 'grupo', width: 20 },
+  { header: 'Sema', key: 'semana', width: 8 },
+  { header: 'Dia Corte', key: 'diaCorte', width: 12 },
+  { header: 'Finca', key: 'finca', width: 20 },
+  { header: 'Referencia/Variable', key: 'referencia', width: 20 },
+  { header: 'Cantidad', key: 'cantidad', width: 12 },
+]
+
+interface FilaBanasanResumen {
+  grupo: string
+  semana: number
+  diaCorte: string
+  finca: string
+  racimosSemana7: number
+  racimosSemana8: number
+  racimosSemana9: number
+  racimosSemana10: number
+  racimosSemana11: number
+  racimosSemana12: number
+  areaRecorridaAcumulada: number
+  pesoNetoRacimo: number | ''
+  racimosRecusados: number
+  ratio: number | ''
+  merma: number | ''
+}
+
+const columnasBanasanResumen: { header: string; key: keyof FilaBanasanResumen; width?: number }[] = [
+  { header: 'Grupo', key: 'grupo', width: 20 },
+  { header: 'Semana', key: 'semana', width: 10 },
+  { header: 'Dia Corte', key: 'diaCorte', width: 12 },
+  { header: 'Finca', key: 'finca', width: 20 },
+  { header: 'Racimos S7', key: 'racimosSemana7', width: 12 },
+  { header: 'Racimos S8', key: 'racimosSemana8', width: 12 },
+  { header: 'Racimos S9', key: 'racimosSemana9', width: 12 },
+  { header: 'Racimos S10', key: 'racimosSemana10', width: 12 },
+  { header: 'Racimos S11', key: 'racimosSemana11', width: 12 },
+  { header: 'Racimos S12', key: 'racimosSemana12', width: 12 },
+  { header: 'Área recorrida acumulada (ha)', key: 'areaRecorridaAcumulada', width: 22 },
+  { header: 'Peso neto de racimo (kg)', key: 'pesoNetoRacimo', width: 18 },
+  { header: 'Racimos recusados', key: 'racimosRecusados', width: 16 },
+  { header: 'Ratio de corte', key: 'ratio', width: 12 },
+  { header: 'Merma de corte (%)', key: 'merma', width: 16 },
+]
+
+// Acumulado del área recorrida dentro de la misma semana (año + número de
+// semana), sumando día a día hasta el registro en cuestión — igual que el
+// acumulado que ya se muestra en el formulario de registro.
+function areaAcumuladaPorRegistro(registros: Produccion[]): Map<string, number> {
+  const porFincaSemana = new Map<string, Produccion[]>()
+  for (const r of registros) {
+    const clave = `${r.finca}::${r.fecha.slice(0, 4)}::${r.semana}`
+    const lista = porFincaSemana.get(clave) ?? []
+    lista.push(r)
+    porFincaSemana.set(clave, lista)
+  }
+
+  const acumulado = new Map<string, number>()
+  for (const lista of porFincaSemana.values()) {
+    const ordenada = [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha))
+    let suma = 0
+    for (const r of ordenada) {
+      suma += r.area_recorrida ?? 0
+      acumulado.set(r.id, suma)
+    }
+  }
+  return acumulado
+}
+
+export async function exportBanasanToExcel(registros: Produccion[], fincas: Finca[], filename = 'excel_banasan.xlsx') {
+  const empresaPorFinca = new Map(fincas.map((f) => [f.nombre, f.empresa ?? '']))
+  const ordenados = registros
+    .filter((r) => empresaPorFinca.has(r.finca))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca))
+
+  const areaAcumulada = areaAcumuladaPorRegistro(ordenados)
+  const resumenes = resumenPorDiaFinca(ordenados)
+
+  const workbook = new ExcelJS.Workbook()
+
+  const sheetDetalle = workbook.addWorksheet('Detalle')
+  sheetDetalle.columns = columnasBanasanDetalle.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
+  sheetDetalle.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheetDetalle, columnasBanasanDetalle)
+
+  for (const r of ordenados) {
+    const grupo = empresaPorFinca.get(r.finca) ?? ''
+    const diaCorte = diaSinTilde(diaSemana(r.fecha)).toUpperCase()
+    for (const item of r.items) {
+      sheetDetalle.addRow({
+        grupo,
+        semana: r.semana,
+        diaCorte,
+        finca: r.finca,
+        referencia: item.referencia,
+        cantidad: item.cantidad_cajas,
+      })
+    }
+    for (const s of SEMANAS_RACIMO) {
+      const cantidad = r[`racimos_semana_${s}` as const]
+      if (cantidad > 0) {
+        sheetDetalle.addRow({
+          grupo,
+          semana: r.semana,
+          diaCorte,
+          finca: r.finca,
+          referencia: `RACIMOS ${s} SEM`,
+          cantidad,
+        })
+      }
+    }
+  }
+
+  const sheetResumen = workbook.addWorksheet('Resumen de corte')
+  sheetResumen.columns = columnasBanasanResumen.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
+  sheetResumen.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheetResumen, columnasBanasanResumen)
+
+  ordenados.forEach((r, i) => {
+    const resumen = resumenes[i]
+    sheetResumen.addRow({
+      grupo: empresaPorFinca.get(r.finca) ?? '',
+      semana: r.semana,
+      diaCorte: diaSinTilde(resumen.dia).toUpperCase(),
+      finca: r.finca,
+      racimosSemana7: resumen.racimosSemana7,
+      racimosSemana8: resumen.racimosSemana8,
+      racimosSemana9: resumen.racimosSemana9,
+      racimosSemana10: resumen.racimosSemana10,
+      racimosSemana11: resumen.racimosSemana11,
+      racimosSemana12: resumen.racimosSemana12,
+      areaRecorridaAcumulada: areaAcumulada.get(r.id) ?? 0,
+      pesoNetoRacimo: resumen.pesoNetoRacimo !== null ? Number(resumen.pesoNetoRacimo.toFixed(2)) : '',
+      racimosRecusados: resumen.racimosRecusados,
+      ratio: resumen.ratio !== null ? Number(resumen.ratio.toFixed(2)) : '',
+      merma: resumen.merma !== null ? Number(resumen.merma.toFixed(1)) : '',
+    })
+  })
 
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
