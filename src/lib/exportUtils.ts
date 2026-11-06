@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { resumenPorDiaFinca, type FilaCompleta, type FilaProduccion, type ResumenDiaFinca } from './aggregations'
-import { SEMANAS_RACIMO, type Produccion } from '../types/produccion'
+import type { Produccion } from '../types/produccion'
 import type { Finca } from '../types/finca'
 import type { VentaCanastilla } from '../types/ventaCanastilla'
 import { diaSemana } from './diaSemana'
@@ -232,7 +232,7 @@ const columnasBanasanDetalle: { header: string; key: keyof FilaBanasanDetalle; w
   { header: 'Sema', key: 'semana', width: 8 },
   { header: 'Dia Corte', key: 'diaCorte', width: 12 },
   { header: 'Finca', key: 'finca', width: 20 },
-  { header: 'Referencia/Variable', key: 'referencia', width: 20 },
+  { header: 'Referencia', key: 'referencia', width: 20 },
   { header: 'Cantidad', key: 'cantidad', width: 12 },
 ]
 
@@ -307,7 +307,7 @@ export async function exportBanasanToExcel(registros: Produccion[], fincas: Finc
 
   const workbook = new ExcelJS.Workbook()
 
-  const sheetDetalle = workbook.addWorksheet('Detalle')
+  const sheetDetalle = workbook.addWorksheet('Producción diaria')
   sheetDetalle.columns = columnasBanasanDetalle.map((c) => ({ header: c.header, key: c.key as string, width: c.width }))
   sheetDetalle.getRow(1).font = { bold: true }
   fijarEncabezadoYFiltro(sheetDetalle, columnasBanasanDetalle)
@@ -324,19 +324,6 @@ export async function exportBanasanToExcel(registros: Produccion[], fincas: Finc
         referencia: item.referencia,
         cantidad: item.cantidad_cajas,
       })
-    }
-    for (const s of SEMANAS_RACIMO) {
-      const cantidad = r[`racimos_semana_${s}` as const]
-      if (cantidad > 0) {
-        sheetDetalle.addRow({
-          grupo,
-          semana: r.semana,
-          diaCorte,
-          finca: r.finca,
-          referencia: `RACIMOS ${s} SEM`,
-          cantidad,
-        })
-      }
     }
   }
 
