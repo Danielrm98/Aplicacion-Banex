@@ -3,6 +3,21 @@ import { limpiarCacheIdb } from './bdOffline'
 const LIMITE_MS_DEFECTO = 4000
 const PREFIJO_CACHE = 'approban_cache_'
 const CLAVE_ULTIMO_USUARIO = 'approban_ultimo_usuario_id'
+const CLAVE_VERSION_CACHE = 'approban_cache_version'
+// Subir este número invalida de una sola vez el caché guardado en todos los
+// dispositivos (local Storage + IndexedDB), sin importar el usuario ni si
+// cambió de cuenta — para cuando un dispositivo quedó con una mezcla vieja
+// de datos (por ejemplo, de antes de separar el caché por usuario) y no
+// basta con detectar el cambio de cuenta porque ya venía arrastrando algo
+// de antes con la MISMA cuenta.
+const VERSION_CACHE = 1
+
+async function borrarTodoElCache() {
+  for (const clave of Object.keys(localStorage)) {
+    if (clave.startsWith(PREFIJO_CACHE)) localStorage.removeItem(clave)
+  }
+  await limpiarCacheIdb()
+}
 
 /**
  * El caché vive en localStorage (claves fijas como "approban_cache_fincas")
@@ -12,19 +27,23 @@ const CLAVE_ULTIMO_USUARIO = 'approban_ultimo_usuario_id'
  * distinta se vería por un instante — o de forma inconsistente según cuándo
  * termine de llegar la respuesta real — lo que había quedado cacheado de esa
  * otra cuenta. Se borra todo (ambos almacenes) apenas se detecta que cambió
- * el usuario que tiene sesión activa en este dispositivo, antes de dejar
- * pasar la sesión nueva, para que ningún componente llegue a leer esa
- * mezcla.
+ * el usuario que tiene sesión activa en este dispositivo, o que este
+ * dispositivo todavía no vio la versión de caché más reciente (para limpiar
+ * de una vez lo que haya quedado mezclado de antes, aunque sea con la misma
+ * cuenta) — antes de dejar pasar la sesión, para que ningún componente
+ * llegue a leer esa mezcla.
  */
 export async function limpiarCacheSiCambioDeUsuario(userId: string): Promise<void> {
   try {
+    // Sin señal, el caché es lo único con que cuenta el operario para seguir
+    // trabajando: no se toca hasta que vuelva la conexión.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
     const anterior = localStorage.getItem(CLAVE_ULTIMO_USUARIO)
-    if (anterior && anterior !== userId) {
-      for (const clave of Object.keys(localStorage)) {
-        if (clave.startsWith(PREFIJO_CACHE)) localStorage.removeItem(clave)
-      }
-      await limpiarCacheIdb()
+    const versionGuardada = localStorage.getItem(CLAVE_VERSION_CACHE)
+    if (versionGuardada !== String(VERSION_CACHE) || (anterior && anterior !== userId)) {
+      await borrarTodoElCache()
     }
+    localStorage.setItem(CLAVE_VERSION_CACHE, String(VERSION_CACHE))
     localStorage.setItem(CLAVE_ULTIMO_USUARIO, userId)
   } catch {
     // localStorage no disponible: no hay caché que limpiar, sin consecuencia.
