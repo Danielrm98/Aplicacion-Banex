@@ -75,3 +75,15 @@ export async function guardarCacheIdb<T>(clave: string, data: T): Promise<void> 
     // Sin IndexedDB no queda respaldo sin señal, pero la app sigue funcionando con conexión.
   }
 }
+
+/** Borra todo lo guardado en este almacén (embolses, repiques, cosecha,
+ * etc.). Se usa al detectar que cambió el usuario con sesión activa en el
+ * dispositivo, para no arrastrar lo que había quedado guardado de otra
+ * cuenta con distinto acceso. */
+export async function limpiarCacheIdb(): Promise<void> {
+  try {
+    await conAlmacen<undefined>(ALMACEN_CACHE, 'readwrite', (almacen) => almacen.clear())
+  } catch {
+    // Sin IndexedDB no hay nada que limpiar.
+  }
+}

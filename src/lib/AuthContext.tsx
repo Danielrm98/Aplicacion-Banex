@@ -29,17 +29,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     Promise.race([supabase.auth.getSession().then(({ data }) => data.session), limite])
       .catch(() => null)
-      .then((resultado) => {
+      .then(async (resultado) => {
         if (!activo) return
         const sesionFinal = resultado === 'limite' || !resultado ? leerSesionGuardada() : resultado
-        if (sesionFinal) limpiarCacheSiCambioDeUsuario(sesionFinal.user.id)
+        if (sesionFinal) await limpiarCacheSiCambioDeUsuario(sesionFinal.user.id)
+        if (!activo) return
         setSession(sesionFinal)
         setLoading(false)
       })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
       if (!activo) return
-      if (newSession) limpiarCacheSiCambioDeUsuario(newSession.user.id)
+      if (newSession) await limpiarCacheSiCambioDeUsuario(newSession.user.id)
+      if (!activo) return
       setSession(newSession)
     })
 
