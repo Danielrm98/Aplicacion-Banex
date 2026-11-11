@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { conCacheLocal, leerCacheLocal } from '../lib/consultaConCache'
 import { useAuth } from '../lib/AuthContext'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { useReferencias } from '../lib/useReferencias'
 import { useProducciones } from '../lib/useProducciones'
@@ -18,6 +18,7 @@ const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanGeneralPage() {
   const { perfil } = usePerfil()
+  const escritura = puedeEscribir(perfil)
   const { session } = useAuth()
   const { fincas: fincasSinOrdenar } = useFincas()
   const fincas = useMemo(
@@ -293,13 +294,15 @@ export default function PlanGeneralPage() {
           />
         </label>
 
-        <button
-          onClick={guardarTodo}
-          disabled={guardando || loading}
-          className="ml-auto rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
-        >
-          {guardando ? 'Guardando...' : 'Guardar cuadrícula'}
-        </button>
+        {escritura && (
+          <button
+            onClick={guardarTodo}
+            disabled={guardando || loading}
+            className="ml-auto rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md disabled:opacity-50"
+          >
+            {guardando ? 'Guardando...' : 'Guardar cuadrícula'}
+          </button>
+        )}
       </div>
 
       {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
@@ -319,14 +322,16 @@ export default function PlanGeneralPage() {
                       <th key={ref} className="min-w-[110px] px-2 py-2 text-center font-medium">
                         <div className="flex items-center justify-center gap-1">
                           <span>{ref}</span>
-                          <button
-                            type="button"
-                            onClick={() => quitarColumna(ref)}
-                            title="Quitar esta referencia del plan general"
-                            className="text-gray-300 hover:text-red-600"
-                          >
-                            ✕
-                          </button>
+                          {escritura && (
+                            <button
+                              type="button"
+                              onClick={() => quitarColumna(ref)}
+                              title="Quitar esta referencia del plan general"
+                              className="text-gray-300 hover:text-red-600"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
                         {cat && <div className="text-[10px] font-normal text-gray-400">{cat.cajas_pallet} cajas/pallet</div>}
                       </th>
@@ -359,6 +364,7 @@ export default function PlanGeneralPage() {
                               type="number"
                               min={0}
                               step="0.1"
+                              disabled={!escritura}
                               value={valor}
                               onChange={(e) => setCelda(f.nombre, ref, e.target.value)}
                               onKeyDown={(e) => onKeyDownCelda(e, filaIdx, colIdx)}
@@ -367,7 +373,7 @@ export default function PlanGeneralPage() {
                                 if (el) inputRefs.current.set(clave, el)
                                 else inputRefs.current.delete(clave)
                               }}
-                              className="w-20 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-center text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15"
+                              className="w-20 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-center text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/15 disabled:bg-gray-100"
                             />
                             {cajas !== null && <div className="mt-0.5 text-[10px] text-gray-400">{cajas} cajas</div>}
                           </td>
@@ -408,33 +414,35 @@ export default function PlanGeneralPage() {
             />
           )}
 
-          <form onSubmit={agregarColumna} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">Agregar referencia a la cuadrícula</span>
-                <input
-                  type="text"
-                  list="referencias-catalogo-general"
-                  autoComplete="off"
-                  value={nuevaReferencia}
-                  onChange={(e) => setNuevaReferencia(e.target.value)}
-                  placeholder="Escribe o elige una referencia"
-                  className="w-56 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
-                />
-              </label>
-              <button
-                type="submit"
-                className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md"
-              >
-                Agregar
-              </button>
-            </div>
-            <datalist id="referencias-catalogo-general">
-              {referencias.map((r) => (
-                <option key={r.marca} value={r.marca} />
-              ))}
-            </datalist>
-          </form>
+          {escritura && (
+            <form onSubmit={agregarColumna} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-gray-700">Agregar referencia a la cuadrícula</span>
+                  <input
+                    type="text"
+                    list="referencias-catalogo-general"
+                    autoComplete="off"
+                    value={nuevaReferencia}
+                    onChange={(e) => setNuevaReferencia(e.target.value)}
+                    placeholder="Escribe o elige una referencia"
+                    className="w-56 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md"
+                >
+                  Agregar
+                </button>
+              </div>
+              <datalist id="referencias-catalogo-general">
+                {referencias.map((r) => (
+                  <option key={r.marca} value={r.marca} />
+                ))}
+              </datalist>
+            </form>
+          )}
         </>
       )}
     </div>

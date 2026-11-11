@@ -8,7 +8,7 @@ import { usePlan } from '../lib/usePlan'
 import { flattenItems } from '../lib/aggregations'
 import { obtenerFincaActual } from '../lib/fincaActual'
 import { fechaLocalHoy } from '../lib/fechaLocal'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useDraftState } from '../lib/useDraftState'
 import type { PlanItem } from '../types/plan'
 import SectionHeading from '../components/SectionHeading'
@@ -19,9 +19,12 @@ export default function PlanPage() {
   const { fincas: todasLasFincas } = useFincas()
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
-  const fincasDisponibles = esOperador
-    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
-    : todasLasFincas
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
+  const escritura = puedeEscribir(perfil)
+  // El admin_lectura solo ve las fincas que se le asignaron (igual que un
+  // operador), aunque internamente no sea uno.
+  const fincasDisponibles =
+    esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   // Con una sola finca asignada, el operador la ve fija (como siempre); con
   // varias, puede elegir entre las suyas igual que un administrador.
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
@@ -192,12 +195,14 @@ export default function PlanPage() {
           <p className="mb-3 text-sm text-gray-600">
             Aún no hay plan para <strong>{finca}</strong>, semana {semana}/{anio}.
           </p>
-          <button
-            onClick={crearPlan}
-            className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md"
-          >
-            Crear plan
-          </button>
+          {escritura && (
+            <button
+              onClick={crearPlan}
+              className="rounded-lg bg-banex-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 hover:shadow-md"
+            >
+              Crear plan
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -205,12 +210,14 @@ export default function PlanPage() {
             <h2 className="text-sm font-semibold text-banex-800">
               {finca} · Semana {semana}/{anio}
             </h2>
-            <button
-              onClick={eliminarPlan}
-              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
-            >
-              Eliminar plan
-            </button>
+            {escritura && (
+              <button
+                onClick={eliminarPlan}
+                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+              >
+                Eliminar plan
+              </button>
+            )}
           </div>
 
           <div className="hidden sm:mb-4 sm:block sm:overflow-x-auto sm:rounded-xl sm:border sm:border-gray-100 sm:bg-white sm:shadow-sm sm:p-4">
@@ -234,6 +241,7 @@ export default function PlanPage() {
                     item={item}
                     cajasPallet={catalogoDe(item.referencia)?.cajas_pallet ?? null}
                     cajasProducidas={producidoMap.get(item.referencia) ?? 0}
+                    escritura={escritura}
                     onChanged={refetch}
                   />
                 ))}
@@ -283,6 +291,7 @@ export default function PlanPage() {
                     item={item}
                     cajasPallet={catalogoDe(item.referencia)?.cajas_pallet ?? null}
                     cajasProducidas={producidoMap.get(item.referencia) ?? 0}
+                    escritura={escritura}
                     onChanged={refetch}
                   />
                 ))}
@@ -319,7 +328,7 @@ export default function PlanPage() {
             )}
           </div>
 
-          <AddPlanItemForm planId={plan.id} existentes={planReferencias} onAdded={refetch} />
+          {escritura && <AddPlanItemForm planId={plan.id} existentes={planReferencias} onAdded={refetch} />}
 
           {adicionales.length > 0 && (
             <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
@@ -347,11 +356,13 @@ function PlanItemRow({
   item,
   cajasPallet,
   cajasProducidas,
+  escritura,
   onChanged,
 }: {
   item: PlanItem
   cajasPallet: number | null
   cajasProducidas: number
+  escritura: boolean
   onChanged: () => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -423,42 +434,43 @@ function PlanItemRow({
         {faltantePallets === null ? '—' : faltantePallets > 0 ? `Faltan ${faltantePallets.toFixed(2)}` : `Cumplido (+${(-faltantePallets).toFixed(2)})`}
       </td>
       <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
-        {editing ? (
-          <>
-            <button
-              onClick={save}
-              disabled={busy}
-              className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
-            >
-              Guardar
-            </button>
-            <button
-              onClick={() => setEditing(false)}
-              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={() => {
-                setDraftPallets(item.pallets_plan)
-                setEditing(true)
-              }}
-              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-            >
-              Editar
-            </button>
-            <button
-              onClick={remove}
-              disabled={busy}
-              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              Eliminar
-            </button>
-          </>
-        )}
+        {escritura &&
+          (editing ? (
+            <>
+              <button
+                onClick={save}
+                disabled={busy}
+                className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+              >
+                Guardar
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setDraftPallets(item.pallets_plan)
+                  setEditing(true)
+                }}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+              >
+                Editar
+              </button>
+              <button
+                onClick={remove}
+                disabled={busy}
+                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                Eliminar
+              </button>
+            </>
+          ))}
       </td>
     </tr>
   )
@@ -468,11 +480,13 @@ function PlanItemCard({
   item,
   cajasPallet,
   cajasProducidas,
+  escritura,
   onChanged,
 }: {
   item: PlanItem
   cajasPallet: number | null
   cajasProducidas: number
+  escritura: boolean
   onChanged: () => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -517,42 +531,43 @@ function PlanItemCard({
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="font-semibold text-gray-900">{item.referencia}</span>
         <div className="flex gap-2">
-          {editing ? (
-            <>
-              <button
-                onClick={save}
-                disabled={busy}
-                className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
-              >
-                Guardar
-              </button>
-              <button
-                onClick={() => setEditing(false)}
-                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  setDraftPallets(item.pallets_plan)
-                  setEditing(true)
-                }}
-                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-              >
-                Editar
-              </button>
-              <button
-                onClick={remove}
-                disabled={busy}
-                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-              >
-                Eliminar
-              </button>
-            </>
-          )}
+          {escritura &&
+            (editing ? (
+              <>
+                <button
+                  onClick={save}
+                  disabled={busy}
+                  className="rounded-md bg-banex-600 px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setDraftPallets(item.pallets_plan)
+                    setEditing(true)
+                  }}
+                  className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={remove}
+                  disabled={busy}
+                  className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                >
+                  Eliminar
+                </button>
+              </>
+            ))}
         </div>
       </div>
 

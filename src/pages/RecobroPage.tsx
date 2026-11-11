@@ -23,7 +23,7 @@ export default function RecobroPage() {
   if (loadingPerfil) {
     return <p className="py-16 text-center text-sm text-gray-500">Cargando...</p>
   }
-  if (perfil?.rol !== 'admin') {
+  if (perfil?.rol !== 'admin' && perfil?.rol !== 'admin_lectura') {
     return <Navigate to="/" replace />
   }
 

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import {
   CAJA_20KG_KG,
   CANASTILLA_KG,
@@ -91,6 +91,7 @@ interface Props {
 export default function ProductionList({ registros, referencias, fincas, onChanged, showDatalist = true }: Props) {
   const { perfil } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
+  const escritura = puedeEscribir(perfil)
 
   return (
     <div className="flex flex-col gap-4">
@@ -105,6 +106,7 @@ export default function ProductionList({ registros, referencias, fincas, onChang
             fincas={fincas}
             onChanged={onChanged}
             esAdmin={esAdmin}
+            escritura={escritura}
           />
         ))
       )}
@@ -126,12 +128,14 @@ function RegistroCard({
   fincas,
   onChanged,
   esAdmin,
+  escritura,
 }: {
   registro: Produccion
   referencias: Referencia[]
   fincas: Finca[]
   onChanged: () => void
   esAdmin: boolean
+  escritura: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -247,7 +251,7 @@ function RegistroCard({
           >
             {sharing ? 'Ocultar compartir' : 'Compartir'}
           </button>
-          {!editingHeader && (
+          {!editingHeader && escritura && (
             <button
               onClick={startEditHeader}
               className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
@@ -603,7 +607,14 @@ function RegistroCard({
                 </thead>
                 <tbody>
                   {registro.items.map((item) => (
-                    <ItemRow key={item.id} item={item} referencias={referencias} onChanged={onChanged} esAdmin={esAdmin} />
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      referencias={referencias}
+                      onChanged={onChanged}
+                      esAdmin={esAdmin}
+                      escritura={escritura}
+                    />
                   ))}
                   {esAdmin && agregandoItem && (
                     <NuevaReferenciaRow
@@ -645,7 +656,7 @@ function RegistroCard({
                 </thead>
                 <tbody>
                   {registro.transportes.map((t) => (
-                    <TransporteRow key={t.id} transporte={t} onChanged={onChanged} esAdmin={esAdmin} />
+                    <TransporteRow key={t.id} transporte={t} onChanged={onChanged} esAdmin={esAdmin} escritura={escritura} />
                   ))}
                   {registro.transportes.length === 0 && !agregandoTransporte && (
                     <tr>
@@ -667,7 +678,7 @@ function RegistroCard({
                 </tbody>
               </table>
             </div>
-            {!agregandoTransporte && (
+            {!agregandoTransporte && escritura && (
               <button
                 onClick={() => setAgregandoTransporte(true)}
                 className="mt-2 rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
@@ -723,11 +734,13 @@ function ItemRow({
   referencias,
   onChanged,
   esAdmin,
+  escritura,
 }: {
   item: ProduccionItem
   referencias: Referencia[]
   onChanged: () => void
   esAdmin: boolean
+  escritura: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item)
@@ -790,15 +803,17 @@ function ItemRow({
         <td className="py-1.5 pr-3">{item.peso_neto_kg}</td>
         <td className="py-1.5 pr-3">{item.cajas_20kg.toFixed(2)}</td>
         <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
-          <button
-            onClick={() => {
-              setDraft(item)
-              setEditing(true)
-            }}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-          >
-            Editar
-          </button>
+          {escritura && (
+            <button
+              onClick={() => {
+                setDraft(item)
+                setEditing(true)
+              }}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+            >
+              Editar
+            </button>
+          )}
           {esAdmin && (
             <button
               onClick={remove}
@@ -1091,10 +1106,12 @@ function TransporteRow({
   transporte,
   onChanged,
   esAdmin,
+  escritura,
 }: {
   transporte: Transporte
   onChanged: () => void
   esAdmin: boolean
+  escritura: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(transporte)
@@ -1145,15 +1162,17 @@ function TransporteRow({
         <td className="py-1.5 pr-3">{transporte.hora_llegada ?? '—'}</td>
         <td className="py-1.5 pr-3">{transporte.hora_salida ?? '—'}</td>
         <td className="flex gap-2 py-1.5 pr-3 whitespace-nowrap">
-          <button
-            onClick={() => {
-              setDraft(transporte)
-              setEditing(true)
-            }}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-          >
-            Editar
-          </button>
+          {escritura && (
+            <button
+              onClick={() => {
+                setDraft(transporte)
+                setEditing(true)
+              }}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
+            >
+              Editar
+            </button>
+          )}
           {esAdmin && (
             <button
               onClick={remove}

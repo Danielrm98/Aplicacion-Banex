@@ -14,6 +14,14 @@ function claveCache(userId: string): string {
   return `approban_cache_perfil_${userId}`
 }
 
+// El "Administrador 2" (admin_lectura) ve todo igual que un admin en sus
+// fincas asignadas, pero no puede crear, editar ni eliminar nada; esto
+// centraliza esa pregunta para que cada pantalla oculte sus botones de
+// guardar/editar/eliminar con la misma condición.
+export function puedeEscribir(perfil: Perfil | null): boolean {
+  return perfil?.rol !== 'admin_lectura'
+}
+
 // Casi toda la app espera a que el perfil cargue antes de mostrar algo, así
 // que antes de que AuthContext resuelva la sesión (puede tardar sin señal
 // con el token por vencer) ya se adelanta el id de usuario leyendo directo

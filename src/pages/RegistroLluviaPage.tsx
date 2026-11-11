@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import {
   useLluviaReportada,
@@ -21,10 +21,12 @@ export default function RegistroLluviaPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
   const esOperador = perfil?.rol === 'operador'
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
   const { fincas: todasLasFincas } = useFincas()
-  const fincasDisponibles = esOperador
-    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
-    : todasLasFincas
+  // El admin_lectura solo ve las fincas que se le asignaron (igual que un
+  // operador), aunque internamente no sea uno.
+  const fincasDisponibles =
+    esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   const fincasOrdenadas = useMemo(
     () => [...fincasDisponibles].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
     [fincasDisponibles],
@@ -136,6 +138,8 @@ function DetalleFinca({
   reportes: LluviaReportada[]
   onCambio: () => void
 }) {
+  const { perfil } = usePerfil()
+  const escritura = puedeEscribir(perfil)
   const [fecha, setFecha] = useState(fechaLocalAyer())
   const [milimetros, setMilimetros] = useState('')
   const [editandoId, setEditandoId] = useState<string | null>(null)
@@ -243,6 +247,7 @@ function DetalleFinca({
         <LluviaRegistradaChart data={datosGrafico} />
       </div>
 
+      {escritura && (
       <div
         ref={formRef}
         className={`mb-4 rounded-xl border p-4 shadow-sm transition-colors ${
@@ -298,6 +303,7 @@ function DetalleFinca({
         </form>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
+      )}
 
       {reportes.length === 0 ? (
         <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
@@ -310,6 +316,7 @@ function DetalleFinca({
               key={`${grupo.anio}-${grupo.semana}`}
               grupo={grupo}
               defaultExpanded={idx === 0}
+              escritura={escritura}
               onEditar={editar}
               onEliminar={eliminar}
             />
@@ -329,11 +336,13 @@ interface GrupoSemana {
 function GrupoSemanaLluvia({
   grupo,
   defaultExpanded,
+  escritura,
   onEditar,
   onEliminar,
 }: {
   grupo: GrupoSemana
   defaultExpanded: boolean
+  escritura: boolean
   onEditar: (r: LluviaReportada) => void
   onEliminar: (id: string) => void
 }) {
@@ -385,12 +394,16 @@ function GrupoSemanaLluvia({
                   <td className="py-1.5 pr-3 pl-4 text-gray-900">{r.fecha}</td>
                   <td className="px-2 py-1.5 text-center text-gray-900">{r.milimetros}</td>
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
-                    <button onClick={() => onEditar(r)} className="text-xs font-medium text-banex-700 hover:underline">
-                      Editar
-                    </button>
-                    <button onClick={() => onEliminar(r.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
-                      Eliminar
-                    </button>
+                    {escritura && (
+                      <>
+                        <button onClick={() => onEditar(r)} className="text-xs font-medium text-banex-700 hover:underline">
+                          Editar
+                        </button>
+                        <button onClick={() => onEliminar(r.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

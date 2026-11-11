@@ -27,11 +27,17 @@ const navItems = [
 ]
 
 const SOLO_ADMIN = ['/catalogo', '/plan-general', '/recobro']
+// El admin_lectura ve todo lo que ve un admin, salvo los menús que solo
+// sirven para capturar datos (no muestran información si no se puede
+// guardar nada).
+const SOLO_ESCRITURA = ['/', '/registro-embolse', '/registro-repique']
 const CLAVE_EXPANDIDO = 'approban_menu_expandido'
 
 export default function Layout() {
   const { perfil } = usePerfil()
-  const items = perfil?.rol === 'operador' ? navItems.filter((item) => !SOLO_ADMIN.includes(item.to)) : navItems
+  let items = navItems
+  if (perfil?.rol === 'operador') items = items.filter((item) => !SOLO_ADMIN.includes(item.to))
+  if (perfil?.rol === 'admin_lectura') items = items.filter((item) => !SOLO_ESCRITURA.includes(item.to))
   const { pendientes, sincronizando, sincronizarAhora } = useColaSincronizacion()
 
   // En escritorio se recuerda si el menú queda expandido (con etiquetas) o

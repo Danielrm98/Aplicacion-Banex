@@ -77,14 +77,14 @@ Deno.serve(async (req) => {
     if (password.length < 6) {
       return respuesta({ error: 'La contraseña debe tener al menos 6 caracteres.' }, 400)
     }
-    const rol = body.rol === 'admin' ? 'admin' : 'operador'
+    const rol = body.rol === 'admin' ? 'admin' : body.rol === 'admin_lectura' ? 'admin_lectura' : 'operador'
     const fincas =
       rol === 'admin'
         ? []
         : Array.isArray(body.fincas)
           ? body.fincas.filter((f): f is string => typeof f === 'string' && f.length > 0)
           : []
-    if (rol === 'operador' && fincas.length === 0) {
+    if (rol !== 'admin' && fincas.length === 0) {
       return respuesta({ error: 'Selecciona al menos una finca para el nuevo usuario.' }, 400)
     }
     const nombre = typeof body.nombre === 'string' && body.nombre.trim() ? body.nombre.trim() : null

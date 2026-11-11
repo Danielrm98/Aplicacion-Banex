@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient'
 import { useReferencias } from '../lib/useReferencias'
 import { useFincas } from '../lib/useFincas'
 import { useLotes } from '../lib/useLotes'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { usePerfiles } from '../lib/usePerfiles'
 import { crearUsuario, eliminarUsuario, resetearPassword } from '../lib/adminUsuarios'
 import { useDraftState } from '../lib/useDraftState'
@@ -28,6 +28,9 @@ export default function CatalogPage() {
   const [vista, setVista] = useState<'referencias' | 'fincas' | 'lotes' | 'usuarios'>('referencias')
   const { perfil, loading } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
+  // El admin_lectura ve las mismas pestañas que el admin (Lotes y Usuarios
+  // incluidas), pero sin poder tocar nada ahí.
+  const vePanelAdmin = esAdmin || perfil?.rol === 'admin_lectura'
 
   if (loading) {
     return <p className="py-16 text-center text-sm text-gray-500">Cargando...</p>
@@ -41,7 +44,7 @@ export default function CatalogPage() {
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Catálogo</h1>
       <p className="mb-4 text-sm text-gray-500">
-        Gestiona las marcas/referencias de cajas, el hectareaje de cada finca{esAdmin && ' y los usuarios'}.
+        Gestiona las marcas/referencias de cajas, el hectareaje de cada finca{vePanelAdmin && ' y los usuarios'}.
       </p>
 
       <div className="mb-6 flex gap-1 border-b border-gray-200">
@@ -51,12 +54,12 @@ export default function CatalogPage() {
         <TabButton active={vista === 'fincas'} onClick={() => setVista('fincas')}>
           Fincas
         </TabButton>
-        {esAdmin && (
+        {vePanelAdmin && (
           <TabButton active={vista === 'lotes'} onClick={() => setVista('lotes')}>
             Lotes
           </TabButton>
         )}
-        {esAdmin && (
+        {vePanelAdmin && (
           <TabButton active={vista === 'usuarios'} onClick={() => setVista('usuarios')}>
             Usuarios
           </TabButton>
@@ -68,8 +71,8 @@ export default function CatalogPage() {
       ) : vista === 'fincas' ? (
         <FincasTab />
       ) : vista === 'lotes' ? (
-        esAdmin ? <LotesTab /> : null
-      ) : esAdmin ? (
+        vePanelAdmin ? <LotesTab /> : null
+      ) : vePanelAdmin ? (
         <UsuariosTab />
       ) : null}
     </div>
@@ -77,6 +80,8 @@ export default function CatalogPage() {
 }
 
 function ReferenciasTab() {
+  const { perfil } = usePerfil()
+  const escritura = puedeEscribir(perfil)
   const { referencias, loading, error, refetch } = useReferencias()
   const [form, setForm, limpiarForm] = useDraftState('approban_borrador_nueva_referencia', emptyForm)
   const [formError, setFormError] = useState<string | null>(null)
@@ -147,6 +152,7 @@ function ReferenciasTab() {
 
   return (
     <>
+      {escritura && (
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <SectionHeading>Agregar referencia</SectionHeading>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -226,6 +232,7 @@ function ReferenciasTab() {
           </div>
         </form>
       </div>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <SectionHeading>Referencias existentes ({referencias.length})</SectionHeading>
@@ -253,6 +260,7 @@ function ReferenciasTab() {
                     key={r.marca}
                     referencia={r}
                     deleting={deletingMarca === r.marca}
+                    escritura={escritura}
                     onDelete={() => handleDelete(r.marca)}
                     onSaved={refetch}
                   />
@@ -269,11 +277,13 @@ function ReferenciasTab() {
 function ReferenciaRow({
   referencia,
   deleting,
+  escritura,
   onDelete,
   onSaved,
 }: {
   referencia: Referencia
   deleting: boolean
+  escritura: boolean
   onDelete: () => void
   onSaved: () => void
 }) {
@@ -334,9 +344,10 @@ function ReferenciaRow({
             type="number"
             min={1}
             step="1"
+            disabled={!escritura}
             value={draftCajasPallet}
             onChange={(e) => setDraftCajasPallet(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
           />
         </div>
       </td>
@@ -346,9 +357,10 @@ function ReferenciaRow({
             type="number"
             min={0}
             step="0.01"
+            disabled={!escritura}
             value={draftPesoNeto}
             onChange={(e) => setDraftPesoNeto(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
           />
         </div>
       </td>
@@ -356,8 +368,9 @@ function ReferenciaRow({
       <td className="py-1.5 pr-3">
         <select
           value={draftTipoCaja}
+          disabled={!escritura}
           onChange={(e) => setDraftTipoCaja(e.target.value as Referencia['tipo_caja'])}
-          className={inputClass}
+          className={`${inputClass} disabled:bg-gray-100`}
         >
           <option value="Convencional">Convencional</option>
           <option value="Orgánica">Orgánica</option>
@@ -366,30 +379,33 @@ function ReferenciaRow({
       <td className="py-1.5 pr-3">
         <select
           value={draftEspecificacion}
+          disabled={!escritura}
           onChange={(e) => setDraftEspecificacion(e.target.value as Referencia['especificacion'])}
-          className={inputClass}
+          className={`${inputClass} disabled:bg-gray-100`}
         >
           <option value="Larga">Larga</option>
           <option value="Corta">Corta</option>
         </select>
       </td>
       <td className="py-1.5 pr-3 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={guardar}
-            disabled={!dirty || busy}
-            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Guardar
-          </button>
-          <button
-            onClick={onDelete}
-            disabled={deleting}
-            className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
-        </div>
+        {escritura && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={guardar}
+              disabled={!dirty || busy}
+              className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Guardar
+            </button>
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
         {rowError && <p className="mt-1 text-xs text-red-600">{rowError}</p>}
       </td>
     </tr>
@@ -397,6 +413,8 @@ function ReferenciaRow({
 }
 
 function FincasTab() {
+  const { perfil } = usePerfil()
+  const escritura = puedeEscribir(perfil)
   const { fincas, loading, error, refetch } = useFincas()
   const totalHectareas = fincas.reduce((sum, f) => sum + (f.hectareas ?? 0), 0)
   const empresasExistentes = Array.from(new Set(fincas.map((f) => f.empresa).filter((e): e is string => !!e))).sort()
@@ -434,6 +452,7 @@ function FincasTab() {
 
   return (
     <>
+      {escritura && (
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <SectionHeading>Agregar finca</SectionHeading>
         <form onSubmit={agregarFinca} className="flex flex-wrap items-end gap-3">
@@ -457,6 +476,7 @@ function FincasTab() {
         </form>
         {formError && <p className="mt-2 text-sm text-red-600">{formError}</p>}
       </div>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -493,7 +513,7 @@ function FincasTab() {
               </thead>
               <tbody>
                 {fincas.map((f) => (
-                  <FincaRow key={f.nombre} finca={f} onSaved={refetch} />
+                  <FincaRow key={f.nombre} finca={f} escritura={escritura} onSaved={refetch} />
                 ))}
               </tbody>
             </table>
@@ -511,9 +531,11 @@ function FincasTab() {
 
 function FincaRow({
   finca,
+  escritura,
   onSaved,
 }: {
   finca: Finca
+  escritura: boolean
   onSaved: () => void
 }) {
   const nombre = finca.nombre
@@ -566,9 +588,10 @@ function FincaRow({
           <input
             type="text"
             list="empresas-existentes"
+            disabled={!escritura}
             value={draftEmpresa}
             onChange={(e) => setDraftEmpresa(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="Ej. BANEX"
           />
         </div>
@@ -579,9 +602,10 @@ function FincaRow({
             type="number"
             min={0}
             step="0.01"
+            disabled={!escritura}
             value={draftHectareas}
             onChange={(e) => setDraftHectareas(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="—"
           />
         </div>
@@ -591,9 +615,10 @@ function FincaRow({
           <input
             type="number"
             step="0.000001"
+            disabled={!escritura}
             value={draftLat}
             onChange={(e) => setDraftLat(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="Ej. 10.7"
           />
         </div>
@@ -603,9 +628,10 @@ function FincaRow({
           <input
             type="number"
             step="0.000001"
+            disabled={!escritura}
             value={draftLon}
             onChange={(e) => setDraftLon(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="Ej. -74.2"
           />
         </div>
@@ -614,9 +640,10 @@ function FincaRow({
         <div className="w-36">
           <input
             type="text"
+            disabled={!escritura}
             value={draftResponsableNombre}
             onChange={(e) => setDraftResponsableNombre(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="Nombre"
           />
         </div>
@@ -625,27 +652,32 @@ function FincaRow({
         <div className="w-44">
           <input
             type="email"
+            disabled={!escritura}
             value={draftResponsableCorreo}
             onChange={(e) => setDraftResponsableCorreo(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="correo@ejemplo.com"
           />
         </div>
       </td>
       <td className="py-1.5 pr-3 whitespace-nowrap">
-        <button
-          onClick={guardar}
-          disabled={!dirty || busy}
-          className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Guardar
-        </button>
+        {escritura && (
+          <button
+            onClick={guardar}
+            disabled={!dirty || busy}
+            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Guardar
+          </button>
+        )}
       </td>
     </tr>
   )
 }
 
 function LotesTab() {
+  const { perfil } = usePerfil()
+  const escritura = puedeEscribir(perfil)
   const { fincas } = useFincas()
   const { lotes, loading, error, refetch } = useLotes()
   const [finca, setFinca] = useState('')
@@ -690,6 +722,7 @@ function LotesTab() {
 
   return (
     <>
+      {escritura && (
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <SectionHeading>Agregar lote</SectionHeading>
         <form onSubmit={agregarLote} className="flex flex-wrap items-end gap-3">
@@ -733,6 +766,7 @@ function LotesTab() {
         </form>
         {formError && <p className="mt-2 text-sm text-red-600">{formError}</p>}
       </div>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <SectionHeading>
@@ -759,7 +793,7 @@ function LotesTab() {
               </thead>
               <tbody>
                 {lotesFinca.map((l) => (
-                  <LoteRow key={l.id} lote={l} onChanged={refetch} />
+                  <LoteRow key={l.id} lote={l} escritura={escritura} onChanged={refetch} />
                 ))}
               </tbody>
             </table>
@@ -770,7 +804,7 @@ function LotesTab() {
   )
 }
 
-function LoteRow({ lote, onChanged }: { lote: Lote; onChanged: () => void }) {
+function LoteRow({ lote, escritura, onChanged }: { lote: Lote; escritura: boolean; onChanged: () => void }) {
   const [draftNombre, setDraftNombre] = useState(lote.nombre)
   const [draftHectareas, setDraftHectareas] = useState(lote.hectareas != null ? String(lote.hectareas) : '')
   const [busy, setBusy] = useState(false)
@@ -810,9 +844,10 @@ function LoteRow({ lote, onChanged }: { lote: Lote; onChanged: () => void }) {
         <div className="w-28">
           <input
             type="text"
+            disabled={!escritura}
             value={draftNombre}
             onChange={(e) => setDraftNombre(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
           />
         </div>
       </td>
@@ -822,30 +857,33 @@ function LoteRow({ lote, onChanged }: { lote: Lote; onChanged: () => void }) {
             type="number"
             min={0}
             step="0.01"
+            disabled={!escritura}
             value={draftHectareas}
             onChange={(e) => setDraftHectareas(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} disabled:bg-gray-100`}
             placeholder="—"
           />
         </div>
       </td>
       <td className="py-1.5 pr-3 whitespace-nowrap">
-        <div className="flex gap-2">
-          <button
-            onClick={guardar}
-            disabled={!dirty || busy}
-            className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Guardar
-          </button>
-          <button
-            onClick={eliminar}
-            disabled={busy}
-            className="rounded-md border border-red-200 bg-white px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-          >
-            Eliminar
-          </button>
-        </div>
+        {escritura && (
+          <div className="flex gap-2">
+            <button
+              onClick={guardar}
+              disabled={!dirty || busy}
+              className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Guardar
+            </button>
+            <button
+              onClick={eliminar}
+              disabled={busy}
+              className="rounded-md border border-red-200 bg-white px-3 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+            >
+              Eliminar
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -861,6 +899,8 @@ interface DraftUsuario {
 const draftUsuarioInicial: DraftUsuario = { usuario: '', nombre: '', rol: 'operador', fincas: [] }
 
 function UsuariosTab() {
+  const { perfil: perfilActual } = usePerfil()
+  const escritura = puedeEscribir(perfilActual)
   const { fincas } = useFincas()
   const { perfiles, loading, error, refetch } = usePerfiles()
 
@@ -880,7 +920,7 @@ function UsuariosTab() {
     setFormError(null)
     setCreado(null)
 
-    if (draft.rol === 'operador' && draft.fincas.length === 0) {
+    if (draft.rol !== 'admin' && draft.fincas.length === 0) {
       setFormError('Selecciona al menos una finca para el nuevo usuario.')
       return
     }
@@ -892,7 +932,7 @@ function UsuariosTab() {
         password,
         nombre: draft.nombre.trim() || null,
         rol: draft.rol,
-        fincas: draft.rol === 'operador' ? draft.fincas : [],
+        fincas: draft.rol !== 'admin' ? draft.fincas : [],
       })
       setCreado({ usuario: draft.usuario.trim().toLowerCase(), password })
       limpiarDraft()
@@ -907,6 +947,7 @@ function UsuariosTab() {
 
   return (
     <>
+      {escritura && (
       <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-6">
         <SectionHeading>Crear usuario</SectionHeading>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -947,10 +988,11 @@ function UsuariosTab() {
               className={inputClass}
             >
               <option value="operador">Operador (solo su finca)</option>
+              <option value="admin_lectura">Administrador 2 (ve sus fincas, no edita)</option>
               <option value="admin">Administrador (ve todo)</option>
             </select>
           </Field>
-          {draft.rol === 'operador' && (
+          {draft.rol !== 'admin' && (
             <div className="sm:col-span-2 lg:col-span-5">
               <span className="mb-1 block text-sm font-medium text-gray-700">
                 Fincas asignadas (puede ingresar a todas con el mismo usuario)
@@ -979,6 +1021,7 @@ function UsuariosTab() {
           </p>
         )}
       </div>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <SectionHeading>Usuarios existentes ({perfiles.length})</SectionHeading>
@@ -1000,7 +1043,7 @@ function UsuariosTab() {
               </thead>
               <tbody>
                 {perfiles.map((p) => (
-                  <PerfilRow key={p.user_id} perfil={p} fincas={fincas} onChanged={refetch} />
+                  <PerfilRow key={p.user_id} perfil={p} fincas={fincas} escritura={escritura} onChanged={refetch} />
                 ))}
               </tbody>
             </table>
@@ -1014,10 +1057,12 @@ function UsuariosTab() {
 function PerfilRow({
   perfil,
   fincas,
+  escritura,
   onChanged,
 }: {
   perfil: PerfilConFincas
   fincas: Finca[]
+  escritura: boolean
   onChanged: () => void
 }) {
   const [draftRol, setDraftRol] = useState<Perfil['rol']>(perfil.rol)
@@ -1030,7 +1075,7 @@ function PerfilRow({
   const dirty = draftRol !== perfil.rol || !mismasFincas
 
   async function guardar() {
-    if (draftRol === 'operador' && draftFincas.length === 0) {
+    if (draftRol !== 'admin' && draftFincas.length === 0) {
       alert('Selecciona al menos una finca para este usuario.')
       return
     }
@@ -1117,10 +1162,12 @@ function PerfilRow({
         <td className="py-1.5 pr-3">
           <select
             value={draftRol}
+            disabled={!escritura}
             onChange={(e) => setDraftRol(e.target.value as Perfil['rol'])}
-            className={`${inputClass} w-36`}
+            className={`${inputClass} w-36 disabled:bg-gray-100`}
           >
             <option value="operador">Operador</option>
+            <option value="admin_lectura">Administrador 2</option>
             <option value="admin">Administrador</option>
           </select>
         </td>
@@ -1143,43 +1190,47 @@ function PerfilRow({
                   ))
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setEditandoFincas((v) => !v)}
-                className="text-[11px] font-medium text-banex-600 underline underline-offset-2 hover:text-banex-800"
-              >
-                {editandoFincas ? 'Ocultar' : 'Editar fincas'}
-              </button>
+              {escritura && (
+                <button
+                  type="button"
+                  onClick={() => setEditandoFincas((v) => !v)}
+                  className="text-[11px] font-medium text-banex-600 underline underline-offset-2 hover:text-banex-800"
+                >
+                  {editandoFincas ? 'Ocultar' : 'Editar fincas'}
+                </button>
+              )}
             </div>
           )}
         </td>
         <td className="py-1.5 pr-3 whitespace-nowrap">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={guardar}
-              disabled={!dirty || busy}
-              className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Guardar
-            </button>
-            <button
-              onClick={resetear}
-              disabled={busy}
-              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
-            >
-              Resetear clave
-            </button>
-            <button
-              onClick={eliminar}
-              disabled={busy}
-              className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-            >
-              Eliminar
-            </button>
-          </div>
+          {escritura && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={guardar}
+                disabled={!dirty || busy}
+                className="rounded-md bg-banex-600 px-3 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Guardar
+              </button>
+              <button
+                onClick={resetear}
+                disabled={busy}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700 disabled:opacity-50"
+              >
+                Resetear clave
+              </button>
+              <button
+                onClick={eliminar}
+                disabled={busy}
+                className="rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+              >
+                Eliminar
+              </button>
+            </div>
+          )}
         </td>
       </tr>
-      {editandoFincas && draftRol === 'operador' && (
+      {editandoFincas && draftRol !== 'admin' && (
         <tr className="border-b border-gray-100 bg-gray-50/60">
           <td colSpan={5} className="px-3 py-3">
             <SelectorFincas fincas={fincas} seleccionadas={draftFincas} onChange={setDraftFincas} />

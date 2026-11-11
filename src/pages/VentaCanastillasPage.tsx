@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useAuth } from '../lib/AuthContext'
 import { useFincas } from '../lib/useFincas'
 import { useProducciones } from '../lib/useProducciones'
@@ -28,10 +28,13 @@ export default function VentaCanastillasPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
   const esOperador = perfil?.rol === 'operador'
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
+  const escritura = puedeEscribir(perfil)
   const { fincas: todasLasFincas } = useFincas()
-  const fincasDisponibles = esOperador
-    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
-    : todasLasFincas
+  // El admin_lectura solo ve las fincas que se le asignaron (igual que un
+  // operador), aunque internamente no sea uno.
+  const fincasDisponibles =
+    esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   const [finca, setFinca] = useState<string>(() => obtenerFincaActual() ?? '')
@@ -114,7 +117,7 @@ export default function VentaCanastillasPage() {
       ) : !finca ? (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
       ) : (
-        <VistaFinca finca={finca} semana={semana} anio={anio} esAdmin={esAdmin} />
+        <VistaFinca finca={finca} semana={semana} anio={anio} esAdmin={esAdmin} escritura={escritura} />
       )}
     </div>
   )
@@ -125,11 +128,13 @@ function VistaFinca({
   semana,
   anio,
   esAdmin,
+  escritura,
 }: {
   finca: string
   semana: number
   anio: number
   esAdmin: boolean
+  escritura: boolean
 }) {
   // Filtros de la lista "Salidas registradas", independientes de la semana/
   // año de arriba (esos son solo para las tarjetas de resumen): por defecto
@@ -234,7 +239,7 @@ function VistaFinca({
             />
           </div>
 
-          <RegistrarVentaForm finca={finca} onGuardado={refetch} />
+          {escritura && <RegistrarVentaForm finca={finca} onGuardado={refetch} />}
 
           <div className="mt-6">
             <SectionHeading>Salidas registradas</SectionHeading>
@@ -292,7 +297,7 @@ function VistaFinca({
             ) : (
               <div className="flex flex-col gap-2">
                 {ventasFiltradas.map((venta) => (
-                  <VentaRow key={venta.id} venta={venta} esAdmin={esAdmin} onChanged={refetch} />
+                  <VentaRow key={venta.id} venta={venta} esAdmin={esAdmin} escritura={escritura} onChanged={refetch} />
                 ))}
               </div>
             )}
@@ -653,10 +658,12 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
 function VentaRow({
   venta,
   esAdmin,
+  escritura,
   onChanged,
 }: {
   venta: VentaCanastilla
   esAdmin: boolean
+  escritura: boolean
   onChanged: () => void
 }) {
   const [busy, setBusy] = useState(false)
@@ -714,12 +721,14 @@ function VentaRow({
               Ver factura
             </button>
           ) : (
-            <button
-              onClick={() => setAgregandoFactura((v) => !v)}
-              className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
-            >
-              📎 Sin factura · Agregar
-            </button>
+            escritura && (
+              <button
+                onClick={() => setAgregandoFactura((v) => !v)}
+                className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
+              >
+                📎 Sin factura · Agregar
+              </button>
+            )
           )}
           {esAdmin && (
             <>

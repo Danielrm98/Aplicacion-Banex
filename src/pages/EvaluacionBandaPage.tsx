@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '../lib/AuthContext'
-import { usePerfil } from '../lib/usePerfil'
+import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
@@ -22,10 +22,12 @@ import type { EvaluacionBanda } from '../types/evaluacionBanda'
 export default function EvaluacionBandaPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
   const { fincas: todasLasFincas } = useFincas()
-  const fincasDisponibles = esOperador
-    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
-    : todasLasFincas
+  // El admin_lectura solo ve las fincas que se le asignaron (igual que un
+  // operador), aunque internamente no sea uno.
+  const fincasDisponibles =
+    esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   const fincasOrdenadas = useMemo(
     () => [...fincasDisponibles].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
     [fincasDisponibles],
@@ -106,6 +108,8 @@ function esGrupoValido(grupo: string): grupo is GrupoEvaluacionBanda {
 
 function FormularioEvaluacionBanda({ finca }: { finca: string }) {
   const { session } = useAuth()
+  const { perfil } = usePerfil()
+  const escritura = puedeEscribir(perfil)
   const { evaluaciones, refetch } = useEvaluacionesBanda(finca)
 
   const [fecha, setFecha] = useState(fechaLocalHoy())
@@ -352,8 +356,9 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
               type="date"
               value={fecha}
               max={fechaLocalHoy()}
+              disabled={!escritura}
               onChange={(e) => nuevaEvaluacion(e.target.value)}
-              className={inputClass}
+              className={`${inputClass} disabled:bg-gray-100`}
             />
           </Field>
           <Field label="Semana">
@@ -402,9 +407,10 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
                       type="number"
                       min={0}
                       step="1"
+                      disabled={!escritura}
                       value={cantidadDe(grupo, defecto) || ''}
                       onChange={(e) => setCantidad(grupo, defecto, Math.max(0, Number(e.target.value)))}
-                      className="w-20 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-right text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20"
+                      className="w-20 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-right text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20 disabled:bg-gray-100"
                     />
                   </label>
                 ))}
@@ -425,14 +431,15 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
                       type="number"
                       min={0}
                       step="1"
+                      disabled={!escritura}
                       value={cantidadDe(grupo, defecto) || ''}
                       onChange={(e) => setCantidad(grupo, defecto, Math.max(0, Number(e.target.value)))}
-                      className="w-20 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-right text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20"
+                      className="w-20 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-right text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20 disabled:bg-gray-100"
                     />
                   </label>
                 ))}
 
-                {agregandoDefectoEn === grupo ? (
+                {escritura && (agregandoDefectoEn === grupo ? (
                   <div className="mt-1 flex items-center gap-1.5">
                     <input
                       type="text"
@@ -477,7 +484,7 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
                   >
                     + Agregar otro defecto
                   </button>
-                )}
+                ))}
               </div>
             </div>
           ))}
@@ -515,13 +522,14 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
               min={0}
               max={100}
               step="0.01"
+              disabled={!escritura}
               value={mermaFincaTexto}
               onChange={(e) => {
                 setMermaFincaTexto(e.target.value)
                 setMensajeExito(null)
               }}
               placeholder="Ej. 13.6"
-              className={inputClass}
+              className={`${inputClass} disabled:bg-gray-100`}
             />
           </Field>
           <p className="mt-2 mb-1 text-xs text-gray-500">Qué tanto representa cada grupo dentro de esa merma real.</p>
@@ -590,17 +598,19 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
-        >
-          {guardando ? 'Guardando...' : evaluacionIdActual ? 'Actualizar evaluación' : 'Guardar evaluación'}
-        </button>
-        {mensajeExito && <span className="text-sm text-green-700">{mensajeExito}</span>}
-        {error && <span className="text-sm text-red-600">{error}</span>}
-      </div>
+      {escritura && (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={guardar}
+            disabled={guardando}
+            className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+          >
+            {guardando ? 'Guardando...' : evaluacionIdActual ? 'Actualizar evaluación' : 'Guardar evaluación'}
+          </button>
+          {mensajeExito && <span className="text-sm text-green-700">{mensajeExito}</span>}
+          {error && <span className="text-sm text-red-600">{error}</span>}
+        </div>
+      )}
 
       {evaluaciones.length > 0 && (
         <div>
@@ -633,9 +643,11 @@ function FormularioEvaluacionBanda({ finca }: { finca: string }) {
                       <button onClick={() => abrirEvaluacion(ev)} className="text-xs font-medium text-banex-700 hover:underline">
                         Abrir
                       </button>
-                      <button onClick={() => eliminar(ev.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
-                        Eliminar
-                      </button>
+                      {escritura && (
+                        <button onClick={() => eliminar(ev.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
+                          Eliminar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

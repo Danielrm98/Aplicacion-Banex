@@ -23,10 +23,12 @@ export default function RepiquesPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
   const esOperador = perfil?.rol === 'operador'
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
   const { fincas: todasLasFincas } = useFincas()
-  const fincasDisponibles = esOperador
-    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
-    : todasLasFincas
+  // El admin_lectura solo ve las fincas que se le asignaron (igual que un
+  // operador), aunque internamente no sea uno.
+  const fincasDisponibles =
+    esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   const fincasOrdenadas = useMemo(
     () => [...fincasDisponibles].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
     [fincasDisponibles],

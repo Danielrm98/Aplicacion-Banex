@@ -14,7 +14,8 @@ const MESES_CORTO = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Se
 
 export default function RankingMarcasPage() {
   const { perfil } = usePerfil()
-  const esAdmin = perfil?.rol === 'admin'
+  // Es una vista de solo lectura, así que el admin_lectura también la ve.
+  const esAdmin = perfil?.rol === 'admin' || perfil?.rol === 'admin_lectura'
   const [vista, setVista] = useState<'marcas' | 'hectarea'>('marcas')
 
   return (
