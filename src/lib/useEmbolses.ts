@@ -9,7 +9,10 @@ const LIMITE_CONSULTA_MS = 15000
 
 /** PostgREST solo devuelve 1000 filas por consulta por defecto; con varias
  * fincas × lotes × 52 semanas ya se supera fácil, así que hay que pedir por
- * páginas y juntar todo en vez de una sola select(). */
+ * páginas y juntar todo en vez de una sola select(). El .order('id') es
+ * obligatorio: sin un orden fijo, Postgres no garantiza qué filas caen en
+ * cada página, y entre una página y otra se podían saltar filas enteras
+ * (una semana o un grupo de lotes que a veces aparece y a veces no). */
 async function traerTodosLosEmbolses(anios: number[]): Promise<Embolse[]> {
   const todos: Embolse[] = []
   let desde = 0
@@ -18,6 +21,7 @@ async function traerTodosLosEmbolses(anios: number[]): Promise<Embolse[]> {
       .from('embolses')
       .select('*')
       .in('anio', anios)
+      .order('id')
       .range(desde, desde + TAMANO_PAGINA - 1)
     if (error) throw new Error(error.message)
     todos.push(...(data ?? []))

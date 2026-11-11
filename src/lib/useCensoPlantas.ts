@@ -7,6 +7,9 @@ import type { CensoPlantas } from '../types/censoPlantas'
 const TAMANO_PAGINA = 1000
 const LIMITE_CONSULTA_MS = 15000
 
+// El .order('id') es obligatorio: sin un orden fijo, Postgres no garantiza
+// qué filas caen en cada página, y entre una página y otra se podían saltar
+// filas enteras.
 async function traerTodoElCenso(anio: number): Promise<CensoPlantas[]> {
   const todos: CensoPlantas[] = []
   let desde = 0
@@ -15,6 +18,7 @@ async function traerTodoElCenso(anio: number): Promise<CensoPlantas[]> {
       .from('censo_plantas')
       .select('*')
       .in('anio', [anio - 1, anio])
+      .order('id')
       .range(desde, desde + TAMANO_PAGINA - 1)
     if (error) throw new Error(error.message)
     todos.push(...(data ?? []))

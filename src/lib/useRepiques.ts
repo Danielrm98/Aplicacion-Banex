@@ -7,7 +7,10 @@ import type { Repique } from '../types/repique'
 const TAMANO_PAGINA = 1000
 const LIMITE_CONSULTA_MS = 15000
 
-/** PostgREST solo devuelve 1000 filas por consulta por defecto. */
+/** PostgREST solo devuelve 1000 filas por consulta por defecto. El
+ * .order('id') es obligatorio: sin un orden fijo, Postgres no garantiza qué
+ * filas caen en cada página, y entre una página y otra se podían saltar
+ * filas enteras. */
 async function traerTodosLosRepiques(anios: number[]): Promise<Repique[]> {
   const todos: Repique[] = []
   let desde = 0
@@ -16,6 +19,7 @@ async function traerTodosLosRepiques(anios: number[]): Promise<Repique[]> {
       .from('repiques')
       .select('*')
       .in('anio_embolse', anios)
+      .order('id')
       .range(desde, desde + TAMANO_PAGINA - 1)
     if (error) throw new Error(error.message)
     todos.push(...(data ?? []))
