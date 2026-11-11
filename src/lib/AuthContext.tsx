@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
 import { leerSesionGuardada } from './sesionLocal'
+import { limpiarCacheSiCambioDeUsuario } from './consultaConCache'
 
 interface AuthContextValue {
   session: Session | null
@@ -30,12 +31,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => null)
       .then((resultado) => {
         if (!activo) return
-        setSession(resultado === 'limite' || !resultado ? leerSesionGuardada() : resultado)
+        const sesionFinal = resultado === 'limite' || !resultado ? leerSesionGuardada() : resultado
+        if (sesionFinal) limpiarCacheSiCambioDeUsuario(sesionFinal.user.id)
+        setSession(sesionFinal)
         setLoading(false)
       })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (activo) setSession(newSession)
+      if (!activo) return
+      if (newSession) limpiarCacheSiCambioDeUsuario(newSession.user.id)
+      setSession(newSession)
     })
 
     return () => {

@@ -1,4 +1,29 @@
 const LIMITE_MS_DEFECTO = 4000
+const PREFIJO_CACHE = 'approban_cache_'
+const CLAVE_ULTIMO_USUARIO = 'approban_ultimo_usuario_id'
+
+/**
+ * Este caché vive en localStorage sin separar por usuario (son claves fijas
+ * como "approban_cache_fincas"). Si en el mismo dispositivo/navegador antes
+ * entró otra cuenta con más acceso (por ejemplo un admin), al iniciar sesión
+ * con una cuenta distinta se vería por un instante — o de forma inconsistente
+ * según cuándo termine de llegar la respuesta real — lo que había quedado
+ * cacheado de esa otra cuenta. Se borra todo el caché apenas se detecta que
+ * cambió el usuario que tiene sesión activa en este dispositivo.
+ */
+export function limpiarCacheSiCambioDeUsuario(userId: string) {
+  try {
+    const anterior = localStorage.getItem(CLAVE_ULTIMO_USUARIO)
+    if (anterior && anterior !== userId) {
+      for (const clave of Object.keys(localStorage)) {
+        if (clave.startsWith(PREFIJO_CACHE)) localStorage.removeItem(clave)
+      }
+    }
+    localStorage.setItem(CLAVE_ULTIMO_USUARIO, userId)
+  } catch {
+    // localStorage no disponible: no hay caché que limpiar, sin consecuencia.
+  }
+}
 
 interface ResultadoConsulta<T> {
   data: T | null

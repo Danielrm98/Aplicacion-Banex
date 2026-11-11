@@ -120,7 +120,12 @@ function claveFincaPeriodo(finca: string, periodo: number) {
 }
 
 function CajasPorHectareaTab() {
-  const { fincas } = useFincas()
+  const { perfil, fincas: fincasAsignadas } = usePerfil()
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
+  const { fincas: todasLasFincas } = useFincas()
+  // El admin_lectura solo ve las fincas que se le asignaron, nunca el
+  // catálogo completo (a diferencia del admin, que ve todas).
+  const fincas = esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   const fincasOrdenadas = useMemo(
     () => [...fincas].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
     [fincas],

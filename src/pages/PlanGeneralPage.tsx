@@ -17,10 +17,16 @@ import type { Referencia } from '../types/produccion'
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
 export default function PlanGeneralPage() {
-  const { perfil } = usePerfil()
+  const { perfil, fincas: fincasAsignadas } = usePerfil()
   const escritura = puedeEscribir(perfil)
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
   const { session } = useAuth()
-  const { fincas: fincasSinOrdenar } = useFincas()
+  const { fincas: todasLasFincas } = useFincas()
+  // El admin_lectura solo ve las fincas que se le asignaron, nunca el
+  // catálogo completo (a diferencia del admin, que ve todas).
+  const fincasSinOrdenar = esAdminLectura
+    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
+    : todasLasFincas
   const fincas = useMemo(
     () => [...fincasSinOrdenar].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
     [fincasSinOrdenar],

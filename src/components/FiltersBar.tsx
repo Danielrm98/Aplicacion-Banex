@@ -14,9 +14,11 @@ export default function FiltersBar({ filtros, onChange }: Props) {
   const { fincas: todasLasFincas } = useFincas()
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
-  const fincasDisponibles = esOperador
-    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
-    : todasLasFincas
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
+  // El admin_lectura solo ve las fincas que se le asignaron (igual que un
+  // operador), aunque internamente no sea uno.
+  const fincasDisponibles =
+    esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
   // Con una sola finca asignada, el filtro queda fijo en ella (como antes);
   // con varias, el operador puede elegir entre las suyas o ver todas juntas.
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null

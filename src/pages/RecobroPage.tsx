@@ -31,10 +31,17 @@ export default function RecobroPage() {
 }
 
 function RecobroContenido() {
+  const { perfil, fincas: fincasAsignadas } = usePerfil()
+  const esAdminLectura = perfil?.rol === 'admin_lectura'
   const { fincas: todasLasFincas } = useFincas()
+  // El admin_lectura solo ve las fincas que se le asignaron, nunca el
+  // catálogo completo (a diferencia del admin, que ve todas).
+  const fincasVisibles = esAdminLectura
+    ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre))
+    : todasLasFincas
   const fincasOrdenadas = useMemo(
-    () => [...todasLasFincas].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
-    [todasLasFincas],
+    () => [...fincasVisibles].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
+    [fincasVisibles],
   )
   const { lotes, loading: loadingLotes } = useLotes()
 
