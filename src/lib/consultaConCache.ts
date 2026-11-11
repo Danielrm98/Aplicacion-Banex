@@ -3,51 +3,49 @@ import { limpiarCacheIdb } from './bdOffline'
 const LIMITE_MS_DEFECTO = 4000
 const PREFIJO_CACHE = 'approban_cache_'
 const CLAVE_ULTIMO_USUARIO = 'approban_ultimo_usuario_id'
-const CLAVE_VERSION_CACHE = 'approban_cache_version'
-// Subir este número invalida de una sola vez el caché guardado en todos los
-// dispositivos (local Storage + IndexedDB), sin importar el usuario ni si
-// cambió de cuenta — para cuando un dispositivo quedó con una mezcla vieja
-// de datos (por ejemplo, de antes de separar el caché por usuario) y no
-// basta con detectar el cambio de cuenta porque ya venía arrastrando algo
-// de antes con la MISMA cuenta.
-const VERSION_CACHE = 1
 
-async function borrarTodoElCache() {
-  for (const clave of Object.keys(localStorage)) {
-    if (clave.startsWith(PREFIJO_CACHE)) localStorage.removeItem(clave)
+// AuthContext puede disparar la resolución de la sesión por dos caminos
+// casi al mismo tiempo al cargar la página (la consulta directa y el
+// propio listener de supabase-js). Sin esto, ambos entraban a la vez a
+// decidir si tocaba limpiar, y si el segundo llegaba tarde -ya con datos
+// recién guardados en caché por el primero- terminaba borrando lo que se
+// acababa de traer de verdad, haciendo parecer "desaparecida" información
+// que sí estaba bien guardada en el servidor. Esto hace que las llamadas
+// que coinciden se resuelvan juntas, una sola vez.
+let enProceso: Promise<void> | null = null
+
+async function limpiarSiCambioDeUsuario(userId: string): Promise<void> {
+  try {
+    const anterior = localStorage.getItem(CLAVE_ULTIMO_USUARIO)
+    if (anterior && anterior !== userId) {
+      for (const clave of Object.keys(localStorage)) {
+        if (clave.startsWith(PREFIJO_CACHE)) localStorage.removeItem(clave)
+      }
+      await limpiarCacheIdb()
+    }
+    localStorage.setItem(CLAVE_ULTIMO_USUARIO, userId)
+  } catch {
+    // localStorage no disponible: no hay caché que limpiar, sin consecuencia.
   }
-  await limpiarCacheIdb()
 }
 
 /**
  * El caché vive en localStorage (claves fijas como "approban_cache_fincas")
  * y en IndexedDB (embolses, repiques, cosecha, etc.), ninguno separado por
- * usuario. Si en el mismo dispositivo/navegador antes entró otra cuenta con
- * más acceso (por ejemplo un admin), al iniciar sesión con una cuenta
- * distinta se vería por un instante — o de forma inconsistente según cuándo
- * termine de llegar la respuesta real — lo que había quedado cacheado de esa
- * otra cuenta. Se borra todo (ambos almacenes) apenas se detecta que cambió
- * el usuario que tiene sesión activa en este dispositivo, o que este
- * dispositivo todavía no vio la versión de caché más reciente (para limpiar
- * de una vez lo que haya quedado mezclado de antes, aunque sea con la misma
- * cuenta) — antes de dejar pasar la sesión, para que ningún componente
- * llegue a leer esa mezcla.
+ * usuario. Si en el mismo dispositivo/navegador antes entró otra cuenta,
+ * al iniciar sesión con una cuenta distinta se podía ver lo que había
+ * quedado cacheado de esa otra cuenta. Se borra todo (ambos almacenes)
+ * solo cuando de verdad cambia el usuario con sesión activa en este
+ * dispositivo — nunca en cada carga de página normal con la misma cuenta,
+ * para no dejar a nadie sin su respaldo local si la conexión está lenta.
  */
-export async function limpiarCacheSiCambioDeUsuario(userId: string): Promise<void> {
-  try {
-    // Sin señal, el caché es lo único con que cuenta el operario para seguir
-    // trabajando: no se toca hasta que vuelva la conexión.
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
-    const anterior = localStorage.getItem(CLAVE_ULTIMO_USUARIO)
-    const versionGuardada = localStorage.getItem(CLAVE_VERSION_CACHE)
-    if (versionGuardada !== String(VERSION_CACHE) || (anterior && anterior !== userId)) {
-      await borrarTodoElCache()
-    }
-    localStorage.setItem(CLAVE_VERSION_CACHE, String(VERSION_CACHE))
-    localStorage.setItem(CLAVE_ULTIMO_USUARIO, userId)
-  } catch {
-    // localStorage no disponible: no hay caché que limpiar, sin consecuencia.
+export function limpiarCacheSiCambioDeUsuario(userId: string): Promise<void> {
+  if (!enProceso) {
+    enProceso = limpiarSiCambioDeUsuario(userId).finally(() => {
+      enProceso = null
+    })
   }
+  return enProceso
 }
 
 interface ResultadoConsulta<T> {
