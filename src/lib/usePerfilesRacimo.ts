@@ -56,6 +56,7 @@ export interface PerfilRacimoMuestraPayload {
   hora: string | null
   lote: string | null
   noRacimo: string | null
+  cinta: string | null
   edadCinta: string | null
   gradoSudbasal: number | null
   gradoApical: number | null
@@ -122,6 +123,7 @@ export async function guardarPerfilRacimo(payload: PerfilRacimoPayload): Promise
       m.hora ||
       m.lote ||
       m.noRacimo ||
+      m.cinta ||
       m.edadCinta ||
       m.gradoSudbasal !== null ||
       m.gradoApical !== null ||
@@ -141,6 +143,7 @@ export async function guardarPerfilRacimo(payload: PerfilRacimoPayload): Promise
           hora: m.hora,
           lote: m.lote,
           no_racimo: m.noRacimo,
+          cinta: m.cinta,
           edad_cinta: m.edadCinta,
           grado_sudbasal: m.gradoSudbasal,
           grado_apical: m.gradoApical,

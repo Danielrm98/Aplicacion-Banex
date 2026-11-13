@@ -5,6 +5,7 @@ export interface PerfilRacimoMuestra {
   hora: string | null
   lote: string | null
   no_racimo: string | null
+  cinta: string | null
   edad_cinta: string | null
   grado_sudbasal: number | null
   grado_apical: number | null

@@ -1180,6 +1180,7 @@ create table public.perfil_racimo_muestras (
   hora text,
   lote text,
   no_racimo text,
+  cinta text check (cinta is null or cinta in ('BLANCA', 'AZUL', 'ROJA', 'CAFE', 'NEGRA', 'NARANJA', 'VERDE', 'AMARILLA')),
   edad_cinta text,
   grado_sudbasal numeric,
   grado_apical numeric,

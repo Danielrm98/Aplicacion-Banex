@@ -9,6 +9,7 @@ import { posicionFinca } from '../lib/ordenFincas'
 import { esErrorDeRed } from '../lib/colaRegistros'
 import { agregarPerfilRacimoACola } from '../lib/colaPerfilRacimo'
 import { DEFECTOS_POR_GRUPO_PERFIL_RACIMO, GRUPOS_PERFIL_RACIMO, NUMEROS_MUESTRA } from '../lib/catalogoPerfilRacimo'
+import { COLORES_CINTA } from '../lib/cintaEmbolse'
 import {
   eliminarPerfilRacimo,
   guardarPerfilRacimo,
@@ -96,6 +97,7 @@ interface MuestraCampos {
   hora: string
   lote: string
   noRacimo: string
+  cinta: string
   edadCinta: string
   gradoSudbasal: string
   gradoApical: string
@@ -108,13 +110,14 @@ interface MuestraCampos {
 }
 
 type CampoMuestra = keyof MuestraCampos
-type CampoNumerico = Exclude<CampoMuestra, 'hora' | 'lote' | 'noRacimo' | 'edadCinta'>
+type CampoNumerico = Exclude<CampoMuestra, 'hora' | 'lote' | 'noRacimo' | 'cinta' | 'edadCinta'>
 
 function muestraVacia(): MuestraCampos {
   return {
     hora: '',
     lote: '',
     noRacimo: '',
+    cinta: '',
     edadCinta: '',
     gradoSudbasal: '',
     gradoApical: '',
@@ -220,6 +223,7 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
         hora: m.hora ?? '',
         lote: m.lote ?? '',
         noRacimo: m.no_racimo ?? '',
+        cinta: m.cinta ?? '',
         edadCinta: m.edad_cinta ?? '',
         gradoSudbasal: m.grado_sudbasal !== null ? String(m.grado_sudbasal) : '',
         gradoApical: m.grado_apical !== null ? String(m.grado_apical) : '',
@@ -286,6 +290,7 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
         hora: m.hora.trim() || null,
         lote: m.lote.trim() || null,
         noRacimo: m.noRacimo.trim() || null,
+        cinta: m.cinta.trim() || null,
         edadCinta: m.edadCinta.trim() || null,
         gradoSudbasal: numeroDe(m.gradoSudbasal),
         gradoApical: numeroDe(m.gradoApical),
@@ -474,7 +479,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 // el total/promedio — igual a como está impreso el formulario en papel.
 // ============================================================
 const celdaInputClass =
-  'w-full min-w-0 rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-center text-xs text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20 disabled:bg-gray-100'
+  'w-full min-w-0 rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-center text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-banex-500/20 disabled:bg-gray-100'
 
 function Fila({
   etiqueta,
@@ -490,18 +495,18 @@ function Fila({
   return (
     <tr className="border-b border-gray-100">
       <td
-        className={`sticky left-0 z-[1] w-[170px] border-r border-gray-200 bg-white py-1 pr-2 pl-3 text-xs ${
+        className={`sticky left-0 z-[1] w-[190px] border-r border-gray-200 bg-white py-1.5 pr-2 pl-3 text-xs ${
           negrita ? 'font-semibold text-gray-900' : 'text-gray-600'
         }`}
       >
         {etiqueta}
       </td>
       {celdas.map((c, i) => (
-        <td key={i} className="w-[64px] border-r border-gray-100 px-1 py-1 text-center">
+        <td key={i} className="w-[100px] border-r border-gray-100 px-1.5 py-1.5 text-center">
           {c}
         </td>
       ))}
-      <td className="w-[90px] bg-banex-50/50 px-1 py-1 text-center text-xs font-semibold text-banex-800">{total}</td>
+      <td className="w-[110px] bg-banex-50/50 px-1.5 py-1.5 text-center text-sm font-semibold text-banex-800">{total}</td>
     </tr>
   )
 }
@@ -558,6 +563,31 @@ function TablaPerfil({
     )
   }
 
+  function filaCinta() {
+    return (
+      <Fila
+        etiqueta="CINTA"
+        celdas={NUMEROS_MUESTRA.map((n) => (
+          <select
+            key={n}
+            disabled={!escritura}
+            value={muestras[n].cinta}
+            onChange={(e) => actualizarCampo(n, 'cinta', e.target.value)}
+            className={celdaInputClass}
+          >
+            <option value=""></option>
+            {COLORES_CINTA.map((color) => (
+              <option key={color} value={color}>
+                {color.charAt(0) + color.slice(1).toLowerCase()}
+              </option>
+            ))}
+          </select>
+        ))}
+        total="—"
+      />
+    )
+  }
+
   function filaNumero(etiqueta: string, campo: CampoNumerico, decimales = 2) {
     return (
       <Fila
@@ -584,7 +614,7 @@ function TablaPerfil({
         etiqueta={etiqueta}
         negrita
         celdas={NUMEROS_MUESTRA.map((n) => (
-          <span key={n} className="text-xs font-medium text-gray-700">
+          <span key={n} className="text-sm font-medium text-gray-700">
             {formatoNum(computados[n][campo], decimales)}
           </span>
         ))}
@@ -622,20 +652,21 @@ function TablaPerfil({
         <table className="border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-              <th className="sticky left-0 z-[2] w-[170px] border-r border-gray-200 bg-gray-50 py-2 pr-2 pl-3 text-xs font-medium">Campo</th>
+              <th className="sticky left-0 z-[2] w-[190px] border-r border-gray-200 bg-gray-50 py-2 pr-2 pl-3 text-xs font-medium">Campo</th>
               {NUMEROS_MUESTRA.map((n) => (
-                <th key={n} className="w-[64px] border-r border-gray-100 px-1 py-2 text-center text-xs font-medium">
+                <th key={n} className="w-[100px] border-r border-gray-100 px-1 py-2 text-center text-sm font-medium">
                   {n}
                 </th>
               ))}
-              <th className="w-[90px] px-1 py-2 text-center text-xs font-medium">Total / Promedio</th>
+              <th className="w-[110px] px-1 py-2 text-center text-xs font-medium">Total / Promedio</th>
             </tr>
           </thead>
           <tbody>
             {filaTexto('HORA', 'hora')}
             {filaTexto('LOTE', 'lote')}
             {filaTexto('No. DE RACIMO', 'noRacimo')}
-            {filaTexto('EDAD/CINTA', 'edadCinta')}
+            {filaCinta()}
+            {filaTexto('EDAD', 'edadCinta')}
             {filaNumero('GRADO SUDBASAL', 'gradoSudbasal')}
             {filaNumero('GRADO APICAL', 'gradoApical')}
             {filaNumero('No. DE MANOS', 'noManos', 0)}
