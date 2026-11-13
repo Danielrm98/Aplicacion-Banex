@@ -21,6 +21,7 @@ import RegistroRepiquePage from './pages/RegistroRepiquePage'
 import RecobroPage from './pages/RecobroPage'
 import RegistroLluviaPage from './pages/RegistroLluviaPage'
 import EvaluacionBandaPage from './pages/EvaluacionBandaPage'
+import PerfilRacimoPage from './pages/PerfilRacimoPage'
 import RankingMarcasPage from './pages/RankingMarcasPage'
 
 function RequireAuth({ children }: { children: ReactElement }) {
@@ -107,6 +108,7 @@ function AppRoutes() {
         />
         <Route path="/recobro" element={<RecobroPage />} />
         <Route path="/evaluacion-banda" element={<EvaluacionBandaPage />} />
+        <Route path="/perfil-racimo" element={<PerfilRacimoPage />} />
         <Route path="/ranking-marcas" element={<RankingMarcasPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
