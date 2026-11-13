@@ -611,6 +611,13 @@ function ResumenPorLote({ finca }: { finca: string }) {
       .sort((a, b) => a.semana - b.semana)
   }, [todasLasMuestras, loteSeleccionado])
 
+  // % de merma promedio del lote completo (todas las semanas juntas), para
+  // repartirlo entre los defectos según qué tanto pesa cada uno.
+  const mermaPromedioLote = useMemo(
+    () => promedioDe(todasLasMuestras.filter((m) => m.lote === loteSeleccionado).map((m) => m.computo.G)),
+    [todasLasMuestras, loteSeleccionado],
+  )
+
   const defectosDelLote = useMemo(() => {
     const filtrados = todosLosDefectos.filter((d) => d.lote === loteSeleccionado)
     const totalPeso = filtrados.reduce((sum, d) => sum + d.cantidad, 0)
@@ -621,16 +628,26 @@ function ResumenPorLote({ finca }: { finca: string }) {
       porDefecto.set(d.defecto, acc)
     }
     return Array.from(porDefecto.entries())
-      .map(([defecto, { grupo, peso }]) => ({
-        defecto,
-        grupo,
-        peso,
-        porcentaje: totalPeso > 0 ? (peso / totalPeso) * 100 : 0,
-      }))
-      .sort((a, b) => b.peso - a.peso)
-  }, [todosLosDefectos, loteSeleccionado])
+      .map(([defecto, { grupo, peso }]) => {
+        const porcentaje = totalPeso > 0 ? (peso / totalPeso) * 100 : 0
+        return {
+          defecto,
+          grupo,
+          peso,
+          porcentaje,
+          // Qué tanto representa este defecto dentro del % de merma REAL del
+          // lote (no solo dentro del total de defectos) — igual patrón que
+          // "Evaluación de banda" reparte su merma de finca por grupo.
+          porcentajeMermaLote: mermaPromedioLote !== null ? (porcentaje * mermaPromedioLote) / 100 : null,
+        }
+      })
+      .sort((a, b) => (b.porcentajeMermaLote ?? b.porcentaje) - (a.porcentajeMermaLote ?? a.porcentaje))
+  }, [todosLosDefectos, loteSeleccionado, mermaPromedioLote])
 
   const totalPesoMermaDelLote = defectosDelLote.reduce((sum, d) => sum + d.peso, 0)
+  const maximoPorcentajeMermaLote = Math.max(0, ...defectosDelLote.map((d) => d.porcentajeMermaLote ?? 0))
+
+  const [subvista, setSubvista] = useState<'semanas' | 'ranking'>('semanas')
 
   if (loading) return <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
   if (error) return <p className="py-8 text-center text-sm text-red-600">{error}</p>
@@ -671,109 +688,121 @@ function ResumenPorLote({ finca }: { finca: string }) {
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-              <SectionHeading>Peso neto de racimo — semana a semana</SectionHeading>
-              <SingleLineChart
-                data={semanasDelLote}
-                xKey="semana"
-                yKey="pesoNeto"
-                seriesName="Peso neto (kg)"
-                color={chartColors.blue}
-                xLabelFormatter={(v) => `S${v}`}
-              />
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-              <SectionHeading>% de merma — semana a semana</SectionHeading>
-              <SingleLineChart
-                data={semanasDelLote}
-                xKey="semana"
-                yKey="merma"
-                seriesName="% Merma"
-                color={chartColors.orange}
-                xLabelFormatter={(v) => `S${v}`}
-                valueFormatter={(v) => `${v.toFixed(1)}%`}
-              />
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-              <SectionHeading>Ratios — semana a semana</SectionHeading>
-              <RatiosPorSemanaChart data={semanasDelLote} />
-            </div>
+          <div className="flex gap-1 border-b border-gray-200">
+            <TabButton active={subvista === 'semanas'} onClick={() => setSubvista('semanas')}>
+              Semana a semana
+            </TabButton>
+            <TabButton active={subvista === 'ranking'} onClick={() => setSubvista('ranking')}>
+              Ranking de defectos
+            </TabButton>
           </div>
 
-          <div>
-            <SectionHeading>Lote {loteSeleccionado} por semana</SectionHeading>
-            <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-                    <th className="py-2 px-3 font-medium">Semana</th>
-                    <th className="py-2 px-3 text-right font-medium">Racimos</th>
-                    <th className="py-2 px-3 text-right font-medium">Peso neto prom.</th>
-                    <th className="py-2 px-3 text-right font-medium">% Merma prom.</th>
-                    <th className="py-2 px-3 text-right font-medium">Ratio premio</th>
-                    <th className="py-2 px-3 text-right font-medium">Ratio total</th>
-                    <th className="py-2 px-3 text-right font-medium">Ratio potencial</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {semanasDelLote.map((s) => (
-                    <tr key={s.semana} className="border-b border-gray-100">
-                      <td className="py-1.5 px-3">{s.semana}</td>
-                      <td className="py-1.5 px-3 text-right">{s.racimos}</td>
-                      <td className="py-1.5 px-3 text-right">{formatoNum(s.pesoNeto)}</td>
-                      <td className="py-1.5 px-3 text-right">{formatoNum(s.merma, 1)}</td>
-                      <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioPremio)}</td>
-                      <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioTotal)}</td>
-                      <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioPotencial)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div>
-            <SectionHeading>
-              Defectos del lote {loteSeleccionado} ({anio})
-            </SectionHeading>
-            <p className="mb-2 text-xs text-gray-500">
-              Qué tanto representa cada defecto dentro del peso total de merma registrado en este lote.
-            </p>
-            {defectosDelLote.length === 0 ? (
-              <p className="py-6 text-center text-sm text-gray-500">Este lote no tiene defectos registrados en {anio}.</p>
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-                <table className="w-full min-w-[480px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left text-gray-500">
-                      <th className="py-2 px-3 font-medium">Defecto</th>
-                      <th className="py-2 px-3 font-medium">Grupo</th>
-                      <th className="py-2 px-3 text-right font-medium">Peso</th>
-                      <th className="py-2 px-3 text-right font-medium">% del lote</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {defectosDelLote.map((d) => (
-                      <tr key={`${d.grupo}-${d.defecto}`} className="border-b border-gray-100 last:border-0">
-                        <td className="py-1.5 px-3 text-gray-900">{d.defecto}</td>
-                        <td className="py-1.5 px-3 text-gray-500">{d.grupo}</td>
-                        <td className="py-1.5 px-3 text-right">{formatoNum(d.peso)}</td>
-                        <td className="py-1.5 px-3 text-right font-medium text-banex-800">{formatoNum(d.porcentaje, 1)}%</td>
-                      </tr>
-                    ))}
-                    <tr className="border-t-2 border-banex-100 font-semibold text-banex-800">
-                      <td className="py-1.5 px-3" colSpan={2}>
-                        Total
-                      </td>
-                      <td className="py-1.5 px-3 text-right">{formatoNum(totalPesoMermaDelLote)}</td>
-                      <td className="py-1.5 px-3 text-right">100,0%</td>
-                    </tr>
-                  </tbody>
-                </table>
+          {subvista === 'semanas' ? (
+            <>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+                  <SectionHeading>Peso neto de racimo — semana a semana</SectionHeading>
+                  <SingleLineChart
+                    data={semanasDelLote}
+                    xKey="semana"
+                    yKey="pesoNeto"
+                    seriesName="Peso neto (kg)"
+                    color={chartColors.blue}
+                    xLabelFormatter={(v) => `S${v}`}
+                  />
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+                  <SectionHeading>% de merma — semana a semana</SectionHeading>
+                  <SingleLineChart
+                    data={semanasDelLote}
+                    xKey="semana"
+                    yKey="merma"
+                    seriesName="% Merma"
+                    color={chartColors.orange}
+                    xLabelFormatter={(v) => `S${v}`}
+                    valueFormatter={(v) => `${v.toFixed(1)}%`}
+                  />
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+                  <SectionHeading>Ratios — semana a semana</SectionHeading>
+                  <RatiosPorSemanaChart data={semanasDelLote} />
+                </div>
               </div>
-            )}
-          </div>
+
+              <div>
+                <SectionHeading>Lote {loteSeleccionado} por semana</SectionHeading>
+                <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                        <th className="py-2 px-3 font-medium">Semana</th>
+                        <th className="py-2 px-3 text-right font-medium">Racimos</th>
+                        <th className="py-2 px-3 text-right font-medium">Peso neto prom.</th>
+                        <th className="py-2 px-3 text-right font-medium">% Merma prom.</th>
+                        <th className="py-2 px-3 text-right font-medium">Ratio premio</th>
+                        <th className="py-2 px-3 text-right font-medium">Ratio total</th>
+                        <th className="py-2 px-3 text-right font-medium">Ratio potencial</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {semanasDelLote.map((s) => (
+                        <tr key={s.semana} className="border-b border-gray-100">
+                          <td className="py-1.5 px-3">{s.semana}</td>
+                          <td className="py-1.5 px-3 text-right">{s.racimos}</td>
+                          <td className="py-1.5 px-3 text-right">{formatoNum(s.pesoNeto)}</td>
+                          <td className="py-1.5 px-3 text-right">{formatoNum(s.merma, 1)}</td>
+                          <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioPremio)}</td>
+                          <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioTotal)}</td>
+                          <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioPotencial)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div>
+              <SectionHeading>
+                Ranking de defectos — lote {loteSeleccionado} ({anio})
+              </SectionHeading>
+              <p className="mb-3 text-xs text-gray-500">
+                Qué tanto representa cada defecto dentro de la merma real del lote: % de merma promedio del lote (
+                {formatoNum(mermaPromedioLote, 1)}%) repartido según el peso de cada defecto.
+              </p>
+              {defectosDelLote.length === 0 ? (
+                <p className="py-6 text-center text-sm text-gray-500">Este lote no tiene defectos registrados en {anio}.</p>
+              ) : (
+                <div className="flex flex-col gap-2 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+                  {defectosDelLote.map((d) => {
+                    const anchoBarra =
+                      maximoPorcentajeMermaLote > 0 ? ((d.porcentajeMermaLote ?? 0) / maximoPorcentajeMermaLote) * 100 : 0
+                    return (
+                      <div key={`${d.grupo}-${d.defecto}`} className="flex items-center gap-3">
+                        <div className="w-40 shrink-0 truncate text-xs text-gray-700 sm:w-56" title={d.defecto}>
+                          {d.defecto}
+                          <span className="ml-1 text-gray-400">· {d.grupo}</span>
+                        </div>
+                        <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <div className="h-full rounded-full bg-banex-500" style={{ width: `${anchoBarra}%` }} />
+                        </div>
+                        <div className="w-16 shrink-0 text-right text-xs font-semibold text-banex-800">
+                          {formatoNum(d.porcentajeMermaLote, 1)}%
+                        </div>
+                        <div className="hidden w-28 shrink-0 text-right text-xs text-gray-400 sm:block">
+                          {formatoNum(d.porcentaje, 1)}% del total
+                        </div>
+                      </div>
+                    )
+                  })}
+                  <div className="mt-1 flex items-center justify-between border-t border-gray-100 pt-2 text-xs text-gray-500">
+                    <span>Peso total de merma registrado: {formatoNum(totalPesoMermaDelLote)}</span>
+                    <span>% de merma promedio del lote: {formatoNum(mermaPromedioLote, 1)}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>
