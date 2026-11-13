@@ -19,7 +19,13 @@ import {
   type PerfilRacimoMuestraPayload,
   type PerfilRacimoPayload,
 } from '../lib/usePerfilesRacimo'
+import { useResumenPerfilRacimo } from '../lib/useResumenPerfilRacimo'
+import { computarRacimo, formatoNum, promedioDe, type ComputoRacimo } from '../lib/calculoPerfilRacimo'
 import SectionHeading from '../components/SectionHeading'
+import TabButton from '../components/TabButton'
+import RatiosPorSemanaChart from '../components/charts/RatiosPorSemanaChart'
+import SingleLineChart from '../components/charts/SingleLineChart'
+import { chartColors } from '../components/charts/chartTheme'
 import type { PerfilRacimoEvaluacion } from '../types/perfilRacimo'
 
 export default function PerfilRacimoPage() {
@@ -38,6 +44,7 @@ export default function PerfilRacimoPage() {
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   const [fincaSeleccionada, setFincaSeleccionada] = useState('')
+  const [vista, setVista] = useState<'formulario' | 'resumen-lote'>('formulario')
 
   useEffect(() => {
     if (fincaUnicaOperador) {
@@ -84,7 +91,21 @@ export default function PerfilRacimoPage() {
       {!fincaSeleccionada ? (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
       ) : (
-        <FormularioPerfilRacimo key={fincaSeleccionada} finca={fincaSeleccionada} />
+        <>
+          <div className="mb-4 flex gap-1 border-b border-gray-200">
+            <TabButton active={vista === 'formulario'} onClick={() => setVista('formulario')}>
+              Formulario
+            </TabButton>
+            <TabButton active={vista === 'resumen-lote'} onClick={() => setVista('resumen-lote')}>
+              Resumen por lote
+            </TabButton>
+          </div>
+          {vista === 'formulario' ? (
+            <FormularioPerfilRacimo key={fincaSeleccionada} finca={fincaSeleccionada} />
+          ) : (
+            <ResumenPorLote key={fincaSeleccionada} finca={fincaSeleccionada} />
+          )}
+        </>
       )}
     </div>
   )
@@ -135,19 +156,6 @@ function todasVacias(): Record<number, MuestraCampos> {
   return m
 }
 
-interface Computado {
-  A: number | null
-  B: number | null
-  C: number | null
-  D: number | null
-  E: number | null
-  F: number | null
-  G: number | null
-  ratioPremio: number | null
-  ratioTotal: number | null
-  ratioPotencial: number | null
-}
-
 function numeroDe(texto: string): number | null {
   const limpio = texto.trim()
   if (limpio === '') return null
@@ -155,31 +163,22 @@ function numeroDe(texto: string): number | null {
   return Number.isNaN(n) ? null : n
 }
 
-function promedioDe(valores: (number | null)[]): number | null {
-  const validos = valores.filter((v): v is number => v !== null)
-  return validos.length > 0 ? validos.reduce((a, b) => a + b, 0) / validos.length : null
-}
+// La cuadrícula en vivo también muestra C (peso de merma) como fila
+// calculada, así que acá se guarda junto al resto de lo calculado — el
+// resumen de evaluaciones guardadas y el resumen por lote no lo necesitan
+// aparte, por eso ComputoRacimo (compartido) no lo incluye.
+type ComputoFila = ComputoRacimo & { C: number }
 
-function formatoNum(v: number | null, decimales = 2): string {
-  return v === null ? '—' : v.toLocaleString('es', { maximumFractionDigits: decimales })
-}
-
-/** E=A+B+C · F=E+D · G(%merma)=C/E*100 · ratio premio=A/E · ratio total=(A+B)/E · ratio potencial=E/F.
- * C (peso de merma) ya no se escribe a mano: es la suma de los pesos de
- * cada defecto registrado para ese racimo (el operario registra los
- * defectos en peso, no en cantidad). */
-function computar(m: MuestraCampos, pesoMerma: number): Computado {
-  const A = numeroDe(m.pesoFrutaPremium)
-  const B = numeroDe(m.pesoFrutaCorta)
-  const C = pesoMerma
-  const D = numeroDe(m.vastagoCorona)
-  const E = A === null && B === null && C === 0 ? null : (A ?? 0) + (B ?? 0) + C
-  const F = E === null ? null : E + (D ?? 0)
-  const G = E !== null && E > 0 && C !== null ? (C / E) * 100 : null
-  const ratioPremio = E !== null && E > 0 && A !== null ? A / E : null
-  const ratioTotal = E !== null && E > 0 && A !== null && B !== null ? (A + B) / E : null
-  const ratioPotencial = F !== null && F > 0 && E !== null ? E / F : null
-  return { A, B, C, D, E, F, G, ratioPremio, ratioTotal, ratioPotencial }
+/** Envuelve computarRacimo leyendo A, B y D del texto escrito por el
+ * operario; C (peso de merma) ya no se escribe a mano, llega calculado
+ * (suma de los pesos de cada defecto registrado para ese racimo). */
+function computar(m: MuestraCampos, pesoMerma: number): ComputoFila {
+  return { ...computarRacimo({
+    A: numeroDe(m.pesoFrutaPremium),
+    B: numeroDe(m.pesoFrutaCorta),
+    C: pesoMerma,
+    D: numeroDe(m.vastagoCorona),
+  }), C: pesoMerma }
 }
 
 function claveDefecto(numero: number, grupo: string, defecto: string): string {
@@ -188,6 +187,26 @@ function claveDefecto(numero: number, grupo: string, defecto: string): string {
 
 function horaCorta(createdAt: string): string {
   return new Date(createdAt).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })
+}
+
+/** Promedio de los 10 racimos de una evaluación ya guardada: peso neto, %
+ * merma y los tres ratios. */
+function resumenEvaluacion(ev: PerfilRacimoEvaluacion) {
+  const computos = ev.muestras.map((m) =>
+    computarRacimo({
+      A: m.peso_fruta_premium,
+      B: m.peso_fruta_corta,
+      C: m.peso_merma ?? 0,
+      D: m.vastago_corona,
+    }),
+  )
+  return {
+    pesoNeto: promedioDe(computos.map((c) => c.E)),
+    merma: promedioDe(computos.map((c) => c.G)),
+    ratioPremio: promedioDe(computos.map((c) => c.ratioPremio)),
+    ratioTotal: promedioDe(computos.map((c) => c.ratioTotal)),
+    ratioPotencial: promedioDe(computos.map((c) => c.ratioPotencial)),
+  }
 }
 
 function FormularioPerfilRacimo({ finca }: { finca: string }) {
@@ -284,7 +303,7 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
   }
 
   const computados = useMemo(() => {
-    const m: Record<number, Computado> = {}
+    const m: Record<number, ComputoFila> = {}
     for (const n of NUMEROS_MUESTRA) m[n] = computar(muestras[n], sumaPesoMermaDefectos(n))
     return m
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,7 +313,7 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
     return promedioDe(NUMEROS_MUESTRA.map((n) => numeroDe(muestras[n][campo])))
   }
 
-  function promedioComputado(campo: keyof Computado): number | null {
+  function promedioComputado(campo: keyof ComputoFila): number | null {
     return promedioDe(NUMEROS_MUESTRA.map((n) => computados[n][campo]))
   }
 
@@ -454,33 +473,308 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
                   <th className="py-2 px-3 font-medium">Fecha</th>
                   <th className="py-2 px-3 font-medium">Hora</th>
                   <th className="py-2 px-3 font-medium">Semana</th>
-                  <th className="py-2 px-3 font-medium">Racimos con datos</th>
+                  <th className="py-2 px-3 font-medium">Racimos</th>
+                  <th className="py-2 px-3 text-right font-medium">Peso neto prom.</th>
+                  <th className="py-2 px-3 text-right font-medium">% Merma prom.</th>
+                  <th className="py-2 px-3 text-right font-medium">Ratio premio</th>
+                  <th className="py-2 px-3 text-right font-medium">Ratio total</th>
+                  <th className="py-2 px-3 text-right font-medium">Ratio potencial</th>
                   <th className="py-2 px-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {evaluaciones.map((ev) => (
-                  <tr key={ev.id} className={`border-b border-gray-100 ${ev.id === evaluacionIdActual ? 'bg-banex-50/60' : ''}`}>
-                    <td className="py-1.5 px-3">{ev.fecha}</td>
-                    <td className="py-1.5 px-3">{horaCorta(ev.created_at)}</td>
-                    <td className="py-1.5 px-3">{ev.semana}</td>
-                    <td className="py-1.5 px-3">{ev.muestras.length}</td>
-                    <td className="py-1.5 px-3 text-right whitespace-nowrap">
-                      <button onClick={() => abrirEvaluacion(ev)} className="text-xs font-medium text-banex-700 hover:underline">
-                        Abrir
-                      </button>
-                      {escritura && (
-                        <button onClick={() => eliminar(ev.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
-                          Eliminar
+                {evaluaciones.map((ev) => {
+                  const resumen = resumenEvaluacion(ev)
+                  return (
+                    <tr key={ev.id} className={`border-b border-gray-100 ${ev.id === evaluacionIdActual ? 'bg-banex-50/60' : ''}`}>
+                      <td className="py-1.5 px-3">{ev.fecha}</td>
+                      <td className="py-1.5 px-3">{horaCorta(ev.created_at)}</td>
+                      <td className="py-1.5 px-3">{ev.semana}</td>
+                      <td className="py-1.5 px-3">{ev.muestras.length}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(resumen.pesoNeto)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(resumen.merma, 1)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(resumen.ratioPremio)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(resumen.ratioTotal)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(resumen.ratioPotencial)}</td>
+                      <td className="py-1.5 px-3 text-right whitespace-nowrap">
+                        <button onClick={() => abrirEvaluacion(ev)} className="text-xs font-medium text-banex-700 hover:underline">
+                          Abrir
                         </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        {escritura && (
+                          <button onClick={() => eliminar(ev.id)} className="ml-3 text-xs font-medium text-red-600 hover:underline">
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// Resumen por lote: toma TODAS las evaluaciones guardadas de un año (no
+// solo las últimas, como el formulario) y las agrupa por el lote que
+// escribió el operario en cada racimo — semana a semana.
+// ============================================================
+interface SemanaLote {
+  semana: number
+  racimos: number
+  pesoNeto: number | null
+  merma: number | null
+  ratioPremio: number | null
+  ratioTotal: number | null
+  ratioPotencial: number | null
+}
+
+function ResumenPorLote({ finca }: { finca: string }) {
+  const [anio, setAnio] = useState(() => new Date().getFullYear())
+  const { evaluaciones, loading, error } = useResumenPerfilRacimo(finca, anio)
+
+  // Una fila por racimo con lote lleno, con la semana de su evaluación y su
+  // cómputo (E, G, ratios) ya resuelto.
+  const todasLasMuestras = useMemo(() => {
+    const filas: { semana: number; lote: string; computo: ComputoRacimo }[] = []
+    for (const ev of evaluaciones) {
+      for (const m of ev.muestras) {
+        const lote = m.lote?.trim()
+        if (!lote) continue
+        const computo = computarRacimo({
+          A: m.peso_fruta_premium,
+          B: m.peso_fruta_corta,
+          C: m.peso_merma ?? 0,
+          D: m.vastago_corona,
+        })
+        filas.push({ semana: ev.semana, lote, computo })
+      }
+    }
+    return filas
+  }, [evaluaciones])
+
+  // Defectos de cada racimo, con el lote de ese racimo (cruzando por número
+  // de muestra dentro de la misma evaluación, ya que el defecto no guarda
+  // el lote directamente).
+  const todosLosDefectos = useMemo(() => {
+    const filas: { lote: string; grupo: string; defecto: string; cantidad: number }[] = []
+    for (const ev of evaluaciones) {
+      const lotePorMuestra = new Map<number, string>()
+      for (const m of ev.muestras) {
+        const lote = m.lote?.trim()
+        if (lote) lotePorMuestra.set(m.numero_muestra, lote)
+      }
+      for (const d of ev.defectos) {
+        const lote = lotePorMuestra.get(d.numero_muestra)
+        if (!lote) continue
+        filas.push({ lote, grupo: d.grupo, defecto: d.defecto, cantidad: d.cantidad })
+      }
+    }
+    return filas
+  }, [evaluaciones])
+
+  const lotesDisponibles = useMemo(
+    () =>
+      Array.from(new Set(todasLasMuestras.map((m) => m.lote))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    [todasLasMuestras],
+  )
+
+  const [loteSeleccionado, setLoteSeleccionado] = useState('')
+
+  useEffect(() => {
+    if (loteSeleccionado && lotesDisponibles.includes(loteSeleccionado)) return
+    setLoteSeleccionado(lotesDisponibles[0] ?? '')
+  }, [lotesDisponibles, loteSeleccionado])
+
+  const semanasDelLote = useMemo<SemanaLote[]>(() => {
+    const filtradas = todasLasMuestras.filter((m) => m.lote === loteSeleccionado)
+    const porSemana = new Map<number, ComputoRacimo[]>()
+    for (const m of filtradas) {
+      const arr = porSemana.get(m.semana) ?? []
+      arr.push(m.computo)
+      porSemana.set(m.semana, arr)
+    }
+    return Array.from(porSemana.entries())
+      .map(([semana, computos]) => ({
+        semana,
+        racimos: computos.length,
+        pesoNeto: promedioDe(computos.map((c) => c.E)),
+        merma: promedioDe(computos.map((c) => c.G)),
+        ratioPremio: promedioDe(computos.map((c) => c.ratioPremio)),
+        ratioTotal: promedioDe(computos.map((c) => c.ratioTotal)),
+        ratioPotencial: promedioDe(computos.map((c) => c.ratioPotencial)),
+      }))
+      .sort((a, b) => a.semana - b.semana)
+  }, [todasLasMuestras, loteSeleccionado])
+
+  const defectosDelLote = useMemo(() => {
+    const filtrados = todosLosDefectos.filter((d) => d.lote === loteSeleccionado)
+    const totalPeso = filtrados.reduce((sum, d) => sum + d.cantidad, 0)
+    const porDefecto = new Map<string, { grupo: string; peso: number }>()
+    for (const d of filtrados) {
+      const acc = porDefecto.get(d.defecto) ?? { grupo: d.grupo, peso: 0 }
+      acc.peso += d.cantidad
+      porDefecto.set(d.defecto, acc)
+    }
+    return Array.from(porDefecto.entries())
+      .map(([defecto, { grupo, peso }]) => ({
+        defecto,
+        grupo,
+        peso,
+        porcentaje: totalPeso > 0 ? (peso / totalPeso) * 100 : 0,
+      }))
+      .sort((a, b) => b.peso - a.peso)
+  }, [todosLosDefectos, loteSeleccionado])
+
+  const totalPesoMermaDelLote = defectosDelLote.reduce((sum, d) => sum + d.peso, 0)
+
+  if (loading) return <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+  if (error) return <p className="py-8 text-center text-sm text-red-600">{error}</p>
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <label className="text-sm">
+          <span className="mb-1 block text-gray-600">Año</span>
+          <input
+            type="number"
+            value={anio}
+            onChange={(e) => setAnio(Number(e.target.value))}
+            className="w-24 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-gray-600">Lote</span>
+          <select
+            value={loteSeleccionado}
+            onChange={(e) => setLoteSeleccionado(e.target.value)}
+            disabled={lotesDisponibles.length === 0}
+            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:opacity-60"
+          >
+            {lotesDisponibles.length === 0 && <option value="">Sin lotes registrados</option>}
+            {lotesDisponibles.map((l) => (
+              <option key={l} value={l}>
+                Lote {l}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {lotesDisponibles.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">
+          Todavía no hay ningún perfil guardado con el campo LOTE lleno en {anio}.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+              <SectionHeading>Peso neto de racimo — semana a semana</SectionHeading>
+              <SingleLineChart
+                data={semanasDelLote}
+                xKey="semana"
+                yKey="pesoNeto"
+                seriesName="Peso neto (kg)"
+                color={chartColors.blue}
+                xLabelFormatter={(v) => `S${v}`}
+              />
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+              <SectionHeading>% de merma — semana a semana</SectionHeading>
+              <SingleLineChart
+                data={semanasDelLote}
+                xKey="semana"
+                yKey="merma"
+                seriesName="% Merma"
+                color={chartColors.orange}
+                xLabelFormatter={(v) => `S${v}`}
+                valueFormatter={(v) => `${v.toFixed(1)}%`}
+              />
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+              <SectionHeading>Ratios — semana a semana</SectionHeading>
+              <RatiosPorSemanaChart data={semanasDelLote} />
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading>Lote {loteSeleccionado} por semana</SectionHeading>
+            <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                    <th className="py-2 px-3 font-medium">Semana</th>
+                    <th className="py-2 px-3 text-right font-medium">Racimos</th>
+                    <th className="py-2 px-3 text-right font-medium">Peso neto prom.</th>
+                    <th className="py-2 px-3 text-right font-medium">% Merma prom.</th>
+                    <th className="py-2 px-3 text-right font-medium">Ratio premio</th>
+                    <th className="py-2 px-3 text-right font-medium">Ratio total</th>
+                    <th className="py-2 px-3 text-right font-medium">Ratio potencial</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {semanasDelLote.map((s) => (
+                    <tr key={s.semana} className="border-b border-gray-100">
+                      <td className="py-1.5 px-3">{s.semana}</td>
+                      <td className="py-1.5 px-3 text-right">{s.racimos}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(s.pesoNeto)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(s.merma, 1)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioPremio)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioTotal)}</td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(s.ratioPotencial)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading>
+              Defectos del lote {loteSeleccionado} ({anio})
+            </SectionHeading>
+            <p className="mb-2 text-xs text-gray-500">
+              Qué tanto representa cada defecto dentro del peso total de merma registrado en este lote.
+            </p>
+            {defectosDelLote.length === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-500">Este lote no tiene defectos registrados en {anio}.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+                <table className="w-full min-w-[480px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-gray-500">
+                      <th className="py-2 px-3 font-medium">Defecto</th>
+                      <th className="py-2 px-3 font-medium">Grupo</th>
+                      <th className="py-2 px-3 text-right font-medium">Peso</th>
+                      <th className="py-2 px-3 text-right font-medium">% del lote</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {defectosDelLote.map((d) => (
+                      <tr key={`${d.grupo}-${d.defecto}`} className="border-b border-gray-100 last:border-0">
+                        <td className="py-1.5 px-3 text-gray-900">{d.defecto}</td>
+                        <td className="py-1.5 px-3 text-gray-500">{d.grupo}</td>
+                        <td className="py-1.5 px-3 text-right">{formatoNum(d.peso)}</td>
+                        <td className="py-1.5 px-3 text-right font-medium text-banex-800">{formatoNum(d.porcentaje, 1)}%</td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 border-banex-100 font-semibold text-banex-800">
+                      <td className="py-1.5 px-3" colSpan={2}>
+                        Total
+                      </td>
+                      <td className="py-1.5 px-3 text-right">{formatoNum(totalPesoMermaDelLote)}</td>
+                      <td className="py-1.5 px-3 text-right">100,0%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
@@ -558,12 +852,12 @@ function TablaPerfil({
   sumaDefecto,
 }: {
   muestras: Record<number, MuestraCampos>
-  computados: Record<number, Computado>
+  computados: Record<number, ComputoFila>
   defectos: Record<string, number>
   escritura: boolean
   actualizarCampo: (numero: number, campo: CampoMuestra, valor: string) => void
   promedioCampo: (campo: CampoNumerico) => number | null
-  promedioComputado: (campo: keyof Computado) => number | null
+  promedioComputado: (campo: keyof ComputoFila) => number | null
   defectoDe: (numero: number, grupo: string, defecto: string) => number
   setDefecto: (numero: number, grupo: string, defecto: string, valor: number) => void
   sumaDefecto: (grupo: string, defecto: string) => number
@@ -651,7 +945,7 @@ function TablaPerfil({
     )
   }
 
-  function filaCalculada(etiqueta: string, campo: keyof Computado, decimales = 2) {
+  function filaCalculada(etiqueta: string, campo: keyof ComputoFila, decimales = 2) {
     return (
       <Fila
         etiqueta={etiqueta}
