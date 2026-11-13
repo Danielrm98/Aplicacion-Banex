@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useDraftState } from '../lib/useDraftState'
 import { useAuth } from '../lib/AuthContext'
 import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
@@ -105,7 +106,6 @@ interface MuestraCampos {
   largoApical: string
   pesoFrutaPremium: string
   pesoFrutaCorta: string
-  pesoMerma: string
   vastagoCorona: string
 }
 
@@ -125,7 +125,6 @@ function muestraVacia(): MuestraCampos {
     largoApical: '',
     pesoFrutaPremium: '',
     pesoFrutaCorta: '',
-    pesoMerma: '',
     vastagoCorona: '',
   }
 }
@@ -165,13 +164,16 @@ function formatoNum(v: number | null, decimales = 2): string {
   return v === null ? '—' : v.toLocaleString('es', { maximumFractionDigits: decimales })
 }
 
-/** E=A+B+C · F=E+D · G(%merma)=C/E*100 · ratio premio=A/E · ratio total=(A+B)/E · ratio potencial=E/F. */
-function computar(m: MuestraCampos): Computado {
+/** E=A+B+C · F=E+D · G(%merma)=C/E*100 · ratio premio=A/E · ratio total=(A+B)/E · ratio potencial=E/F.
+ * C (peso de merma) ya no se escribe a mano: es la suma de los pesos de
+ * cada defecto registrado para ese racimo (el operario registra los
+ * defectos en peso, no en cantidad). */
+function computar(m: MuestraCampos, pesoMerma: number): Computado {
   const A = numeroDe(m.pesoFrutaPremium)
   const B = numeroDe(m.pesoFrutaCorta)
-  const C = numeroDe(m.pesoMerma)
+  const C = pesoMerma
   const D = numeroDe(m.vastagoCorona)
-  const E = A === null && B === null && C === null ? null : (A ?? 0) + (B ?? 0) + (C ?? 0)
+  const E = A === null && B === null && C === 0 ? null : (A ?? 0) + (B ?? 0) + C
   const F = E === null ? null : E + (D ?? 0)
   const G = E !== null && E > 0 && C !== null ? (C / E) * 100 : null
   const ratioPremio = E !== null && E > 0 && A !== null ? A / E : null
@@ -194,10 +196,19 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
   const escritura = puedeEscribir(perfil)
   const { evaluaciones, refetch } = usePerfilesRacimo(finca)
 
-  const [fecha, setFecha] = useState(fechaLocalHoy())
-  const [evaluacionIdActual, setEvaluacionIdActual] = useState<string | null>(null)
-  const [muestras, setMuestras] = useState<Record<number, MuestraCampos>>(todasVacias)
-  const [defectos, setDefectos] = useState<Record<string, number>>({})
+  // Borrador autoguardado por finca: si el operario llena el primer racimo
+  // y se pasa a otro menú (o el navegador recarga la página), la
+  // información sigue ahí al volver — no hay que guardar de inmediato.
+  const [fecha, setFecha] = useDraftState(`approban_borrador_perfil_racimo_fecha_${finca}`, fechaLocalHoy)
+  const [evaluacionIdActual, setEvaluacionIdActual] = useDraftState<string | null>(
+    `approban_borrador_perfil_racimo_id_${finca}`,
+    null,
+  )
+  const [muestras, setMuestras] = useDraftState<Record<number, MuestraCampos>>(
+    `approban_borrador_perfil_racimo_muestras_${finca}`,
+    todasVacias,
+  )
+  const [defectos, setDefectos] = useDraftState<Record<string, number>>(`approban_borrador_perfil_racimo_defectos_${finca}`, {})
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mensajeExito, setMensajeExito] = useState<string | null>(null)
@@ -231,7 +242,6 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
         largoApical: m.largo_apical !== null ? String(m.largo_apical) : '',
         pesoFrutaPremium: m.peso_fruta_premium !== null ? String(m.peso_fruta_premium) : '',
         pesoFrutaCorta: m.peso_fruta_corta !== null ? String(m.peso_fruta_corta) : '',
-        pesoMerma: m.peso_merma !== null ? String(m.peso_merma) : '',
         vastagoCorona: m.vastago_corona !== null ? String(m.vastago_corona) : '',
       }
     }
@@ -261,11 +271,24 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
     return NUMEROS_MUESTRA.reduce((sum, n) => sum + defectoDe(n, grupo, defecto), 0)
   }
 
+  // El operario registra cada defecto en peso (no en cantidad), así que el
+  // peso de merma de un racimo es la suma de todos sus defectos.
+  function sumaPesoMermaDefectos(numero: number) {
+    let suma = 0
+    for (const grupo of GRUPOS_PERFIL_RACIMO) {
+      for (const defecto of DEFECTOS_POR_GRUPO_PERFIL_RACIMO[grupo]) {
+        suma += defectoDe(numero, grupo, defecto)
+      }
+    }
+    return suma
+  }
+
   const computados = useMemo(() => {
     const m: Record<number, Computado> = {}
-    for (const n of NUMEROS_MUESTRA) m[n] = computar(muestras[n])
+    for (const n of NUMEROS_MUESTRA) m[n] = computar(muestras[n], sumaPesoMermaDefectos(n))
     return m
-  }, [muestras])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [muestras, defectos])
 
   function promedioCampo(campo: CampoNumerico): number | null {
     return promedioDe(NUMEROS_MUESTRA.map((n) => numeroDe(muestras[n][campo])))
@@ -298,7 +321,8 @@ function FormularioPerfilRacimo({ finca }: { finca: string }) {
         largoApical: numeroDe(m.largoApical),
         pesoFrutaPremium: numeroDe(m.pesoFrutaPremium),
         pesoFrutaCorta: numeroDe(m.pesoFrutaCorta),
-        pesoMerma: numeroDe(m.pesoMerma),
+        // Ya no se escribe a mano: es la suma de los defectos de ese racimo.
+        pesoMerma: sumaPesoMermaDefectos(n),
         vastagoCorona: numeroDe(m.vastagoCorona),
       }
     })
@@ -652,14 +676,14 @@ function TablaPerfil({
             key={n}
             type="number"
             min={0}
-            step="1"
+            step="0.01"
             disabled={!escritura}
             value={defectoDe(n, grupo, defecto) || ''}
             onChange={(e) => setDefecto(n, grupo, defecto, Math.max(0, Number(e.target.value)))}
             className={celdaInputClass}
           />
         ))}
-        total={String(sumaDefecto(grupo, defecto))}
+        total={formatoNum(sumaDefecto(grupo, defecto))}
       />
     )
   }
@@ -667,6 +691,10 @@ function TablaPerfil({
   return (
     <div>
       <SectionHeading>Mediciones por racimo</SectionHeading>
+      <p className="mb-2 text-xs text-gray-500">
+        Los defectos se registran en peso (no en cantidad): C. Peso de merma se calcula solo, sumando el peso de
+        todos los defectos de cada racimo.
+      </p>
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
         <table className="w-[1520px] table-fixed border-collapse text-sm">
           <thead>
@@ -692,7 +720,7 @@ function TablaPerfil({
             {filaNumero('LARGO APICAL', 'largoApical')}
             {filaNumero('A. PESO FRUTA PREMIUM', 'pesoFrutaPremium')}
             {filaNumero('B. PESO FRUTA CORTA', 'pesoFrutaCorta')}
-            {filaNumero('C. PESO DE MERMA', 'pesoMerma')}
+            {filaCalculada('C. PESO DE MERMA (suma de defectos)', 'C')}
             {filaNumero('D. VASTAGO Y CORONA', 'vastagoCorona')}
             {filaCalculada('E. PESO NETO DE FRUTA (A+B+C)', 'E')}
             {filaCalculada('F. PESO TOTAL DE RACIMO (E+D)', 'F')}

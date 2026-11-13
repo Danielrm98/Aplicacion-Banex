@@ -131,7 +131,10 @@ export async function guardarPerfilRacimo(payload: PerfilRacimoPayload): Promise
       m.largoApical !== null ||
       m.pesoFrutaPremium !== null ||
       m.pesoFrutaCorta !== null ||
-      m.pesoMerma !== null ||
+      // pesoMerma ya es un valor calculado (suma de defectos) y siempre
+      // llega con un número, así que un 0 no cuenta como "hay datos" por sí
+      // solo — pero si de verdad hay peso de merma, sí es una señal real.
+      (m.pesoMerma ?? 0) > 0 ||
       m.vastagoCorona !== null,
   )
   if (muestrasConDatos.length > 0) {
