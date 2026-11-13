@@ -205,9 +205,15 @@ function leerBorradorLocal<T>(clave: string): T | null {
 function borradorComoFilas(finca: string, anioSeleccionado: number) {
   const muestras: { semana: number; lote: string; computo: ComputoFila }[] = []
   const defectos: { lote: string; grupo: string; defecto: string; cantidad: number }[] = []
+  // Si lo que hay en el formulario es una evaluación YA guardada que se
+  // abrió para revisar o corregir (todavía sin volver a guardar), hay que
+  // excluir esa misma evaluación de lo que ya viene de la base de datos —
+  // si no, cada racimo se cuenta dos veces: una como guardado, otra como lo
+  // que está en pantalla.
+  const evaluacionIdActual = leerBorradorLocal<string | null>(`approban_borrador_perfil_racimo_id_${finca}`) ?? null
 
   const fecha = leerBorradorLocal<string>(`approban_borrador_perfil_racimo_fecha_${finca}`)
-  if (!fecha || Number(fecha.slice(0, 4)) !== anioSeleccionado) return { muestras, defectos }
+  if (!fecha || Number(fecha.slice(0, 4)) !== anioSeleccionado) return { muestras, defectos, evaluacionIdActual }
 
   const muestrasBorrador =
     leerBorradorLocal<Record<number, MuestraCampos>>(`approban_borrador_perfil_racimo_muestras_${finca}`) ?? {}
@@ -230,7 +236,7 @@ function borradorComoFilas(finca: string, anioSeleccionado: number) {
     if (lote) muestras.push({ semana, lote, computo: computar(m, pesoMerma) })
   }
 
-  return { muestras, defectos }
+  return { muestras, defectos, evaluacionIdActual }
 }
 
 /** Promedio de los 10 racimos de una evaluación ya guardada: peso neto, %
@@ -592,6 +598,7 @@ function ResumenPorLote({ finca }: { finca: string }) {
   const todasLasMuestras = useMemo(() => {
     const filas: { semana: number; lote: string; computo: ComputoRacimo }[] = [...borrador.muestras]
     for (const ev of evaluaciones) {
+      if (ev.id === borrador.evaluacionIdActual) continue
       for (const m of ev.muestras) {
         const lote = m.lote?.trim()
         if (!lote) continue
@@ -613,6 +620,7 @@ function ResumenPorLote({ finca }: { finca: string }) {
   const todosLosDefectos = useMemo(() => {
     const filas: { lote: string; grupo: string; defecto: string; cantidad: number }[] = [...borrador.defectos]
     for (const ev of evaluaciones) {
+      if (ev.id === borrador.evaluacionIdActual) continue
       const lotePorMuestra = new Map<number, string>()
       for (const m of ev.muestras) {
         const lote = m.lote?.trim()
