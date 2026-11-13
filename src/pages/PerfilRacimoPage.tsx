@@ -544,7 +544,26 @@ function TablaPerfil({
   setDefecto: (numero: number, grupo: string, defecto: string, valor: number) => void
   sumaDefecto: (grupo: string, defecto: string) => number
 }) {
-  function filaTexto(etiqueta: string, campo: 'hora' | 'lote' | 'noRacimo' | 'edadCinta') {
+  function filaHora() {
+    return (
+      <Fila
+        etiqueta="HORA"
+        celdas={NUMEROS_MUESTRA.map((n) => (
+          <input
+            key={n}
+            type="time"
+            disabled={!escritura}
+            value={muestras[n].hora}
+            onChange={(e) => actualizarCampo(n, 'hora', e.target.value)}
+            className={celdaInputClass}
+          />
+        ))}
+        total="—"
+      />
+    )
+  }
+
+  function filaTexto(etiqueta: string, campo: 'lote' | 'noRacimo' | 'edadCinta') {
     return (
       <Fila
         etiqueta={etiqueta}
@@ -662,7 +681,7 @@ function TablaPerfil({
             </tr>
           </thead>
           <tbody>
-            {filaTexto('HORA', 'hora')}
+            {filaHora()}
             {filaTexto('LOTE', 'lote')}
             {filaTexto('No. DE RACIMO', 'noRacimo')}
             {filaCinta()}
