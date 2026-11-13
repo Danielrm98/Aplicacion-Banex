@@ -502,11 +502,11 @@ function Fila({
         {etiqueta}
       </td>
       {celdas.map((c, i) => (
-        <td key={i} className="w-[100px] border-r border-gray-100 px-1.5 py-1.5 text-center">
+        <td key={i} className="w-[120px] border-r border-gray-100 px-1.5 py-1.5 text-center">
           {c}
         </td>
       ))}
-      <td className="w-[110px] bg-banex-50/50 px-1.5 py-1.5 text-center text-sm font-semibold text-banex-800">{total}</td>
+      <td className="w-[130px] bg-banex-50/50 px-1.5 py-1.5 text-center text-sm font-semibold text-banex-800">{total}</td>
     </tr>
   )
 }
@@ -649,16 +649,16 @@ function TablaPerfil({
     <div>
       <SectionHeading>Mediciones por racimo</SectionHeading>
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="border-collapse text-sm">
+        <table className="w-[1520px] table-fixed border-collapse text-sm">
           <thead>
             <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
               <th className="sticky left-0 z-[2] w-[190px] border-r border-gray-200 bg-gray-50 py-2 pr-2 pl-3 text-xs font-medium">Campo</th>
               {NUMEROS_MUESTRA.map((n) => (
-                <th key={n} className="w-[100px] border-r border-gray-100 px-1 py-2 text-center text-sm font-medium">
+                <th key={n} className="w-[120px] border-r border-gray-100 px-1 py-2 text-center text-sm font-medium">
                   {n}
                 </th>
               ))}
-              <th className="w-[110px] px-1 py-2 text-center text-xs font-medium">Total / Promedio</th>
+              <th className="w-[130px] px-1 py-2 text-center text-xs font-medium">Total / Promedio</th>
             </tr>
           </thead>
           <tbody>
