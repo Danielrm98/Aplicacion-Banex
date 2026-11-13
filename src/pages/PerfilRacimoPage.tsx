@@ -189,6 +189,50 @@ function horaCorta(createdAt: string): string {
   return new Date(createdAt).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })
 }
 
+function leerBorradorLocal<T>(clave: string): T | null {
+  try {
+    const guardado = localStorage.getItem(clave)
+    return guardado !== null ? (JSON.parse(guardado) as T) : null
+  } catch {
+    return null
+  }
+}
+
+/** Lo que el operario lleva escrito en el Formulario para esta finca, sin
+ * guardar todavía, para que "Resumen por lote" lo refleje de una vez en
+ * vez de esperar a que le dé "Guardar perfil". Se lee directo de
+ * localStorage (mismas claves que useDraftState en FormularioPerfilRacimo). */
+function borradorComoFilas(finca: string, anioSeleccionado: number) {
+  const muestras: { semana: number; lote: string; computo: ComputoFila }[] = []
+  const defectos: { lote: string; grupo: string; defecto: string; cantidad: number }[] = []
+
+  const fecha = leerBorradorLocal<string>(`approban_borrador_perfil_racimo_fecha_${finca}`)
+  if (!fecha || Number(fecha.slice(0, 4)) !== anioSeleccionado) return { muestras, defectos }
+
+  const muestrasBorrador =
+    leerBorradorLocal<Record<number, MuestraCampos>>(`approban_borrador_perfil_racimo_muestras_${finca}`) ?? {}
+  const defectosBorrador = leerBorradorLocal<Record<string, number>>(`approban_borrador_perfil_racimo_defectos_${finca}`) ?? {}
+  const semana = getIsoWeek(fecha)
+
+  for (const n of NUMEROS_MUESTRA) {
+    const m = muestrasBorrador[n] ?? muestraVacia()
+    const lote = m.lote?.trim()
+
+    let pesoMerma = 0
+    for (const grupo of GRUPOS_PERFIL_RACIMO) {
+      for (const defecto of DEFECTOS_POR_GRUPO_PERFIL_RACIMO[grupo]) {
+        const cantidad = defectosBorrador[claveDefecto(n, grupo, defecto)] ?? 0
+        pesoMerma += cantidad
+        if (lote && cantidad > 0) defectos.push({ lote, grupo, defecto, cantidad })
+      }
+    }
+
+    if (lote) muestras.push({ semana, lote, computo: computar(m, pesoMerma) })
+  }
+
+  return { muestras, defectos }
+}
+
 /** Promedio de los 10 racimos de una evaluación ya guardada: peso neto, %
  * merma y los tres ratios. */
 function resumenEvaluacion(ev: PerfilRacimoEvaluacion) {
@@ -537,10 +581,16 @@ function ResumenPorLote({ finca }: { finca: string }) {
   const [anio, setAnio] = useState(() => new Date().getFullYear())
   const { evaluaciones, loading, error } = useResumenPerfilRacimo(finca, anio)
 
+  // Lo que el operario lleva escrito en el Formulario sin guardar todavía,
+  // para que este resumen lo refleje de una vez. Se vuelve a leer cada vez
+  // que se entra a esta pestaña (o cambia el año), que es cuando hace falta.
+  const borrador = useMemo(() => borradorComoFilas(finca, anio), [finca, anio])
+
   // Una fila por racimo con lote lleno, con la semana de su evaluación y su
-  // cómputo (E, G, ratios) ya resuelto.
+  // cómputo (E, G, ratios) ya resuelto — incluye lo guardado y lo que está
+  // en el borrador sin guardar.
   const todasLasMuestras = useMemo(() => {
-    const filas: { semana: number; lote: string; computo: ComputoRacimo }[] = []
+    const filas: { semana: number; lote: string; computo: ComputoRacimo }[] = [...borrador.muestras]
     for (const ev of evaluaciones) {
       for (const m of ev.muestras) {
         const lote = m.lote?.trim()
@@ -555,13 +605,13 @@ function ResumenPorLote({ finca }: { finca: string }) {
       }
     }
     return filas
-  }, [evaluaciones])
+  }, [evaluaciones, borrador])
 
   // Defectos de cada racimo, con el lote de ese racimo (cruzando por número
   // de muestra dentro de la misma evaluación, ya que el defecto no guarda
   // el lote directamente).
   const todosLosDefectos = useMemo(() => {
-    const filas: { lote: string; grupo: string; defecto: string; cantidad: number }[] = []
+    const filas: { lote: string; grupo: string; defecto: string; cantidad: number }[] = [...borrador.defectos]
     for (const ev of evaluaciones) {
       const lotePorMuestra = new Map<number, string>()
       for (const m of ev.muestras) {
@@ -575,7 +625,7 @@ function ResumenPorLote({ finca }: { finca: string }) {
       }
     }
     return filas
-  }, [evaluaciones])
+  }, [evaluaciones, borrador])
 
   const lotesDisponibles = useMemo(
     () =>
@@ -680,6 +730,11 @@ function ResumenPorLote({ finca }: { finca: string }) {
             ))}
           </select>
         </label>
+        {borrador.muestras.length > 0 && (
+          <span className="text-xs text-banex-700">
+            Incluye lo que llevas escrito sin guardar en el formulario de esta finca.
+          </span>
+        )}
       </div>
 
       {lotesDisponibles.length === 0 ? (

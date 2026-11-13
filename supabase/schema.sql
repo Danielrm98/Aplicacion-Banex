@@ -1247,7 +1247,8 @@ create table public.perfil_racimo_defectos (
   numero_muestra integer not null check (numero_muestra between 1 and 10),
   grupo text not null,
   defecto text not null,
-  cantidad integer not null check (cantidad > 0),
+  -- Se registra en peso (decimales), no en cantidad entera.
+  cantidad numeric not null check (cantidad > 0),
   created_at timestamptz not null default now(),
   unique (evaluacion_id, numero_muestra, grupo, defecto)
 );
