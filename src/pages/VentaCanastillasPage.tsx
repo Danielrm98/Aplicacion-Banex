@@ -1147,7 +1147,6 @@ function GenerarFacturaDigitalForm({
         semana: venta.semana,
         cantidad: venta.cantidad,
         cantidadRepique: venta.cantidad_repique,
-        cantidadObsequio: venta.cantidad_obsequio,
         notas: venta.notas,
         entregadoPor: entregadoPor.trim(),
         recibidoPor: recibidoPor.trim(),

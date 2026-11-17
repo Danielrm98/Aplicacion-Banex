@@ -1,14 +1,22 @@
 // Compone la "factura" de canastillas como una imagen PNG dibujada en un
 // <canvas> (no es una foto de un papel): datos de la venta + nombre y
-// firma de quien entrega y de quien recibe. El resultado se sube al mismo
-// bucket/columna factura_path que ya usa la foto, así que el resto de la
-// app (botón "Ver factura") no necesita saber cuál de las dos formas se usó.
+// firma de quien entrega y de quien recibe, en formato de comprobante
+// (recibo angosto, check verde arriba, separadores punteados). El
+// resultado se sube al mismo bucket/columna factura_path que ya usa la
+// foto, así que el resto de la app (botón "Ver factura") no necesita saber
+// cuál de las dos formas se usó.
+//
+// El obsequio de canastillas NO entra aquí a propósito: esta factura es el
+// comprobante de la venta (proceso + repique), el obsequio es aparte.
 
-const ANCHO = 760
+const ANCHO = 480
+const MARGEN = 32
+const ALTO_FIRMA = 120
 const COLOR_TITULO = '#0b5f29'
+const COLOR_CHECK = '#1e9f4c'
 const COLOR_ETIQUETA = '#6b7280'
 const COLOR_VALOR = '#111827'
-const COLOR_LINEA = '#e5e7eb'
+const COLOR_LINEA = '#d1d5db'
 
 function envolverTexto(ctx: CanvasRenderingContext2D, texto: string, anchoMax: number): string[] {
   const palabras = texto.split(/\s+/)
@@ -27,13 +35,39 @@ function envolverTexto(ctx: CanvasRenderingContext2D, texto: string, anchoMax: n
   return lineas
 }
 
+function dibujarCheck(ctx: CanvasRenderingContext2D, cx: number, cy: number, radio: number) {
+  ctx.beginPath()
+  ctx.fillStyle = COLOR_CHECK
+  ctx.arc(cx, cy, radio, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 5
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(cx - radio * 0.45, cy)
+  ctx.lineTo(cx - radio * 0.08, cy + radio * 0.35)
+  ctx.lineTo(cx + radio * 0.5, cy - radio * 0.35)
+  ctx.stroke()
+}
+
+function lineaPunteada(ctx: CanvasRenderingContext2D, y: number) {
+  ctx.save()
+  ctx.strokeStyle = COLOR_LINEA
+  ctx.setLineDash([6, 6])
+  ctx.beginPath()
+  ctx.moveTo(MARGEN, y)
+  ctx.lineTo(ANCHO - MARGEN, y)
+  ctx.stroke()
+  ctx.restore()
+}
+
 export interface DatosFacturaCanastilla {
   finca: string
   fecha: string
   semana: number
   cantidad: number
   cantidadRepique: number
-  cantidadObsequio: number
   notas: string | null
   entregadoPor: string
   recibidoPor: string
@@ -41,130 +75,108 @@ export interface DatosFacturaCanastilla {
   firmaRecibe: HTMLCanvasElement | null
 }
 
-export async function generarImagenFacturaCanastilla(datos: DatosFacturaCanastilla): Promise<File> {
-  // Primero se mide en un canvas temporal para saber cuánto alto necesita
-  // (las notas pueden ocupar varias líneas), y luego se dibuja ya en el
-  // canvas final con esa altura exacta.
-  const medidor = document.createElement('canvas').getContext('2d')!
-  medidor.font = '14px sans-serif'
-  const anchoTexto = ANCHO - 80
-  const lineasNotas = datos.notas ? envolverTexto(medidor, datos.notas, anchoTexto) : []
+/** Dibuja todo el contenido y devuelve el alto final usado (el llamador la
+ * corre una vez en un canvas chico solo para medir, y otra vez ya en el
+ * canvas del tamaño correcto — así la altura real y la dibujada nunca
+ * quedan desincronizadas). */
+function dibujarContenido(ctx: CanvasRenderingContext2D, datos: DatosFacturaCanastilla, lineasNotas: string[]): number {
+  const cx = ANCHO / 2
+  let y = 24
 
-  let alto = 150 // encabezado
-  const campos = [
-    datos.cantidad > 0,
-    datos.cantidadRepique > 0,
-    datos.cantidadObsequio > 0,
-    true, // total
-  ].filter(Boolean).length
-  alto += 40 // "Finca"
-  alto += 40 // "Fecha / Semana" (misma fila)
-  alto += campos * 44
-  if (lineasNotas.length > 0) alto += 30 + lineasNotas.length * 20
-  alto += 30 // separador antes de firmas
-  alto += 20 + 150 + 35 // etiqueta + recuadro de firma + nombre
-  alto += 40 // pie con fecha de generación
+  dibujarCheck(ctx, cx, y + 36, 36)
+  y += 88
 
-  const canvas = document.createElement('canvas')
-  canvas.width = ANCHO
-  canvas.height = alto
-  const ctx = canvas.getContext('2d')!
-
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, ANCHO, alto)
-
+  ctx.textAlign = 'center'
   ctx.fillStyle = COLOR_TITULO
-  ctx.font = 'bold 26px sans-serif'
-  ctx.fillText('BANEX S.A.', 40, 55)
+  ctx.font = 'bold 21px sans-serif'
+  ctx.fillText('Comprobante de venta de canastillas', cx, y)
+  y += 26
+
+  ctx.font = '13px sans-serif'
   ctx.fillStyle = COLOR_ETIQUETA
-  ctx.font = '15px sans-serif'
-  ctx.fillText('Comprobante de entrega de canastillas', 40, 80)
+  ctx.fillText(datos.finca, cx, y)
+  y += 18
+  ctx.fillText(`${datos.fecha} · Semana ${datos.semana}`, cx, y)
+  y += 32
+  ctx.textAlign = 'left'
 
-  ctx.strokeStyle = COLOR_LINEA
-  ctx.beginPath()
-  ctx.moveTo(40, 105)
-  ctx.lineTo(ANCHO - 40, 105)
-  ctx.stroke()
+  lineaPunteada(ctx, y)
+  y += 30
 
-  let y = 145
-  const campo = (etiqueta: string, valor: string, x = 40) => {
-    ctx.font = '13px sans-serif'
-    ctx.fillStyle = COLOR_ETIQUETA
-    ctx.fillText(etiqueta, x, y)
-    ctx.font = 'bold 18px sans-serif'
-    ctx.fillStyle = COLOR_VALOR
-    ctx.fillText(valor, x, y + 22)
+  const campo = (etiqueta: string, valor: string, destacado = false) => {
+    ctx.font = destacado ? 'bold 17px sans-serif' : '15px sans-serif'
+    ctx.fillStyle = destacado ? COLOR_TITULO : COLOR_VALOR
+    ctx.fillText(`${etiqueta}: ${valor}`, MARGEN, y)
   }
-
-  campo('Finca', datos.finca)
-  y += 50
-  campo('Fecha', datos.fecha, 40)
-  campo('Semana', String(datos.semana), 400)
-  y += 50
-
-  if (datos.cantidad > 0) {
-    campo('Canastillas del proceso', String(datos.cantidad))
-    y += 44
-  }
-  if (datos.cantidadRepique > 0) {
-    campo('Canastillas por repique', String(datos.cantidadRepique))
-    y += 44
-  }
-  if (datos.cantidadObsequio > 0) {
-    campo('Obsequio (personal)', String(datos.cantidadObsequio))
-    y += 44
-  }
-  campo('Total entregado', String(datos.cantidad + datos.cantidadRepique + datos.cantidadObsequio))
-  y += 44
+  campo('Canastillas de proceso', String(datos.cantidad))
+  y += 34
+  campo('Canastillas de repique', String(datos.cantidadRepique))
+  y += 48
+  campo('Total facturado', String(datos.cantidad + datos.cantidadRepique), true)
+  y += 30
 
   if (lineasNotas.length > 0) {
     ctx.font = '13px sans-serif'
     ctx.fillStyle = COLOR_ETIQUETA
-    ctx.fillText('Notas', 40, y)
-    y += 18
-    ctx.font = '15px sans-serif'
+    ctx.fillText('Notas', MARGEN, y)
+    y += 20
+    ctx.font = '14px sans-serif'
     ctx.fillStyle = COLOR_VALOR
     for (const linea of lineasNotas) {
-      ctx.fillText(linea, 40, y)
+      ctx.fillText(linea, MARGEN, y)
       y += 20
     }
     y += 10
   }
 
-  y += 10
-  ctx.strokeStyle = COLOR_LINEA
-  ctx.beginPath()
-  ctx.moveTo(40, y)
-  ctx.lineTo(ANCHO - 40, y)
-  ctx.stroke()
-  y += 35
+  lineaPunteada(ctx, y)
+  y += 30
 
-  const colAncho = (ANCHO - 80 - 40) / 2
-  const xEntrega = 40
-  const xRecibe = 40 + colAncho + 40
-  const altoFirma = 150
-
-  ctx.font = '13px sans-serif'
-  ctx.fillStyle = COLOR_ETIQUETA
-  ctx.fillText('Entrega', xEntrega, y)
-  ctx.fillText('Recibe', xRecibe, y)
-  y += 12
-
-  ctx.strokeStyle = '#d1d5db'
-  ctx.strokeRect(xEntrega, y, colAncho, altoFirma)
-  ctx.strokeRect(xRecibe, y, colAncho, altoFirma)
-  if (datos.firmaEntrega) ctx.drawImage(datos.firmaEntrega, xEntrega, y, colAncho, altoFirma)
-  if (datos.firmaRecibe) ctx.drawImage(datos.firmaRecibe, xRecibe, y, colAncho, altoFirma)
-  y += altoFirma + 22
-
-  ctx.font = 'bold 15px sans-serif'
-  ctx.fillStyle = COLOR_VALOR
-  ctx.fillText(datos.entregadoPor || '—', xEntrega, y)
-  ctx.fillText(datos.recibidoPor || '—', xRecibe, y)
+  const seccionFirma = (titulo: string, nombre: string, firma: HTMLCanvasElement | null) => {
+    ctx.font = 'bold 16px sans-serif'
+    ctx.fillStyle = COLOR_VALOR
+    ctx.fillText(titulo, MARGEN, y)
+    y += 24
+    ctx.font = '15px sans-serif'
+    ctx.fillText(`Nombre: ${nombre || '—'}`, MARGEN, y)
+    y += 18
+    ctx.font = '13px sans-serif'
+    ctx.fillStyle = COLOR_ETIQUETA
+    ctx.fillText('Firma:', MARGEN, y)
+    y += 16
+    ctx.strokeStyle = COLOR_LINEA
+    ctx.strokeRect(MARGEN, y, ANCHO - MARGEN * 2, ALTO_FIRMA)
+    if (firma) ctx.drawImage(firma, MARGEN, y, ANCHO - MARGEN * 2, ALTO_FIRMA)
+    y += ALTO_FIRMA + 26
+  }
+  seccionFirma('¿Quién recibe las canastillas?', datos.recibidoPor, datos.firmaRecibe)
+  seccionFirma('¿Quién entrega las canastillas?', datos.entregadoPor, datos.firmaEntrega)
 
   ctx.font = '11px sans-serif'
   ctx.fillStyle = '#9ca3af'
-  ctx.fillText(`Generado el ${new Date().toLocaleString('es')}`, 40, alto - 20)
+  ctx.fillText(`Generado el ${new Date().toLocaleString('es')}`, MARGEN, y)
+  y += 16
+
+  return y
+}
+
+export async function generarImagenFacturaCanastilla(datos: DatosFacturaCanastilla): Promise<File> {
+  const medidorCanvas = document.createElement('canvas')
+  medidorCanvas.width = ANCHO
+  medidorCanvas.height = 10
+  const medidor = medidorCanvas.getContext('2d')!
+  medidor.font = '14px sans-serif'
+  const lineasNotas = datos.notas ? envolverTexto(medidor, datos.notas, ANCHO - MARGEN * 2) : []
+
+  const altoNecesario = dibujarContenido(medidor, datos, lineasNotas)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = ANCHO
+  canvas.height = altoNecesario + 16
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  dibujarContenido(ctx, datos, lineasNotas)
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
