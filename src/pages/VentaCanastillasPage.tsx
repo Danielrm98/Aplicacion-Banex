@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { puedeEscribir, usePerfil } from '../lib/usePerfil'
 import { useAuth } from '../lib/AuthContext'
@@ -13,8 +13,11 @@ import { conLimite } from '../lib/promesaConLimite'
 import { anioDeSemana, getIsoWeek } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { obtenerFincaActual } from '../lib/fincaActual'
+import { generarImagenFacturaCanastilla } from '../lib/facturaCanastillaImagen'
+import { compartirOdescargarArchivo } from '../lib/compartirArchivo'
 import type { VentaCanastilla } from '../types/ventaCanastilla'
 import SectionHeading from '../components/SectionHeading'
+import FirmaCanvas, { type FirmaCanvasRef } from '../components/FirmaCanvas'
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
 
@@ -680,6 +683,31 @@ function VentaRow({
     }
   }
 
+  async function compartirFactura() {
+    if (!venta.factura_path) return
+    setBusy(true)
+    try {
+      const url = await urlFacturaCanastilla(venta.factura_path)
+      const respuesta = await fetch(url)
+      const blob = await respuesta.blob()
+      const extension = venta.factura_path.split('.').pop() || 'jpg'
+      const archivo = new File([blob], `factura-${venta.fecha}.${extension}`, { type: blob.type || 'image/jpeg' })
+      const resultado = await compartirOdescargarArchivo(archivo, {
+        titulo: 'Factura de canastillas',
+        texto: `Factura de canastillas — ${venta.finca} — ${venta.fecha}`,
+      })
+      if (resultado === 'descargado') {
+        alert(
+          'Tu navegador no permite compartir directo a WhatsApp desde aquí: se descargó la imagen, ábrela desde tus descargas y adjúntala en WhatsApp.',
+        )
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'No se pudo compartir la factura.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function eliminar() {
     if (!confirm('¿Eliminar esta venta y su factura? No se puede deshacer.')) return
     setBusy(true)
@@ -711,15 +739,31 @@ function VentaRow({
             <span className="font-semibold text-purple-600">{venta.cantidad_repique.toLocaleString('es')} repique</span>
           )}
           {venta.notas && <span className="text-gray-500">{venta.notas}</span>}
+          {(venta.entregado_por || venta.recibido_por) && (
+            <span className="text-gray-500">
+              {venta.entregado_por && `Entrega: ${venta.entregado_por}`}
+              {venta.entregado_por && venta.recibido_por && ' · '}
+              {venta.recibido_por && `Recibe: ${venta.recibido_por}`}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           {venta.factura_path ? (
-            <button
-              onClick={verFactura}
-              className="rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
-            >
-              Ver factura
-            </button>
+            <>
+              <button
+                onClick={verFactura}
+                className="rounded-md border border-banex-200 bg-white px-2 py-1 text-xs font-medium text-banex-700 transition-colors hover:bg-banex-50"
+              >
+                Ver factura
+              </button>
+              <button
+                onClick={compartirFactura}
+                disabled={busy}
+                className="rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 transition-colors hover:bg-green-100 disabled:opacity-50"
+              >
+                📤 Compartir
+              </button>
+            </>
           ) : (
             escritura && (
               <button
@@ -791,6 +835,8 @@ function EditarVentaForm({
   const [obsequio, setObsequio] = useState<number | ''>(venta.cantidad_obsequio)
   const [repique, setRepique] = useState<number | ''>(venta.cantidad_repique)
   const [notas, setNotas] = useState(venta.notas ?? '')
+  const [entregadoPor, setEntregadoPor] = useState(venta.entregado_por ?? '')
+  const [recibidoPor, setRecibidoPor] = useState(venta.recibido_por ?? '')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -816,6 +862,8 @@ function EditarVentaForm({
             cantidad_obsequio: cantidadObsequio,
             cantidad_repique: cantidadRepique,
             notas: notas || null,
+            entregado_por: entregadoPor || null,
+            recibido_por: recibidoPor || null,
           })
           .eq('id', venta.id),
         LIMITE_ENVIO_MS,
@@ -883,6 +931,24 @@ function EditarVentaForm({
           <span className="mb-1 block text-xs font-medium text-gray-700">Notas</span>
           <input type="text" value={notas} onChange={(e) => setNotas(e.target.value)} className={`w-full ${campoClase}`} />
         </label>
+        <label className="block min-w-[140px]">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Entregado por</span>
+          <input
+            type="text"
+            value={entregadoPor}
+            onChange={(e) => setEntregadoPor(e.target.value)}
+            className={`w-full ${campoClase}`}
+          />
+        </label>
+        <label className="block min-w-[140px]">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Recibido por</span>
+          <input
+            type="text"
+            value={recibidoPor}
+            onChange={(e) => setRecibidoPor(e.target.value)}
+            className={`w-full ${campoClase}`}
+          />
+        </label>
       </div>
       <div className="mt-2 flex gap-2">
         <button
@@ -906,6 +972,48 @@ function EditarVentaForm({
 }
 
 function AgregarFacturaForm({
+  venta,
+  onGuardado,
+  onCancelar,
+}: {
+  venta: VentaCanastilla
+  onGuardado: () => void
+  onCancelar: () => void
+}) {
+  const [modo, setModo] = useState<'foto' | 'generar'>('foto')
+
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-3">
+      <div className="mb-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setModo('foto')}
+          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            modo === 'foto' ? 'bg-banex-600 text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          📷 Subir foto
+        </button>
+        <button
+          type="button"
+          onClick={() => setModo('generar')}
+          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            modo === 'generar' ? 'bg-banex-600 text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          ✍️ Generar factura digital
+        </button>
+      </div>
+      {modo === 'foto' ? (
+        <SubirFotoFacturaForm venta={venta} onGuardado={onGuardado} onCancelar={onCancelar} />
+      ) : (
+        <GenerarFacturaDigitalForm venta={venta} onGuardado={onGuardado} onCancelar={onCancelar} />
+      )}
+    </div>
+  )
+}
+
+function SubirFotoFacturaForm({
   venta,
   onGuardado,
   onCancelar,
@@ -948,7 +1056,7 @@ function AgregarFacturaForm({
   }
 
   return (
-    <div className="mt-3 border-t border-gray-100 pt-3">
+    <div>
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -997,6 +1105,162 @@ function AgregarFacturaForm({
         </button>
       </div>
       {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
+function GenerarFacturaDigitalForm({
+  venta,
+  onGuardado,
+  onCancelar,
+}: {
+  venta: VentaCanastilla
+  onGuardado: () => void
+  onCancelar: () => void
+}) {
+  const [entregadoPor, setEntregadoPor] = useState('')
+  const [recibidoPor, setRecibidoPor] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [facturaGenerada, setFacturaGenerada] = useState<File | null>(null)
+  const firmaEntregaRef = useRef<FirmaCanvasRef>(null)
+  const firmaRecibeRef = useRef<FirmaCanvasRef>(null)
+
+  const previewUrl = useMemo(() => (facturaGenerada ? URL.createObjectURL(facturaGenerada) : null), [facturaGenerada])
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  async function generar() {
+    if (!recibidoPor.trim()) {
+      setError('Escribe el nombre de quien recibe.')
+      return
+    }
+    setError(null)
+    setGuardando(true)
+    try {
+      const archivo = await generarImagenFacturaCanastilla({
+        finca: venta.finca,
+        fecha: venta.fecha,
+        semana: venta.semana,
+        cantidad: venta.cantidad,
+        cantidadRepique: venta.cantidad_repique,
+        cantidadObsequio: venta.cantidad_obsequio,
+        notas: venta.notas,
+        entregadoPor: entregadoPor.trim(),
+        recibidoPor: recibidoPor.trim(),
+        firmaEntrega: firmaEntregaRef.current && !firmaEntregaRef.current.estaVacia() ? firmaEntregaRef.current.obtenerCanvas() : null,
+        firmaRecibe: firmaRecibeRef.current && !firmaRecibeRef.current.estaVacia() ? firmaRecibeRef.current.obtenerCanvas() : null,
+      })
+      await conLimite(
+        (async () => {
+          const ruta = await subirFacturaCanastilla(venta.finca, archivo, venta.id)
+          const { error: updateError } = await supabase
+            .from('ventas_canastillas')
+            .update({ factura_path: ruta, entregado_por: entregadoPor.trim() || null, recibido_por: recibidoPor.trim() })
+            .eq('id', venta.id)
+          if (updateError) throw updateError
+        })(),
+        LIMITE_ENVIO_MS,
+      )
+      setFacturaGenerada(archivo)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo generar la factura.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function compartir() {
+    if (!facturaGenerada) return
+    const resultado = await compartirOdescargarArchivo(facturaGenerada, {
+      titulo: 'Factura de canastillas',
+      texto: `Factura de canastillas — ${venta.finca} — ${venta.fecha}`,
+    })
+    if (resultado === 'descargado') {
+      alert(
+        'Tu navegador no permite compartir directo a WhatsApp desde aquí: se descargó la imagen, ábrela desde tus descargas y adjúntala en WhatsApp.',
+      )
+    }
+  }
+
+  if (facturaGenerada) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-sm font-medium text-banex-700">✅ Factura generada y guardada.</p>
+        {previewUrl && (
+          <img src={previewUrl} alt="Factura generada" className="max-h-64 rounded-lg border border-gray-200 shadow-sm" />
+        )}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={compartir}
+            className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
+          >
+            📤 Compartir por WhatsApp
+          </button>
+          <button
+            type="button"
+            onClick={onGuardado}
+            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            Listo
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-3">
+        <label className="block min-w-[180px] flex-1">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Entregado por</span>
+          <input
+            type="text"
+            value={entregadoPor}
+            onChange={(e) => setEntregadoPor(e.target.value)}
+            placeholder="Nombre de quien entrega"
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          />
+        </label>
+        <label className="block min-w-[180px] flex-1">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Recibido por</span>
+          <input
+            type="text"
+            value={recibidoPor}
+            onChange={(e) => setRecibidoPor(e.target.value)}
+            placeholder="Nombre de quien recibe"
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <FirmaCanvas etiqueta="Firma de quien entrega" ref={firmaEntregaRef} />
+        <FirmaCanvas etiqueta="Firma de quien recibe" ref={firmaRecibeRef} />
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={generar}
+          disabled={guardando}
+          className="rounded-md bg-banex-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+        >
+          {guardando ? 'Generando...' : 'Generar y guardar factura'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancelar}
+          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
+        >
+          Cancelar
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   )
 }

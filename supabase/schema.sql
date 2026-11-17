@@ -570,6 +570,10 @@ create table public.ventas_canastillas (
   -- Nula hasta que se adjunte la factura (puede quedar pendiente y
   -- completarse después, incluso por un operario).
   factura_path text,
+  -- Quién entrega y quién recibe, para la factura generada dentro de la
+  -- app (se muestran junto a las firmas digitales en la imagen).
+  entregado_por text,
+  recibido_por text,
   notas text,
   created_at timestamptz not null default now(),
   check (cantidad > 0 or cantidad_obsequio > 0 or cantidad_repique > 0)

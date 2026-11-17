@@ -8,6 +8,8 @@ export interface VentaCanastilla {
   cantidad_obsequio: number
   cantidad_repique: number
   factura_path: string | null
+  entregado_por: string | null
+  recibido_por: string | null
   notas: string | null
   created_at: string
 }
