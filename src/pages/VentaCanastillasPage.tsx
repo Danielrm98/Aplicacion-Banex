@@ -432,6 +432,10 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guardadoSinConexion, setGuardadoSinConexion] = useState(false)
+  // Al registrar en línea, se abre aquí mismo el formulario para generar la
+  // factura digital de la salida recién creada (sin conexión no se puede:
+  // la fila todavía no existe en la base, solo en la cola local).
+  const [ventaRecienCreada, setVentaRecienCreada] = useState<VentaCanastilla | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -486,25 +490,32 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
 
     setSaving(true)
     try {
+      let ventaCreada: VentaCanastilla | null = null
       await conLimite(
         (async () => {
-          const { error: insertError } = await supabase.from('ventas_canastillas').insert({
-            user_id: user.id,
-            finca,
-            fecha,
-            semana: semanaVenta,
-            cantidad: cantidadVendida,
-            cantidad_obsequio: cantidadObsequio,
-            cantidad_repique: cantidadRepique,
-            notas: notas || null,
-          })
+          const { data: creada, error: insertError } = await supabase
+            .from('ventas_canastillas')
+            .insert({
+              user_id: user.id,
+              finca,
+              fecha,
+              semana: semanaVenta,
+              cantidad: cantidadVendida,
+              cantidad_obsequio: cantidadObsequio,
+              cantidad_repique: cantidadRepique,
+              notas: notas || null,
+            })
+            .select()
+            .single()
           if (insertError) throw insertError
+          ventaCreada = creada as VentaCanastilla
         })(),
         LIMITE_ENVIO_MS,
       )
 
       limpiarFormulario()
       onGuardado()
+      if (ventaCreada) setVentaRecienCreada(ventaCreada)
     } catch (err) {
       if (esErrorDeRed(err)) {
         await agregarVentaACola(ventaPendiente)
@@ -519,6 +530,7 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <SectionHeading>Registrar salida</SectionHeading>
       <div className="flex flex-wrap items-end gap-3">
@@ -604,9 +616,25 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       {guardadoSinConexion && (
         <p className="mt-2 text-sm text-amber-700">
           📶 Sin conexión: la salida quedó guardada en el dispositivo y se enviará sola en cuanto vuelva la señal.
+          Cuando se sincronice, genera la factura desde la lista de abajo.
         </p>
       )}
     </form>
+
+    {ventaRecienCreada && (
+      <div className="mt-3 rounded-xl border border-banex-200 bg-banex-50/50 p-4 shadow-sm">
+        <SectionHeading>Generar factura de esta salida</SectionHeading>
+        <GenerarFacturaDigitalForm
+          venta={ventaRecienCreada}
+          onGuardado={() => {
+            setVentaRecienCreada(null)
+            onGuardado()
+          }}
+          onCancelar={() => setVentaRecienCreada(null)}
+        />
+      </div>
+    )}
+    </>
   )
 }
 
