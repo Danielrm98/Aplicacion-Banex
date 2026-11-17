@@ -61,8 +61,9 @@ export default function VentaCanastillasPage() {
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Venta de canastillas</h1>
       <p className="mb-6 text-sm text-gray-500">
         Las canastillas producidas se venden a terceros, y otras se obsequian al personal operativo. Registra cada
-        salida con la foto de la factura de entrega y lleva el control de cuántas quedan disponibles. Las canastillas
-        por repique son aparte de las producidas en proceso y no se descuentan del acumulado.
+        salida y lleva el control de cuántas quedan disponibles. Después puedes generar la factura digital de la
+        salida, con nombre y firma de quien entrega y quien recibe. Las canastillas por repique son aparte de las
+        producidas en proceso y no se descuentan del acumulado.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -428,7 +429,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
   const [obsequio, setObsequio] = useState<number | ''>('')
   const [repique, setRepique] = useState<number | ''>('')
   const [notas, setNotas] = useState('')
-  const [archivo, setArchivo] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guardadoSinConexion, setGuardadoSinConexion] = useState(false)
@@ -455,11 +455,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       setObsequio('')
       setRepique('')
       setNotas('')
-      setArchivo(null)
-      for (const id of ['factura-input-camara', 'factura-input-galeria']) {
-        const input = document.getElementById(id) as HTMLInputElement | null
-        if (input) input.value = ''
-      }
     }
 
     const ventaPendiente = {
@@ -472,9 +467,11 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
       cantidadObsequio,
       cantidadRepique,
       notas: notas || null,
-      foto: archivo,
-      fotoNombre: archivo?.name ?? null,
-      fotoTipo: archivo?.type || null,
+      // La factura ya no se adjunta como foto: se genera digital después
+      // (botón "Generar factura" en la lista), con firmas.
+      foto: null,
+      fotoNombre: null,
+      fotoTipo: null,
       creadoEn: new Date().toISOString(),
       intentos: 0,
       ultimoError: null,
@@ -491,7 +488,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
     try {
       await conLimite(
         (async () => {
-          const rutaFactura = archivo ? await subirFacturaCanastilla(finca, archivo) : null
           const { error: insertError } = await supabase.from('ventas_canastillas').insert({
             user_id: user.id,
             finca,
@@ -500,7 +496,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             cantidad: cantidadVendida,
             cantidad_obsequio: cantidadObsequio,
             cantidad_repique: cantidadRepique,
-            factura_path: rutaFactura,
             notas: notas || null,
           })
           if (insertError) throw insertError
@@ -585,49 +580,6 @@ function RegistrarVentaForm({ finca, onGuardado }: { finca: string; onGuardado: 
             className="w-32 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
           />
         </label>
-
-        <div className="block">
-          <span className="mb-1 block text-sm font-medium text-gray-700">Foto de la factura (opcional)</span>
-          {/* Dos botones explícitos (en vez de un solo input) porque en
-              Android el selector nativo del sistema no siempre ofrece la
-              cámara junto con la galería en el mismo menú (varía según el
-              fabricante/navegador); así queda igual de claro en Android que
-              en iOS, donde el sistema sí muestra ambas opciones juntas. */}
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => document.getElementById('factura-input-camara')?.click()}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-            >
-              📷 Tomar foto
-            </button>
-            <button
-              type="button"
-              onClick={() => document.getElementById('factura-input-galeria')?.click()}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-            >
-              🖼️ Elegir de galería
-            </button>
-          </div>
-          <input
-            id="factura-input-camara"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
-            className="hidden"
-          />
-          <input
-            id="factura-input-galeria"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
-            className="hidden"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            {archivo ? `Seleccionada: ${archivo.name}` : 'Ninguna foto seleccionada. Puedes agregarla después.'}
-          </p>
-        </div>
 
         <label className="block flex-1 min-w-[180px]">
           <span className="mb-1 block text-sm font-medium text-gray-700">Notas (opcional)</span>
@@ -770,7 +722,7 @@ function VentaRow({
                 onClick={() => setAgregandoFactura((v) => !v)}
                 className="rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100"
               >
-                📎 Sin factura · Agregar
+                🧾 Generar factura
               </button>
             )
           )}
@@ -980,131 +932,9 @@ function AgregarFacturaForm({
   onGuardado: () => void
   onCancelar: () => void
 }) {
-  const [modo, setModo] = useState<'foto' | 'generar'>('foto')
-
   return (
     <div className="mt-3 border-t border-gray-100 pt-3">
-      <div className="mb-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setModo('foto')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-            modo === 'foto' ? 'bg-banex-600 text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          📷 Subir foto
-        </button>
-        <button
-          type="button"
-          onClick={() => setModo('generar')}
-          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-            modo === 'generar' ? 'bg-banex-600 text-white shadow-sm' : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-          }`}
-        >
-          ✍️ Generar factura digital
-        </button>
-      </div>
-      {modo === 'foto' ? (
-        <SubirFotoFacturaForm venta={venta} onGuardado={onGuardado} onCancelar={onCancelar} />
-      ) : (
-        <GenerarFacturaDigitalForm venta={venta} onGuardado={onGuardado} onCancelar={onCancelar} />
-      )}
-    </div>
-  )
-}
-
-function SubirFotoFacturaForm({
-  venta,
-  onGuardado,
-  onCancelar,
-}: {
-  venta: VentaCanastilla
-  onGuardado: () => void
-  onCancelar: () => void
-}) {
-  const [archivo, setArchivo] = useState<File | null>(null)
-  const [guardando, setGuardando] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const idCamara = `factura-pendiente-camara-${venta.id}`
-  const idGaleria = `factura-pendiente-galeria-${venta.id}`
-
-  async function guardar() {
-    if (!archivo) {
-      setError('Toma o elige una foto de la factura.')
-      return
-    }
-    setError(null)
-    setGuardando(true)
-    try {
-      await conLimite(
-        (async () => {
-          const rutaFactura = await subirFacturaCanastilla(venta.finca, archivo, venta.id)
-          const { error: updateError } = await supabase
-            .from('ventas_canastillas')
-            .update({ factura_path: rutaFactura })
-            .eq('id', venta.id)
-          if (updateError) throw updateError
-        })(),
-        LIMITE_ENVIO_MS,
-      )
-      onGuardado()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la factura.')
-    } finally {
-      setGuardando(false)
-    }
-  }
-
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => document.getElementById(idCamara)?.click()}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-        >
-          📷 Tomar foto
-        </button>
-        <button
-          type="button"
-          onClick={() => document.getElementById(idGaleria)?.click()}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:border-banex-300 hover:bg-banex-50 hover:text-banex-700"
-        >
-          🖼️ Elegir de galería
-        </button>
-        <input
-          id={idCamara}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
-          className="hidden"
-        />
-        <input
-          id={idGaleria}
-          type="file"
-          accept="image/*"
-          onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
-          className="hidden"
-        />
-        <span className="text-xs text-gray-500">{archivo ? `Seleccionada: ${archivo.name}` : 'Ninguna foto seleccionada.'}</span>
-      </div>
-      <div className="mt-2 flex gap-2">
-        <button
-          onClick={guardar}
-          disabled={guardando}
-          className="rounded-md bg-banex-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
-        >
-          {guardando ? 'Guardando...' : 'Guardar factura'}
-        </button>
-        <button
-          onClick={onCancelar}
-          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50"
-        >
-          Cancelar
-        </button>
-      </div>
-      {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+      <GenerarFacturaDigitalForm venta={venta} onGuardado={onGuardado} onCancelar={onCancelar} />
     </div>
   )
 }
