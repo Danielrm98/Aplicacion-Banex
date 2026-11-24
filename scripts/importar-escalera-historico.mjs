@@ -151,7 +151,10 @@ async function main() {
             anio: anioCos,
             semana: semCos,
             edad_semanas: Number(edad),
-            racimos,
+            // En la fila de transición real/proyectado, la fórmula de %12
+            // puede dar un residuo negativo cercanísimo a 0 (ej. -0.44) por
+            // puro redondeo; no es una corrección real, se deja en 0.
+            racimos: Math.max(0, racimos),
             user_id: userId,
           })
         }

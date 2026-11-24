@@ -1318,7 +1318,9 @@ create table public.cosecha_por_edad (
   anio integer not null,
   semana integer not null check (semana between 1 and 53),
   edad_semanas integer not null check (edad_semanas between 8 and 13),
-  racimos integer not null default 0 check (racimos >= 0),
+  -- numeric (no integer): el histórico importado del Excel trae al menos
+  -- un valor con decimales.
+  racimos numeric not null default 0 check (racimos >= 0),
   created_at timestamptz not null default now(),
   unique (finca, anio, semana, edad_semanas)
 );
