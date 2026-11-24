@@ -19,6 +19,7 @@ const navItems = [
   { to: '/repiques', label: 'Repiques', icon: '📉' },
   { to: '/evaluacion-banda', label: 'Evaluación de banda', icon: '🔍' },
   { to: '/perfil-racimo', label: 'Perfil de racimos', icon: '🍌' },
+  { to: '/escalera-produccion', label: 'Escalera de producción', icon: '🪜' },
   { to: '/recobro', label: 'Recobro', icon: '💹' },
   { to: '/registros', label: 'Historial', icon: '🗂️' },
   { to: '/reportes', label: 'Reportes', icon: '📈' },
