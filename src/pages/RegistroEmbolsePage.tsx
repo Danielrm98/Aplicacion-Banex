@@ -259,6 +259,13 @@ function TablaRegistro({
   // "Compartir" solo la usa — ya lista, el share se llama casi de inmediato.
   const [imagenLista, setImagenLista] = useState<{ blob: Blob; file: File } | null>(null)
   const regenerarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Guardados de celdas en curso: al hacer clic en "Compartir" justo después
+  // de editar la última celda, el clic saca el foco de ese input y dispara su
+  // onBlur (guardar) una fracción de segundo antes del propio clic — en ese
+  // momento la imagen en caché todavía es la de antes de ese último cambio.
+  // Compartir espera estos guardados (y la regeneración que disparan) antes
+  // de decidir si puede usar la imagen que ya tenía lista.
+  const guardadosEnCursoRef = useRef<Set<Promise<void>>>(new Set())
 
   async function generarImagen(): Promise<{ blob: Blob; file: File } | null> {
     if (!capturaRef.current) return null
@@ -354,26 +361,36 @@ function TablaRegistro({
       ...valores,
     }
 
-    // Sin señal (o con señal tan débil que la petición no termina) el registro
-    // queda guardado en el celular y se envía solo cuando vuelva la conexión.
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      await agregarEmbolseACola(payload)
-      onGuardado()
-      programarRegeneracion()
-      return
-    }
-    try {
-      await conLimite(enviarEmbolse(payload), LIMITE_ENVIO_MS)
-      onGuardado()
-      programarRegeneracion()
-    } catch (err) {
-      if (esErrorDeRed(err)) {
+    const operacion = (async () => {
+      // Sin señal (o con señal tan débil que la petición no termina) el
+      // registro queda guardado en el celular y se envía solo cuando vuelva
+      // la conexión.
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
         await agregarEmbolseACola(payload)
         onGuardado()
         programarRegeneracion()
-      } else {
-        setConError((prev) => ({ ...prev, [loteId]: err instanceof Error ? err.message : 'No se pudo guardar' }))
+        return
       }
+      try {
+        await conLimite(enviarEmbolse(payload), LIMITE_ENVIO_MS)
+        onGuardado()
+        programarRegeneracion()
+      } catch (err) {
+        if (esErrorDeRed(err)) {
+          await agregarEmbolseACola(payload)
+          onGuardado()
+          programarRegeneracion()
+        } else {
+          setConError((prev) => ({ ...prev, [loteId]: err instanceof Error ? err.message : 'No se pudo guardar' }))
+        }
+      }
+    })()
+
+    guardadosEnCursoRef.current.add(operacion)
+    try {
+      await operacion
+    } finally {
+      guardadosEnCursoRef.current.delete(operacion)
     }
   }
 
@@ -397,6 +414,19 @@ function TablaRegistro({
     setErrorCompartir(null)
     setCompartiendo(true)
     try {
+      // Si el clic en "Compartir" sacó el foco de la última celda editada,
+      // su guardado (y la regeneración que dispara) todavía puede estar en
+      // curso: hay que esperarlo, si no se comparte la imagen de antes de
+      // ese último cambio.
+      if (guardadosEnCursoRef.current.size > 0) {
+        await Promise.all(guardadosEnCursoRef.current)
+      }
+      if (regenerarTimeoutRef.current) {
+        clearTimeout(regenerarTimeoutRef.current)
+        regenerarTimeoutRef.current = null
+        await generarImagen()
+      }
+
       // Si ya está lista (lo normal, generada en segundo plano), el share se
       // llama de inmediato; si no, se genera ahora mismo (puede fallar el
       // share nativo por el gesto del usuario, y en ese caso se descarga).
