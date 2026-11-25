@@ -119,6 +119,7 @@ export interface FilaEscalera {
   anioCosechaPrincipal: number
   semanaCosechaPrincipal: number
   racimosCosechados: number
+  repicado: number
   recobro: number
   desglose: DesgloseEdad[]
   esFilaReal: boolean
@@ -127,9 +128,14 @@ export interface FilaEscalera {
 /**
  * Arma una fila de la escalera para una semana de embolse. El embolse usa
  * el dato real si ya existe, o se proyecta con `proyectarValorEstacional`.
- * Cada una de las 6 edades (8-13) cae en su propia semana de cosecha
- * (embolse + edad): si "Registro semanal" ya tiene ese dato real, se usa;
- * si no, se proyecta con la distribución de respaldo de la finca.
+ * Cada una de las 7 edades (7-13) cae en su propia semana de cosecha
+ * (embolse + edad): si ya hay un dato real (formulario diario de Registrar,
+ * o la semilla histórica) se usa tal cual; si no, se proyecta repartiendo
+ * el `recobroProyectado` (el recobro real de la última cohorte ya
+ * completa, "lo que quedó la semana anterior") según la forma de la
+ * distribución de respaldo. El Recobro final es siempre
+ * (racimos cosechados + repicado real) ÷ embolsado — misma fórmula que ya
+ * usa la página Recobro.
  */
 export function calcularFilaEscalera(params: {
   anioEmbolse: number
@@ -138,7 +144,9 @@ export function calcularFilaEscalera(params: {
   embolseRealDeEstaSemana: number | null
   serieBellPorHa: PuntoSerie[]
   distribucionRespaldo: DistribucionEdad
+  recobroProyectado: number
   racimosRealesDeEdad: (anio: number, semana: number, edad: EdadCosecha) => number | undefined
+  repicadoReal: (anio: number, semana: number) => number | undefined
   semanaYaOcurrida: (semana: SemanaReal) => boolean
 }): FilaEscalera {
   const {
@@ -148,7 +156,9 @@ export function calcularFilaEscalera(params: {
     embolseRealDeEstaSemana,
     serieBellPorHa,
     distribucionRespaldo,
+    recobroProyectado,
     racimosRealesDeEdad,
+    repicadoReal,
     semanaYaOcurrida,
   } = params
 
@@ -159,9 +169,12 @@ export function calcularFilaEscalera(params: {
 
   const desglose: DesgloseEdad[] = EDADES_COSECHA.map((edad) => {
     const { anio: anioCosecha, semana: semanaCosecha } = sumarSemanas(anioEmbolse, semanaEmbolse, edad)
-    const real = racimosRealesDeEdad(anioCosecha, semanaCosecha, edad)
+    // OJO: la búsqueda del dato real es por semana de EMBOLSE (no de
+    // cosecha) — así quedan indexados tanto el dato en vivo como el
+    // histórico en useEscaleraProduccion.
+    const real = racimosRealesDeEdad(anioEmbolse, semanaEmbolse, edad)
     const esReal = real !== undefined
-    const racimos = esReal ? (real as number) : embolseReal * distribucionRespaldo[edad]
+    const racimos = esReal ? (real as number) : embolseReal * recobroProyectado * distribucionRespaldo[edad]
     return {
       edad,
       anioCosecha,
@@ -173,7 +186,8 @@ export function calcularFilaEscalera(params: {
   })
 
   const racimosCosechados = desglose.reduce((suma, d) => suma + d.racimos, 0)
-  const recobro = embolseReal > 0 ? racimosCosechados / embolseReal : 0
+  const repicado = repicadoReal(anioEmbolse, semanaEmbolse) ?? 0
+  const recobro = embolseReal > 0 ? (racimosCosechados + repicado) / embolseReal : 0
 
   const desplazamiento = Math.round(edadPromedio(distribucionRespaldo))
   const { anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal } = sumarSemanas(anioEmbolse, semanaEmbolse, desplazamiento)
@@ -188,6 +202,7 @@ export function calcularFilaEscalera(params: {
     anioCosechaPrincipal,
     semanaCosechaPrincipal,
     racimosCosechados,
+    repicado,
     recobro,
     desglose,
     esFilaReal: semanaYaOcurrida({ anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal }),

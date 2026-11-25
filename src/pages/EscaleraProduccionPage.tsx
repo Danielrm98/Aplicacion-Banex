@@ -81,7 +81,7 @@ export default function EscaleraProduccionPage() {
 // del formulario diario de Registrar) y lo futuro proyectado.
 // ============================================================
 function EscaleraTabla({ finca }: { finca: Finca }) {
-  const { filas, serieBellPorHa, ratioCajas20kgPorRacimo, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
+  const { filas, serieBellPorHa, ratioCajas20kgPorRacimo, recobroProyectado, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
 
   const datosGrafico = useMemo<{ data: PuntoEmbolseSemana[]; series: ReturnType<typeof coloresPorAnio> }>(() => {
     const anios = [...new Set(serieBellPorHa.map((p) => p.anio))].sort((a, b) => b - a).slice(0, 3)
@@ -105,9 +105,11 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
   return (
     <div>
       <p className="mb-3 text-xs text-gray-400">
-        Semana actual: {semanaActual}/{anioActual}. Ratio cajas 20kg/racimo de la finca (histórico real):{' '}
-        {ratioCajas20kgPorRacimo.toFixed(3)}. Columnas en <span className="font-semibold text-green-700">verde</span> = dato
-        real; en <span className="font-semibold text-cyan-700">celeste</span> = proyección.
+        Semana actual: {semanaActual}/{anioActual}. Proyección con el recobro real de la última cohorte ya completa:{' '}
+        <span className="font-semibold text-gray-600">{(recobroProyectado * 100).toFixed(0)}%</span>, y el ratio cajas
+        20kg/racimo de las últimas ~12 semanas: <span className="font-semibold text-gray-600">{ratioCajas20kgPorRacimo.toFixed(3)}</span>.
+        Columnas en <span className="font-semibold text-green-700">verde</span> = dato real; en{' '}
+        <span className="font-semibold text-cyan-700">celeste</span> = proyección.
       </p>
       <div className="overflow-x-auto">
         <table className="min-w-[1320px] border-collapse text-xs">

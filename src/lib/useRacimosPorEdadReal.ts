@@ -4,6 +4,9 @@ import { semanaEmbolseDeEdad } from './cintaEmbolse'
 import { anioDeSemana } from './isoWeek'
 import { SEMANAS_RACIMO } from '../types/produccion'
 
+// Ventana "reciente" para el ratio cajas/racimo: ~12 semanas.
+const DIAS_VENTANA_RATIO = 84
+
 /**
  * Racimos cosechados por edad, ya atribuidos a su semana de embolse —
  * mismo cruce que ya usa useCosechaEmbolse.ts (el inventario de embolse
@@ -32,16 +35,20 @@ export function useRacimosPorEdadReal(finca: string | null) {
     return m
   }, [registros])
 
-  // Totales históricos reales de cajas 20kg (no cajas físicas: el
-  // equivalente normalizado, como en "Cajas 20 Kg acumuladas" del Excel,
-  // para que el ratio no cambie según qué tipo de caja se usó esa semana)
-  // y racimos cosechados, para el ratio cajas/racimo de la finca que usa
-  // la proyección — mismo criterio que "Ratio Total" en el Excel.
+  // Ratio cajas 20kg (equivalente normalizado, no cajas físicas: así no
+  // cambia según qué tipo de caja se usó esa semana) por racimo cosechado,
+  // de las últimas semanas — no de todo el histórico, para que la
+  // proyección refleje el rendimiento actual de la finca y no se diluya
+  // con datos de hace meses. Mismo criterio que "Ratio Total" en el Excel.
   const ratioCajas20kgPorRacimo = useMemo(() => {
+    const cortaFecha = new Date()
+    cortaFecha.setDate(cortaFecha.getDate() - DIAS_VENTANA_RATIO)
+    const corte = cortaFecha.toISOString().slice(0, 10)
+
     let totalCajas20kg = 0
     let totalRacimos = 0
     for (const r of registros) {
-      if (!r.semana) continue
+      if (!r.semana || r.fecha < corte) continue
       totalCajas20kg += r.items.reduce((suma, it) => suma + it.cajas_20kg, 0)
       totalRacimos += SEMANAS_RACIMO.reduce((suma, edad) => suma + (r[`racimos_semana_${edad}` as const] || 0), 0)
     }
