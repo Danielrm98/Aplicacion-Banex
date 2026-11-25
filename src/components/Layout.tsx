@@ -28,7 +28,7 @@ const navItems = [
   { to: '/catalogo', label: 'Catálogo', icon: '⚙️' },
 ]
 
-const SOLO_ADMIN = ['/catalogo', '/plan-general', '/recobro']
+const SOLO_ADMIN = ['/catalogo', '/plan-general', '/recobro', '/escalera-produccion']
 // El admin_lectura ve todo lo que ve un admin, salvo los menús que solo
 // sirven para capturar datos (no muestran información si no se puede
 // guardar nada).
