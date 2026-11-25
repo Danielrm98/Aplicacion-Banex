@@ -3,6 +3,7 @@ import { useEmbolses } from './useEmbolses'
 import { useEmbolseHistorico } from './useEmbolseHistorico'
 import { useCosechaPorEdad } from './useCosechaPorEdad'
 import { useRacimosPorEdadReal } from './useRacimosPorEdadReal'
+import { useModeloEdad } from './useModeloEdad'
 import { useRepiques } from './useRepiques'
 import { useLotes } from './useLotes'
 import { getIsoWeek, getIsoYear } from './isoWeek'
@@ -58,8 +59,10 @@ export function useEscaleraProduccion(finca: Finca | null) {
   const { filas: historico, loading: loadingHistorico } = useEmbolseHistorico(nombreFinca)
   const { filas: cosechaEdadHistorica, loading: loadingCosecha } = useCosechaPorEdad(nombreFinca)
   const { mapa: racimosEdadReal, ratioCajas20kgPorRacimo, loading: loadingProduccion } = useRacimosPorEdadReal(nombreFinca)
+  const { filas: modeloManual, loading: loadingModelo, refetch: refetchModelo } = useModeloEdad(nombreFinca)
 
-  const loading = loadingEmbolses || loadingRepiques || loadingLotes || loadingHistorico || loadingCosecha || loadingProduccion
+  const loading =
+    loadingEmbolses || loadingRepiques || loadingLotes || loadingHistorico || loadingCosecha || loadingProduccion || loadingModelo
 
   const lotesFinca = useMemo(() => {
     if (!finca) return new Set<string>()
@@ -141,7 +144,18 @@ export function useEscaleraProduccion(finca: Finca | null) {
   // las cohortes futuras — tanto el nivel (recobro) como la forma (qué
   // edades pesan más) quedan "parecidos a la semana anterior", no
   // diluidos en un promedio de todo el histórico.
+  const modeloEsManual = modeloManual.length > 0
+
   const distribucionProyeccion = useMemo<DistribucionEdad>(() => {
+    // Si el administrador ya modeló a mano el % por edad de esta finca, se
+    // usa tal cual — tiene prioridad sobre el cálculo automático.
+    if (modeloManual.length > 0) {
+      const resultado = {} as DistribucionEdad
+      for (const edad of EDADES_COSECHA) resultado[edad] = 0
+      for (const m of modeloManual) resultado[m.edad_semanas] = m.porcentaje / 100
+      return resultado
+    }
+
     let cursor = sumarSemanas(anioActual, semanaActual, -EDADES_COSECHA[EDADES_COSECHA.length - 1])
     for (let i = 0; i < SEMANAS_BUSQUEDA_RECOBRO; i++) {
       const embolsado = embolsadoDe(cursor.anio, cursor.semana)
@@ -171,7 +185,16 @@ export function useEscaleraProduccion(finca: Finca | null) {
     for (const edad of EDADES_COSECHA) resultado[edad] = forma[edad] * RECOBRO_RESPALDO
     return resultado
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anioActual, semanaActual, embolseRealPorSemana, historico, racimosRealesDeEdad, repicadoPorSemanaEmbolse, cosechaEdadHistorica])
+  }, [
+    modeloManual,
+    anioActual,
+    semanaActual,
+    embolseRealPorSemana,
+    historico,
+    racimosRealesDeEdad,
+    repicadoPorSemanaEmbolse,
+    cosechaEdadHistorica,
+  ])
 
   const recobroProyectado = useMemo(
     () => EDADES_COSECHA.reduce((suma, edad) => suma + distribucionProyeccion[edad], 0),
@@ -226,5 +249,16 @@ export function useEscaleraProduccion(finca: Finca | null) {
     semanaActual,
   ])
 
-  return { filas, serieBellPorHa, ratioCajas20kgPorRacimo, recobroProyectado, loading, anioActual, semanaActual }
+  return {
+    filas,
+    serieBellPorHa,
+    ratioCajas20kgPorRacimo,
+    recobroProyectado,
+    distribucionProyeccion,
+    modeloEsManual,
+    refetchModelo,
+    loading,
+    anioActual,
+    semanaActual,
+  }
 }

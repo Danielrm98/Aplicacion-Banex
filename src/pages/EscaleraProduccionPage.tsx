@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { useAuth } from '../lib/AuthContext'
 import { usePerfil } from '../lib/usePerfil'
 import { useFincas } from '../lib/useFincas'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
+import { sumarSemanas } from '../lib/anioEmbolses'
 import { useEscaleraProduccion } from '../lib/useEscaleraProduccion'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
-import { EDADES_COSECHA } from '../types/escaleraProduccion'
+import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
 import SectionHeading from '../components/SectionHeading'
+import TabButton from '../components/TabButton'
 import EmbolsePorSemanaChart, { coloresPorAnio, type PuntoEmbolseSemana } from '../components/charts/EmbolsePorSemanaChart'
 import type { Finca } from '../types/finca'
 
@@ -24,6 +28,7 @@ export default function EscaleraProduccionPage() {
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   const [fincaSeleccionada, setFincaSeleccionada] = useState('')
+  const [vista, setVista] = useState<'escalera' | 'modelo'>('escalera')
 
   useEffect(() => {
     if (fincaUnicaOperador) {
@@ -70,7 +75,21 @@ export default function EscaleraProduccionPage() {
         </label>
       </div>
 
-      {!finca ? <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p> : <EscaleraTabla key={finca.nombre} finca={finca} />}
+      {!finca ? (
+        <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
+      ) : (
+        <>
+          <div className="mb-4 flex gap-1 border-b border-gray-200">
+            <TabButton active={vista === 'escalera'} onClick={() => setVista('escalera')}>
+              Escalera
+            </TabButton>
+            <TabButton active={vista === 'modelo'} onClick={() => setVista('modelo')}>
+              Modelo de cajas
+            </TabButton>
+          </div>
+          {vista === 'escalera' ? <EscaleraTabla key={finca.nombre} finca={finca} /> : <ModeloCajasTab key={finca.nombre} finca={finca} />}
+        </>
+      )}
     </div>
   )
 }
@@ -209,6 +228,204 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
       <div className="mt-8">
         <SectionHeading>Comparativo de Bell/Ha por semana (años recientes)</SectionHeading>
         <EmbolsePorSemanaChart data={datosGrafico.data} series={datosGrafico.series} />
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Pestaña "Modelo de cajas": permite modelar a mano el % de racimos por
+// edad (y por lo tanto el recobro) de la finca, y muestra de inmediato el
+// efecto en la proyección de cajas 20kg de las próximas 13 semanas. Si se
+// guarda, ese modelo también pasa a usarse en la pestaña "Escalera".
+// ============================================================
+function ModeloCajasTab({ finca }: { finca: Finca }) {
+  const { session } = useAuth()
+  const {
+    filas,
+    ratioCajas20kgPorRacimo,
+    distribucionProyeccion,
+    modeloEsManual,
+    refetchModelo,
+    loading,
+    anioActual,
+    semanaActual,
+  } = useEscaleraProduccion(finca)
+
+  const vacio: Record<EdadCosecha, string> = { 7: '', 8: '', 9: '', 10: '', 11: '', 12: '', 13: '' }
+  const [valores, setValores] = useState<Record<EdadCosecha, string>>(vacio)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [guardado, setGuardado] = useState(false)
+
+  // Se sincroniza con lo que la escalera está usando de verdad (manual o
+  // automático) al cargar y cada vez que cambia si hay modelo manual
+  // guardado (por ejemplo, justo después de guardar o de restablecer) —
+  // nunca mientras el usuario sigue editando sin haber guardado.
+  useEffect(() => {
+    if (loading) return
+    const siguiente = {} as Record<EdadCosecha, string>
+    for (const edad of EDADES_COSECHA) siguiente[edad] = (distribucionProyeccion[edad] * 100).toFixed(1)
+    setValores(siguiente)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, modeloEsManual])
+
+  const recobroModelado = EDADES_COSECHA.reduce((suma, edad) => suma + (Number(valores[edad]) || 0), 0)
+
+  const proyeccion13Semanas = useMemo(() => {
+    const porCosecha = new Map<string, { anio: number; semana: number; racimos: number }>()
+    for (const f of filas) {
+      for (const d of f.desglose) {
+        const racimos = d.esReal ? d.racimos : f.embolseReal * ((Number(valores[d.edad]) || 0) / 100)
+        const clave = `${d.anioCosecha}_${d.semanaCosecha}`
+        const actual = porCosecha.get(clave) ?? { anio: d.anioCosecha, semana: d.semanaCosecha, racimos: 0 }
+        actual.racimos += racimos
+        porCosecha.set(clave, actual)
+      }
+    }
+    const resultado: { anio: number; semana: number; racimos: number; cajas20kg: number }[] = []
+    let cursor = sumarSemanas(anioActual, semanaActual, 1)
+    for (let i = 0; i < 13; i++) {
+      const racimos = porCosecha.get(`${cursor.anio}_${cursor.semana}`)?.racimos ?? 0
+      resultado.push({ anio: cursor.anio, semana: cursor.semana, racimos, cajas20kg: racimos * ratioCajas20kgPorRacimo })
+      cursor = sumarSemanas(cursor.anio, cursor.semana, 1)
+    }
+    return resultado
+  }, [filas, valores, ratioCajas20kgPorRacimo, anioActual, semanaActual])
+
+  const totalRacimos13Semanas = proyeccion13Semanas.reduce((suma, p) => suma + p.racimos, 0)
+  const totalCajas13Semanas = proyeccion13Semanas.reduce((suma, p) => suma + p.cajas20kg, 0)
+
+  async function guardarModelo() {
+    const userId = session?.user.id
+    if (!userId) return
+    setError(null)
+    setGuardando(true)
+    try {
+      const filasAGuardar = EDADES_COSECHA.map((edad) => ({
+        finca: finca.nombre,
+        edad_semanas: edad,
+        porcentaje: Number(valores[edad]) || 0,
+        updated_by: userId,
+      }))
+      const { error: upsertError } = await supabase
+        .from('escalera_modelo_edad')
+        .upsert(filasAGuardar, { onConflict: 'finca,edad_semanas' })
+      if (upsertError) throw upsertError
+      await refetchModelo()
+      setGuardado(true)
+      setTimeout(() => setGuardado(false), 3000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar el modelo.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function restablecerAutomatico() {
+    setError(null)
+    setGuardando(true)
+    try {
+      const { error: deleteError } = await supabase.from('escalera_modelo_edad').delete().eq('finca', finca.nombre)
+      if (deleteError) throw deleteError
+      await refetchModelo()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo restablecer.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  if (loading) return <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
+
+  const campoClase =
+    'w-20 rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-center text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20'
+
+  return (
+    <div>
+      <div className="mb-6 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <SectionHeading>% de racimos cosechados por edad (modelo)</SectionHeading>
+        <p className="mb-3 text-xs text-gray-500">
+          {modeloEsManual
+            ? 'Esta finca tiene un modelo manual guardado — se usa en vez del cálculo automático, tanto aquí como en la pestaña "Escalera".'
+            : 'Mostrando el cálculo automático (última cohorte de embolse ya completa). Ajusta los valores para modelar un escenario distinto.'}
+        </p>
+        <div className="flex flex-wrap items-end gap-3">
+          {EDADES_COSECHA.map((edad) => (
+            <label key={edad} className="text-sm">
+              <span className="mb-1 block text-gray-600">{edad} sem.</span>
+              <input
+                type="number"
+                min={0}
+                step={0.1}
+                value={valores[edad]}
+                onChange={(e) => setValores((prev) => ({ ...prev, [edad]: e.target.value }))}
+                className={campoClase}
+              />
+            </label>
+          ))}
+          <div className="text-sm">
+            <span className="mb-1 block text-gray-600">Recobro total</span>
+            <p className="rounded-lg border border-banex-200 bg-banex-50 px-3 py-2 text-center font-semibold text-banex-800">
+              {recobroModelado.toFixed(1)}%
+            </p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            onClick={guardarModelo}
+            disabled={guardando}
+            className="rounded-lg bg-banex-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+          >
+            {guardando ? 'Guardando...' : 'Guardar modelo'}
+          </button>
+          {modeloEsManual && (
+            <button
+              onClick={restablecerAutomatico}
+              disabled={guardando}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              Restablecer automático
+            </button>
+          )}
+          {guardado && <span className="text-sm text-green-700">✅ Modelo guardado.</span>}
+          {error && <span className="text-sm text-red-600">{error}</span>}
+        </div>
+      </div>
+
+      <SectionHeading>Proyección de cajas 20kg — próximas 13 semanas</SectionHeading>
+      <p className="mb-3 text-xs text-gray-500">
+        Semana de cosecha (no de embolse): combina lo que ya viene en camino de cohortes anteriores con lo que se
+        embolsaría de aquí en adelante, usando el % de arriba para lo que todavía no es real.
+      </p>
+      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+              <th className="px-4 py-2 font-medium">Semana de cosecha</th>
+              <th className="px-2 py-2 text-right font-medium">Racimos cosechados (proy.)</th>
+              <th className="px-2 py-2 text-right font-medium">Cajas 20kg (proy.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {proyeccion13Semanas.map((p) => (
+              <tr key={`${p.anio}_${p.semana}`} className="border-b border-gray-100">
+                <td className="px-4 py-2 font-medium text-gray-900">
+                  Semana {p.semana}/{p.anio}
+                </td>
+                <td className="px-2 py-2 text-right text-gray-700">{Math.round(p.racimos).toLocaleString('es')}</td>
+                <td className="px-2 py-2 text-right font-semibold text-banex-700">{p.cajas20kg.toFixed(1)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-banex-100 bg-banex-50/50 font-semibold text-banex-800">
+              <td className="px-4 py-2">Total 13 semanas</td>
+              <td className="px-2 py-2 text-right">{Math.round(totalRacimos13Semanas).toLocaleString('es')}</td>
+              <td className="px-2 py-2 text-right">{totalCajas13Semanas.toFixed(1)}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   )

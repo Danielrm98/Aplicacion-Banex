@@ -26,3 +26,11 @@ export interface EmbolseHistorico {
   bell_por_ha: number | null
   emb_real: number | null
 }
+
+export interface ModeloEdad {
+  finca: string
+  edad_semanas: EdadCosecha
+  porcentaje: number
+  updated_at: string
+  updated_by: string | null
+}
