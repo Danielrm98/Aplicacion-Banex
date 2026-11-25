@@ -32,19 +32,21 @@ export function useRacimosPorEdadReal(finca: string | null) {
     return m
   }, [registros])
 
-  // Totales (todas las fincas/edades juntas) de cajas y racimos cosechados
-  // reales, para el ratio cajas-por-racimo de la finca que usa la
-  // proyección de cajas — mismo criterio que "Ratio Total" en el Excel.
-  const ratioCajasPorRacimo = useMemo(() => {
-    let totalCajas = 0
+  // Totales históricos reales de cajas 20kg (no cajas físicas: el
+  // equivalente normalizado, como en "Cajas 20 Kg acumuladas" del Excel,
+  // para que el ratio no cambie según qué tipo de caja se usó esa semana)
+  // y racimos cosechados, para el ratio cajas/racimo de la finca que usa
+  // la proyección — mismo criterio que "Ratio Total" en el Excel.
+  const ratioCajas20kgPorRacimo = useMemo(() => {
+    let totalCajas20kg = 0
     let totalRacimos = 0
     for (const r of registros) {
       if (!r.semana) continue
-      totalCajas += r.items.reduce((suma, it) => suma + it.cantidad_cajas, 0)
+      totalCajas20kg += r.items.reduce((suma, it) => suma + it.cajas_20kg, 0)
       totalRacimos += SEMANAS_RACIMO.reduce((suma, edad) => suma + (r[`racimos_semana_${edad}` as const] || 0), 0)
     }
-    return totalRacimos > 0 ? totalCajas / totalRacimos : 0
+    return totalRacimos > 0 ? totalCajas20kg / totalRacimos : 0
   }, [registros])
 
-  return { mapa, ratioCajasPorRacimo, loading }
+  return { mapa, ratioCajas20kgPorRacimo, loading }
 }

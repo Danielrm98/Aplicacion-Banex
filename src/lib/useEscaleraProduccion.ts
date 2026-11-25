@@ -40,7 +40,7 @@ export function useEscaleraProduccion(finca: Finca | null) {
   const { lotes, loading: loadingLotes } = useLotes()
   const { filas: historico, loading: loadingHistorico } = useEmbolseHistorico(nombreFinca)
   const { filas: cosechaEdadHistorica, loading: loadingCosecha } = useCosechaPorEdad(nombreFinca)
-  const { mapa: racimosEdadReal, ratioCajasPorRacimo, loading: loadingProduccion } = useRacimosPorEdadReal(nombreFinca)
+  const { mapa: racimosEdadReal, ratioCajas20kgPorRacimo, loading: loadingProduccion } = useRacimosPorEdadReal(nombreFinca)
 
   const loading = loadingEmbolses || loadingLotes || loadingHistorico || loadingCosecha || loadingProduccion
 
@@ -156,5 +156,5 @@ export function useEscaleraProduccion(finca: Finca | null) {
     semanaActual,
   ])
 
-  return { filas, serieBellPorHa, ratioCajasPorRacimo, loading, anioActual, semanaActual }
+  return { filas, serieBellPorHa, ratioCajas20kgPorRacimo, loading, anioActual, semanaActual }
 }

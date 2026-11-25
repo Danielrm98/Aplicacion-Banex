@@ -81,7 +81,7 @@ export default function EscaleraProduccionPage() {
 // del formulario diario de Registrar) y lo futuro proyectado.
 // ============================================================
 function EscaleraTabla({ finca }: { finca: Finca }) {
-  const { filas, serieBellPorHa, ratioCajasPorRacimo, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
+  const { filas, serieBellPorHa, ratioCajas20kgPorRacimo, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
 
   const datosGrafico = useMemo<{ data: PuntoEmbolseSemana[]; series: ReturnType<typeof coloresPorAnio> }>(() => {
     const anios = [...new Set(serieBellPorHa.map((p) => p.anio))].sort((a, b) => b - a).slice(0, 3)
@@ -105,8 +105,8 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
   return (
     <div>
       <p className="mb-3 text-xs text-gray-400">
-        Semana actual: {semanaActual}/{anioActual}. Ratio cajas/racimo de la finca (histórico real):{' '}
-        {ratioCajasPorRacimo.toFixed(3)}. Columnas en <span className="font-semibold text-green-700">verde</span> = dato
+        Semana actual: {semanaActual}/{anioActual}. Ratio cajas 20kg/racimo de la finca (histórico real):{' '}
+        {ratioCajas20kgPorRacimo.toFixed(3)}. Columnas en <span className="font-semibold text-green-700">verde</span> = dato
         real; en <span className="font-semibold text-cyan-700">celeste</span> = proyección.
       </p>
       <div className="overflow-x-auto">
@@ -138,7 +138,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
                 Racimos cosechados
               </th>
               <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">
-                Cajas (proy.)
+                Cajas 20kg (proy.)
               </th>
             </tr>
             <tr className="bg-gray-50 text-center text-gray-500">
@@ -153,7 +153,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
             {filas.map((f) => {
               const color = colorCintaDe(f.anioEmbolse, f.semanaEmbolse)
               const estilo = ESTILO_CINTA[color]
-              const cajasProyectadas = f.racimosCosechados * ratioCajasPorRacimo
+              const cajas20kgProyectadas = f.racimosCosechados * ratioCajas20kgPorRacimo
               return (
                 <tr key={`${f.anioEmbolse}_${f.semanaEmbolse}`}>
                   <td className="sticky left-0 z-10 border border-gray-200 bg-white px-2 py-1 text-center">
@@ -187,7 +187,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
                     {Math.round(f.racimosCosechados).toLocaleString('es')}
                   </td>
                   <td className={`${f.esFilaReal ? celdaReal : celdaEstimada} font-semibold`}>
-                    {Math.round(cajasProyectadas).toLocaleString('es')}
+                    {cajas20kgProyectadas.toFixed(1)}
                   </td>
                 </tr>
               )
