@@ -8,15 +8,21 @@ import { useLotes } from './useLotes'
 import { getIsoWeek, getIsoYear } from './isoWeek'
 import { fechaLocalHoy } from './fechaLocal'
 import { sumarSemanas } from './anioEmbolses'
-import { calcularDistribucionRespaldo, calcularFilaEscalera, type PuntoSerie, type FilaEscalera } from './calculoEscaleraProduccion'
+import {
+  calcularDistribucionRespaldo,
+  calcularFilaEscalera,
+  type DistribucionEdad,
+  type PuntoSerie,
+  type FilaEscalera,
+} from './calculoEscaleraProduccion'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
 import type { Finca } from '../types/finca'
 
 const SEMANAS_ATRAS = 13
 const SEMANAS_ADELANTE = 13
 // Cuánto hacia atrás se busca la última cohorte de embolse ya completa
-// (con las 7 edades ya cosechadas) para tomar "el recobro que quedó la
-// semana anterior" como base de la proyección.
+// (con las 7 edades ya cosechadas) para tomar su recobro y su % por edad
+// reales — "lo que quedó la semana anterior" — como base de la proyección.
 const SEMANAS_BUSQUEDA_RECOBRO = 40
 // Recobro de respaldo si todavía no hay ninguna cohorte completa (finca
 // nueva, sin historial ni formulario diario cargado aún).
@@ -127,34 +133,53 @@ export function useEscaleraProduccion(finca: Finca | null) {
     return h?.emb_real ?? null
   }
 
-  // "El recobro que quedó la semana anterior": se busca hacia atrás la
-  // cohorte de embolse más reciente que ya tenga las 7 edades cosechadas
-  // (no una a medias, que todavía podría subir) y se usa SU recobro real
-  // como base para proyectar las cohortes futuras — no un promedio de todo
-  // el histórico, para que la proyección responda al desempeño actual.
-  const recobroProyectado = useMemo(() => {
+  // "Lo que quedó la semana anterior": se busca hacia atrás la cohorte de
+  // embolse más reciente que ya tenga las 7 edades cosechadas (no una a
+  // medias, que todavía podría subir) y se usa SU % real de racimos por
+  // edad (reescalado para incluir también el repique real de esa cohorte,
+  // igual que el Recobro de la página Recobro) como base para proyectar
+  // las cohortes futuras — tanto el nivel (recobro) como la forma (qué
+  // edades pesan más) quedan "parecidos a la semana anterior", no
+  // diluidos en un promedio de todo el histórico.
+  const distribucionProyeccion = useMemo<DistribucionEdad>(() => {
     let cursor = sumarSemanas(anioActual, semanaActual, -EDADES_COSECHA[EDADES_COSECHA.length - 1])
     for (let i = 0; i < SEMANAS_BUSQUEDA_RECOBRO; i++) {
       const embolsado = embolsadoDe(cursor.anio, cursor.semana)
       if (embolsado && embolsado > 0) {
-        const todasReales = EDADES_COSECHA.every((edad) => racimosRealesDeEdad(cursor.anio, cursor.semana, edad) !== undefined)
+        const racimosPorEdadCohorte = EDADES_COSECHA.map((edad) => racimosRealesDeEdad(cursor.anio, cursor.semana, edad))
+        const todasReales = racimosPorEdadCohorte.every((v) => v !== undefined)
         if (todasReales) {
-          const cosechado = EDADES_COSECHA.reduce((suma, edad) => suma + (racimosRealesDeEdad(cursor.anio, cursor.semana, edad) ?? 0), 0)
+          const cosechado = racimosPorEdadCohorte.reduce((suma, v) => suma + (v ?? 0), 0)
           const repicado = repicadoPorSemanaEmbolse.get(`${cursor.anio}_${cursor.semana}`) ?? 0
-          return (cosechado + repicado) / embolsado
+          // Factor para que la distribución, al sumarla, dé el recobro
+          // completo (cosechado + repicado) y no solo lo cosechado —
+          // conserva la forma real por edad, solo ajusta el nivel.
+          const factorRepique = cosechado > 0 ? (cosechado + repicado) / cosechado : 1
+          const resultado = {} as DistribucionEdad
+          EDADES_COSECHA.forEach((edad, i2) => {
+            resultado[edad] = ((racimosPorEdadCohorte[i2] ?? 0) / embolsado) * factorRepique
+          })
+          return resultado
         }
       }
       cursor = sumarSemanas(cursor.anio, cursor.semana, -1)
     }
-    return RECOBRO_RESPALDO
+    // Respaldo: forma del histórico importado (si lo hay) escalada al
+    // recobro típico de respaldo; si tampoco hay histórico, la curva fija.
+    const forma = calcularDistribucionRespaldo(cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })))
+    const resultado = {} as DistribucionEdad
+    for (const edad of EDADES_COSECHA) resultado[edad] = forma[edad] * RECOBRO_RESPALDO
+    return resultado
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anioActual, semanaActual, embolseRealPorSemana, historico, racimosRealesDeEdad, repicadoPorSemanaEmbolse])
+  }, [anioActual, semanaActual, embolseRealPorSemana, historico, racimosRealesDeEdad, repicadoPorSemanaEmbolse, cosechaEdadHistorica])
+
+  const recobroProyectado = useMemo(
+    () => EDADES_COSECHA.reduce((suma, edad) => suma + distribucionProyeccion[edad], 0),
+    [distribucionProyeccion],
+  )
 
   const filas = useMemo<FilaEscalera[]>(() => {
     if (!finca) return []
-    const distribucionRespaldo = calcularDistribucionRespaldo(
-      cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })),
-    )
 
     const semanaYaOcurrida = (semana: { anio: number; semana: number }) =>
       semana.anio < anioActual || (semana.anio === anioActual && semana.semana <= semanaActual)
@@ -175,8 +200,7 @@ export function useEscaleraProduccion(finca: Finca | null) {
           hectareas: finca.hectareas,
           embolseRealDeEstaSemana: embolsadoDe(cursor.anio, cursor.semana),
           serieBellPorHa,
-          distribucionRespaldo,
-          recobroProyectado,
+          distribucionProyeccion,
           racimosRealesDeEdad,
           repicadoReal,
           semanaYaOcurrida,
@@ -188,13 +212,12 @@ export function useEscaleraProduccion(finca: Finca | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     finca,
-    cosechaEdadHistorica,
+    distribucionProyeccion,
     racimosRealesDeEdad,
     repicadoPorSemanaEmbolse,
     embolseRealPorSemana,
     historico,
     serieBellPorHa,
-    recobroProyectado,
     inicio.anio,
     inicio.semana,
     fin.anio,
