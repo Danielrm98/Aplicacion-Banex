@@ -26,7 +26,7 @@ export type DistribucionEdad = Record<EdadCosecha, number>
 // Curva de respaldo (suma 1) mientras una finca todavía no tiene ninguna
 // semana de "cosecha por edad" cargada — centrada en 11 semanas, que es lo
 // que se observa en el histórico del Excel para varias fincas.
-const DISTRIBUCION_RESPALDO: DistribucionEdad = { 8: 0, 9: 0.05, 10: 0.25, 11: 0.4, 12: 0.25, 13: 0.05 }
+const DISTRIBUCION_RESPALDO: DistribucionEdad = { 7: 0, 8: 0, 9: 0.05, 10: 0.25, 11: 0.4, 12: 0.25, 13: 0.05 }
 
 function claveSemana(anio: number, semana: number): number {
   return anio * 100 + semana

@@ -10,7 +10,6 @@ export const ALMACEN_REPIQUES_PENDIENTES = 'repiques_pendientes'
 export const ALMACEN_CENSO_PLANTAS_PENDIENTES = 'censo_plantas_pendientes'
 export const ALMACEN_EVALUACION_BANDA_PENDIENTES = 'evaluacion_banda_pendientes'
 export const ALMACEN_PERFIL_RACIMO_PENDIENTES = 'perfil_racimo_pendientes'
-export const ALMACEN_COSECHA_EDAD_PENDIENTES = 'cosecha_edad_pendientes'
 export const ALMACEN_CACHE = 'cache'
 
 /** Aviso para que el contador de pendientes se actualice al encolar, sin esperar a una sincronización. */
@@ -23,7 +22,6 @@ const ALMACENES = [
   { nombre: ALMACEN_CENSO_PLANTAS_PENDIENTES, keyPath: 'clave' },
   { nombre: ALMACEN_EVALUACION_BANDA_PENDIENTES, keyPath: 'id' },
   { nombre: ALMACEN_PERFIL_RACIMO_PENDIENTES, keyPath: 'id' },
-  { nombre: ALMACEN_COSECHA_EDAD_PENDIENTES, keyPath: 'clave' },
   { nombre: ALMACEN_CACHE, keyPath: 'clave' },
 ]
 

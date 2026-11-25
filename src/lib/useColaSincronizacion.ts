@@ -6,7 +6,6 @@ import { leerColaRepiques, sincronizarColaRepiques } from './colaRepiques'
 import { leerColaCensoPlantas, sincronizarColaCensoPlantas } from './colaCensoPlantas'
 import { leerColaEvaluacionBanda, sincronizarColaEvaluacionBanda } from './colaEvaluacionBanda'
 import { leerColaPerfilRacimo, sincronizarColaPerfilRacimo } from './colaPerfilRacimo'
-import { leerColaCosechaPorEdad, sincronizarColaCosechaPorEdad } from './colaCosechaPorEdad'
 import { EVENTO_COLA_CAMBIO } from './bdOffline'
 
 async function contarPendientes(): Promise<number> {
@@ -17,8 +16,7 @@ async function contarPendientes(): Promise<number> {
     (await leerColaRepiques()).length +
     (await leerColaCensoPlantas()).length +
     (await leerColaEvaluacionBanda()).length +
-    (await leerColaPerfilRacimo()).length +
-    (await leerColaCosechaPorEdad()).length
+    (await leerColaPerfilRacimo()).length
   )
 }
 
@@ -40,7 +38,6 @@ export function useColaSincronizacion() {
         sincronizarColaCensoPlantas(),
         sincronizarColaEvaluacionBanda(),
         sincronizarColaPerfilRacimo(),
-        sincronizarColaCosechaPorEdad(),
       ])
     } catch {
       // cada cola ya maneja sus propios errores por elemento; esto solo

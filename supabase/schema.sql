@@ -1304,12 +1304,12 @@ create policy "Eliminar defectos de perfil de racimo según rol"
 -- semana futura se va a cosechar cada cohorte y cuántos racimos va a
 -- rendir (misma lógica que ya manejan en Excel, ahora viva en la app).
 --
--- cosecha_por_edad: de los racimos cosechados cada semana, cuántos traían
--- cinta de cada edad (8 a 13 semanas desde el embolse). Es un dato que hoy
--- se tecleaba a mano en el Excel; aquí se captura por finca (no por lote,
--- porque esa clasificación se hace sobre la fruta ya mezclada en el
--- proceso, no en el lote de origen) y también sirve de semilla histórica
--- importada del Excel para los años anteriores al arranque de esta app.
+-- cosecha_por_edad: solo semilla histórica (importada del Excel, de antes
+-- de que esta app existiera) de racimos cosechados por edad (7 a 13
+-- semanas desde el embolse). NO tiene formulario propio: el dato real, de
+-- ahí en adelante, ya se toma de producciones.racimos_semana_7..12 (el
+-- formulario diario de "Registrar"), cruzado contra su semana de embolse
+-- — por eso no hace falta pedirle a nadie que lo digite dos veces.
 -- ============================================================
 create table public.cosecha_por_edad (
   id uuid primary key default gen_random_uuid(),
@@ -1317,7 +1317,9 @@ create table public.cosecha_por_edad (
   finca text not null references public.fincas (nombre),
   anio integer not null,
   semana integer not null check (semana between 1 and 53),
-  edad_semanas integer not null check (edad_semanas between 8 and 13),
+  -- 7 a 13: unión del rango del formulario diario de Registrar (7-12,
+  -- racimos_semana_X en producciones) y del histórico importado del Excel (8-13).
+  edad_semanas integer not null check (edad_semanas between 7 and 13),
   -- numeric (no integer): el histórico importado del Excel trae al menos
   -- un valor con decimales.
   racimos numeric not null default 0 check (racimos >= 0),

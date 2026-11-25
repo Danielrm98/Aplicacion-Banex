@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useEmbolses } from './useEmbolses'
 import { useEmbolseHistorico } from './useEmbolseHistorico'
 import { useCosechaPorEdad } from './useCosechaPorEdad'
+import { useRacimosPorEdadReal } from './useRacimosPorEdadReal'
 import { useLotes } from './useLotes'
 import { getIsoWeek, getIsoYear } from './isoWeek'
 import { fechaLocalHoy } from './fechaLocal'
@@ -15,11 +16,12 @@ const SEMANAS_ADELANTE = 13
 
 /** Arma la escalera de producción de una finca: semana de embolse → semana
  * de cosecha, con lo real ya cargado (embolses de la app + semilla
- * histórica importada + "Registro semanal" por edad) y lo futuro
- * proyectado. Ventana fija de 13 semanas atrás y 13 adelante (cubre el
- * rango de edad de cosecha, 8-13 semanas). También devuelve la serie
- * completa de Bell/Ha (sin recortar a la ventana) para el gráfico
- * comparativo por años. */
+ * histórica importada + racimos por edad del formulario diario de
+ * Registrar) y lo futuro proyectado. Ventana fija de 13 semanas atrás y 13
+ * adelante (cubre el rango de edad de cosecha, 7-13 semanas). También
+ * devuelve la serie completa de Bell/Ha (sin recortar a la ventana) para
+ * el gráfico comparativo por años, y el ratio cajas/racimo de la finca
+ * para proyectar cajas. */
 export function useEscaleraProduccion(finca: Finca | null) {
   const nombreFinca = finca?.nombre ?? null
   const anioActual = getIsoYear(fechaLocalHoy())
@@ -37,9 +39,10 @@ export function useEscaleraProduccion(finca: Finca | null) {
   const { embolses, loading: loadingEmbolses } = useEmbolses({ anios: aniosNecesarios })
   const { lotes, loading: loadingLotes } = useLotes()
   const { filas: historico, loading: loadingHistorico } = useEmbolseHistorico(nombreFinca)
-  const { filas: cosechaEdad, loading: loadingCosecha } = useCosechaPorEdad(nombreFinca)
+  const { filas: cosechaEdadHistorica, loading: loadingCosecha } = useCosechaPorEdad(nombreFinca)
+  const { mapa: racimosEdadReal, ratioCajasPorRacimo, loading: loadingProduccion } = useRacimosPorEdadReal(nombreFinca)
 
-  const loading = loadingEmbolses || loadingLotes || loadingHistorico || loadingCosecha
+  const loading = loadingEmbolses || loadingLotes || loadingHistorico || loadingCosecha || loadingProduccion
 
   // Serie completa de Bell/Ha (todo el historial, no solo la ventana) — la
   // usa tanto la proyección estacional como el gráfico comparativo por años.
@@ -79,20 +82,33 @@ export function useEscaleraProduccion(finca: Finca | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finca, lotes, embolses])
 
-  const racimosPorEdadMap = useMemo(() => {
+  // El histórico importado del Excel queda indexado por semana de COSECHA
+  // (así venía en el Excel); aquí se reindexa por semana de EMBOLSE
+  // (cosecha - edad) para que use la misma llave que el dato en vivo.
+  const racimosEdadHistorico = useMemo(() => {
     const mapa = new Map<string, number>()
-    for (const f of cosechaEdad) mapa.set(`${f.anio}_${f.semana}_${f.edad_semanas}`, f.racimos)
+    for (const f of cosechaEdadHistorica) {
+      const { anio: anioEmb, semana: semEmb } = sumarSemanas(f.anio, f.semana, -f.edad_semanas)
+      mapa.set(`${anioEmb}_${semEmb}_${f.edad_semanas}`, f.racimos)
+    }
     return mapa
-  }, [cosechaEdad])
+  }, [cosechaEdadHistorica])
 
   const filas = useMemo<FilaEscalera[]>(() => {
     if (!finca) return []
-    const distribucionRespaldo = calcularDistribucionRespaldo(cosechaEdad)
+    const distribucionRespaldo = calcularDistribucionRespaldo(
+      cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })),
+    )
 
     const semanaYaOcurrida = (semana: { anio: number; semana: number }) =>
       semana.anio < anioActual || (semana.anio === anioActual && semana.semana <= semanaActual)
 
-    const racimosRealesDeEdad = (anio: number, semana: number, edad: EdadCosecha) => racimosPorEdadMap.get(`${anio}_${semana}_${edad}`)
+    // Prefiere el dato en vivo (del formulario diario); si esa semana de
+    // embolse es anterior al arranque de la app, cae al histórico importado.
+    const racimosRealesDeEdad = (anio: number, semana: number, edad: EdadCosecha) => {
+      const clave = `${anio}_${semana}_${edad}`
+      return racimosEdadReal.get(clave) ?? racimosEdadHistorico.get(clave)
+    }
 
     const resultado: FilaEscalera[] = []
     let cursor = inicio
@@ -124,7 +140,21 @@ export function useEscaleraProduccion(finca: Finca | null) {
     }
     return resultado
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finca, cosechaEdad, racimosPorEdadMap, embolseRealPorSemana, historico, serieBellPorHa, inicio.anio, inicio.semana, fin.anio, fin.semana, anioActual, semanaActual])
+  }, [
+    finca,
+    cosechaEdadHistorica,
+    racimosEdadReal,
+    racimosEdadHistorico,
+    embolseRealPorSemana,
+    historico,
+    serieBellPorHa,
+    inicio.anio,
+    inicio.semana,
+    fin.anio,
+    fin.semana,
+    anioActual,
+    semanaActual,
+  ])
 
-  return { filas, serieBellPorHa, loading, anioActual, semanaActual }
+  return { filas, serieBellPorHa, ratioCajasPorRacimo, loading, anioActual, semanaActual }
 }

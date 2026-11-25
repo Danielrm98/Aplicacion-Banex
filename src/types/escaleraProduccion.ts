@@ -1,4 +1,8 @@
-export const EDADES_COSECHA = [8, 9, 10, 11, 12, 13] as const
+// Unión de los dos rangos que existen en la app: el formulario diario de
+// "Registrar" captura racimos por edad de 7 a 12 semanas (SEMANAS_RACIMO,
+// ver types/produccion.ts), y el histórico importado del Excel trae 8 a
+// 13. Se usa el rango completo para no perder ninguno de los dos.
+export const EDADES_COSECHA = [7, 8, 9, 10, 11, 12, 13] as const
 export type EdadCosecha = (typeof EDADES_COSECHA)[number]
 
 export interface CosechaPorEdad {
