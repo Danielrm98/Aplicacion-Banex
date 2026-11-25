@@ -4,6 +4,7 @@ import { useEmbolseHistorico } from './useEmbolseHistorico'
 import { useCosechaPorEdad } from './useCosechaPorEdad'
 import { useRacimosPorEdadReal } from './useRacimosPorEdadReal'
 import { useModeloEdad } from './useModeloEdad'
+import { useMetricasProduccionPorSemana } from './useMetricasProduccionPorSemana'
 import { useRepiques } from './useRepiques'
 import { useLotes } from './useLotes'
 import { getIsoWeek, getIsoYear } from './isoWeek'
@@ -58,11 +59,24 @@ export function useEscaleraProduccion(finca: Finca | null) {
   const { lotes, loading: loadingLotes } = useLotes()
   const { filas: historico, loading: loadingHistorico } = useEmbolseHistorico(nombreFinca)
   const { filas: cosechaEdadHistorica, loading: loadingCosecha } = useCosechaPorEdad(nombreFinca)
-  const { mapa: racimosEdadReal, ratioCajas20kgPorRacimo, loading: loadingProduccion } = useRacimosPorEdadReal(nombreFinca)
+  const {
+    mapa: racimosEdadReal,
+    ratioCajas20kgPorRacimo,
+    ratioCajasFisicasPorRacimo,
+    loading: loadingProduccion,
+  } = useRacimosPorEdadReal(nombreFinca)
   const { filas: modeloManual, loading: loadingModelo, refetch: refetchModelo } = useModeloEdad(nombreFinca)
+  const { mapa: metricasPorSemana, loading: loadingMetricas } = useMetricasProduccionPorSemana(nombreFinca)
 
   const loading =
-    loadingEmbolses || loadingRepiques || loadingLotes || loadingHistorico || loadingCosecha || loadingProduccion || loadingModelo
+    loadingEmbolses ||
+    loadingRepiques ||
+    loadingLotes ||
+    loadingHistorico ||
+    loadingCosecha ||
+    loadingProduccion ||
+    loadingModelo ||
+    loadingMetricas
 
   const lotesFinca = useMemo(() => {
     if (!finca) return new Set<string>()
@@ -253,6 +267,8 @@ export function useEscaleraProduccion(finca: Finca | null) {
     filas,
     serieBellPorHa,
     ratioCajas20kgPorRacimo,
+    ratioCajasFisicasPorRacimo,
+    metricasPorSemana,
     recobroProyectado,
     distribucionProyeccion,
     modeloEsManual,

@@ -9,6 +9,7 @@ import { sumarSemanas } from '../lib/anioEmbolses'
 import { useEscaleraProduccion } from '../lib/useEscaleraProduccion'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
+import { CAJA_20KG_KG } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
 import TabButton from '../components/TabButton'
 import EmbolsePorSemanaChart, { coloresPorAnio, type PuntoEmbolseSemana } from '../components/charts/EmbolsePorSemanaChart'
@@ -100,7 +101,17 @@ export default function EscaleraProduccionPage() {
 // del formulario diario de Registrar) y lo futuro proyectado.
 // ============================================================
 function EscaleraTabla({ finca }: { finca: Finca }) {
-  const { filas, serieBellPorHa, ratioCajas20kgPorRacimo, recobroProyectado, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
+  const {
+    filas,
+    serieBellPorHa,
+    ratioCajas20kgPorRacimo,
+    ratioCajasFisicasPorRacimo,
+    metricasPorSemana,
+    recobroProyectado,
+    loading,
+    anioActual,
+    semanaActual,
+  } = useEscaleraProduccion(finca)
 
   const datosGrafico = useMemo<{ data: PuntoEmbolseSemana[]; series: ReturnType<typeof coloresPorAnio> }>(() => {
     const anios = [...new Set(serieBellPorHa.map((p) => p.anio))].sort((a, b) => b - a).slice(0, 3)
@@ -120,6 +131,12 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
   const celdaReal = 'border border-gray-200 px-1.5 py-1 text-center bg-green-100 text-green-800'
   const celdaEstimada = 'border border-gray-200 px-1.5 py-1 text-center bg-cyan-100 text-cyan-800'
   const celdaNeutra = 'border border-gray-200 px-2 py-1 text-center text-gray-700'
+  // Columnas del Excel para las que todavía no hay una fuente de datos
+  // clara en la app (split Corta/Premium, Motivo de Repique, Precipitación,
+  // etc.) — se dejan ya en la tabla, marcadas, para irlas cuadrando una por
+  // una en vez de inventar un cálculo a ciegas.
+  const celdaPendiente = 'border border-gray-200 px-2 py-1 text-center text-gray-300 italic'
+  const TITULO_PENDIENTE = 'Pendiente: todavía no hay de dónde sacar este dato en la app.'
 
   return (
     <div>
@@ -131,7 +148,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
         <span className="font-semibold text-cyan-700">celeste</span> = proyección.
       </p>
       <div className="overflow-x-auto">
-        <table className="min-w-[1320px] border-collapse text-xs">
+        <table className="min-w-[2400px] border-collapse text-xs">
           <thead>
             <tr className="bg-gray-100 text-center text-gray-600">
               <th rowSpan={2} className="sticky left-0 z-10 border border-gray-200 bg-gray-100 px-2 py-1 font-semibold">
@@ -156,10 +173,19 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
                 Sem. Cosecha
               </th>
               <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">
-                Racimos cosechados
+                Edad Prom
               </th>
-              <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">
-                Cajas 20kg (proy.)
+              <th colSpan={3} className="border border-gray-200 bg-amber-800 px-2 py-1 font-semibold text-white">
+                Repique
+              </th>
+              <th colSpan={4} className="border border-gray-200 bg-banex-700 px-2 py-1 font-semibold text-white">
+                Racimos / Cajas
+              </th>
+              <th colSpan={6} className="border border-gray-200 bg-gray-400 px-2 py-1 font-semibold text-white" title={TITULO_PENDIENTE}>
+                Corta / Premium (pendiente)
+              </th>
+              <th colSpan={7} className="border border-gray-200 bg-sky-800 px-2 py-1 font-semibold text-white">
+                Datos reales de Registrar (solo si ya se registró esa semana)
               </th>
             </tr>
             <tr className="bg-gray-50 text-center text-gray-500">
@@ -168,6 +194,40 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
                   {edad}
                 </th>
               ))}
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">%</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Racimos</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                Motivo
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Racimos cosechados</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Cajas 20kg (proy.)</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Cajas físicas (proy.)</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Peso de caja</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                % Corta
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                % Premium
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                Ratio Corta
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                Ratio Premium
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                Cajas Corta
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
+                Cajas Premium
+              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Peso racimo</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Prom. manos</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Grado prom.</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Canastillas</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Merma</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Racimos recusados</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Ha. recorridas</th>
             </tr>
           </thead>
           <tbody>
@@ -175,6 +235,8 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
               const color = colorCintaDe(f.anioEmbolse, f.semanaEmbolse)
               const estilo = ESTILO_CINTA[color]
               const cajas20kgProyectadas = f.racimosCosechados * ratioCajas20kgPorRacimo
+              const cajasFisicasProyectadas = f.racimosCosechados * ratioCajasFisicasPorRacimo
+              const m = metricasPorSemana.get(`${f.anioCosechaPrincipal}_${f.semanaCosechaPrincipal}`)
               return (
                 <tr key={`${f.anioEmbolse}_${f.semanaEmbolse}`}>
                   <td className="sticky left-0 z-10 border border-gray-200 bg-white px-2 py-1 text-center">
@@ -204,12 +266,38 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
                   <td className={celdaNeutra}>
                     {f.semanaCosechaPrincipal}/{f.anioCosechaPrincipal}
                   </td>
+                  <td className={celdaNeutra}>{f.edadPromReal.toFixed(1)}</td>
+
+                  {/* Repique */}
+                  <td className={celdaNeutra}>{(f.porcentajeRepique * 100).toFixed(1)}%</td>
+                  <td className={celdaNeutra}>{Math.round(f.repicado).toLocaleString('es')}</td>
+                  <td className={celdaPendiente} title={TITULO_PENDIENTE}>
+                    —
+                  </td>
+
+                  {/* Racimos / Cajas */}
                   <td className={`${f.esFilaReal ? celdaReal : celdaEstimada} font-semibold`}>
                     {Math.round(f.racimosCosechados).toLocaleString('es')}
                   </td>
-                  <td className={`${f.esFilaReal ? celdaReal : celdaEstimada} font-semibold`}>
-                    {cajas20kgProyectadas.toFixed(1)}
-                  </td>
+                  <td className={`${f.esFilaReal ? celdaReal : celdaEstimada} font-semibold`}>{cajas20kgProyectadas.toFixed(1)}</td>
+                  <td className={f.esFilaReal ? celdaReal : celdaEstimada}>{Math.round(cajasFisicasProyectadas).toLocaleString('es')}</td>
+                  <td className={celdaNeutra}>{CAJA_20KG_KG}</td>
+
+                  {/* Corta/Premium — pendiente */}
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <td key={i} className={celdaPendiente} title={TITULO_PENDIENTE}>
+                      —
+                    </td>
+                  ))}
+
+                  {/* Datos reales de Registrar — nunca proyectados, solo si ya se registró esa semana de cosecha */}
+                  <td className={celdaNeutra}>{m?.pesoNetoRacimo != null ? m.pesoNetoRacimo.toFixed(2) : '—'}</td>
+                  <td className={celdaNeutra}>{m?.promedioManos != null ? m.promedioManos.toFixed(1) : '—'}</td>
+                  <td className={celdaNeutra}>{m?.gradoPromedio != null ? m.gradoPromedio.toFixed(1) : '—'}</td>
+                  <td className={celdaNeutra}>{m ? m.canastillas.toLocaleString('es') : '—'}</td>
+                  <td className={celdaNeutra}>{m?.merma != null ? `${m.merma.toFixed(1)}%` : '—'}</td>
+                  <td className={celdaNeutra}>{m ? m.racimosRecusados.toLocaleString('es') : '—'}</td>
+                  <td className={celdaNeutra}>{m ? m.areaRecorrida.toLocaleString('es') : '—'}</td>
                 </tr>
               )
             })}
@@ -222,6 +310,10 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded bg-cyan-100" /> Estimado (proyección)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded border border-dashed border-gray-300" /> Pendiente (todavía sin
+          fuente de datos en la app: split Corta/Premium, Motivo de repique, Precipitación)
         </span>
       </div>
 

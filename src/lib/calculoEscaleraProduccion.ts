@@ -120,7 +120,9 @@ export interface FilaEscalera {
   semanaCosechaPrincipal: number
   racimosCosechados: number
   repicado: number
+  porcentajeRepique: number
   recobro: number
+  edadPromReal: number
   desglose: DesgloseEdad[]
   esFilaReal: boolean
 }
@@ -191,6 +193,14 @@ export function calcularFilaEscalera(params: {
   const racimosCosechados = desglose.reduce((suma, d) => suma + d.racimos, 0)
   const repicado = repicadoReal(anioEmbolse, semanaEmbolse) ?? 0
   const recobro = embolseReal > 0 ? (racimosCosechados + repicado) / embolseReal : 0
+  const porcentajeRepique = embolseReal > 0 ? repicado / embolseReal : 0
+
+  // Edad promedio REAL de esta cohorte (no la de la distribución de
+  // respaldo): peso cada edad por sus propios racimos, reales o
+  // proyectados — a diferencia del "desplazamiento" de abajo (que es fijo
+  // por finca, para ubicar la semana de cosecha "principal" de forma
+  // estable), esta sí varía cohorte a cohorte.
+  const edadPromReal = racimosCosechados > 0 ? desglose.reduce((suma, d) => suma + d.edad * d.racimos, 0) / racimosCosechados : 0
 
   const desplazamiento = Math.round(edadPromedio(distribucionProyeccion))
   const { anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal } = sumarSemanas(anioEmbolse, semanaEmbolse, desplazamiento)
@@ -206,7 +216,9 @@ export function calcularFilaEscalera(params: {
     semanaCosechaPrincipal,
     racimosCosechados,
     repicado,
+    porcentajeRepique,
     recobro,
+    edadPromReal,
     desglose,
     esFilaReal: semanaYaOcurrida({ anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal }),
   }

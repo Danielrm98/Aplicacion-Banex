@@ -35,25 +35,29 @@ export function useRacimosPorEdadReal(finca: string | null) {
     return m
   }, [registros])
 
-  // Ratio cajas 20kg (equivalente normalizado, no cajas físicas: así no
-  // cambia según qué tipo de caja se usó esa semana) por racimo cosechado,
-  // de las últimas semanas — no de todo el histórico, para que la
-  // proyección refleje el rendimiento actual de la finca y no se diluya
-  // con datos de hace meses. Mismo criterio que "Ratio Total" en el Excel.
-  const ratioCajas20kgPorRacimo = useMemo(() => {
+  // Ratios de las últimas semanas (no de todo el histórico, para que la
+  // proyección refleje el rendimiento actual de la finca): cajas 20kg
+  // (equivalente normalizado) y cajas físicas, por racimo cosechado. Mismo
+  // criterio que "Ratio Total" en el Excel.
+  const ratios = useMemo(() => {
     const cortaFecha = new Date()
     cortaFecha.setDate(cortaFecha.getDate() - DIAS_VENTANA_RATIO)
     const corte = cortaFecha.toISOString().slice(0, 10)
 
     let totalCajas20kg = 0
+    let totalCajasFisicas = 0
     let totalRacimos = 0
     for (const r of registros) {
       if (!r.semana || r.fecha < corte) continue
       totalCajas20kg += r.items.reduce((suma, it) => suma + it.cajas_20kg, 0)
+      totalCajasFisicas += r.items.reduce((suma, it) => suma + it.cantidad_cajas, 0)
       totalRacimos += SEMANAS_RACIMO.reduce((suma, edad) => suma + (r[`racimos_semana_${edad}` as const] || 0), 0)
     }
-    return totalRacimos > 0 ? totalCajas20kg / totalRacimos : 0
+    return {
+      ratioCajas20kgPorRacimo: totalRacimos > 0 ? totalCajas20kg / totalRacimos : 0,
+      ratioCajasFisicasPorRacimo: totalRacimos > 0 ? totalCajasFisicas / totalRacimos : 0,
+    }
   }, [registros])
 
-  return { mapa, ratioCajas20kgPorRacimo, loading }
+  return { mapa, ratioCajas20kgPorRacimo: ratios.ratioCajas20kgPorRacimo, ratioCajasFisicasPorRacimo: ratios.ratioCajasFisicasPorRacimo, loading }
 }
