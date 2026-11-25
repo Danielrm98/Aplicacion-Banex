@@ -6,7 +6,8 @@ import { useLotes } from './useLotes'
 import { getIsoWeek, getIsoYear } from './isoWeek'
 import { fechaLocalHoy } from './fechaLocal'
 import { sumarSemanas } from './anioEmbolses'
-import { calcularDistribucionEdad, calcularFilaEscalera, type PuntoSerie, type FilaEscalera } from './calculoEscaleraProduccion'
+import { calcularDistribucionRespaldo, calcularFilaEscalera, type PuntoSerie, type FilaEscalera } from './calculoEscaleraProduccion'
+import type { EdadCosecha } from '../types/escaleraProduccion'
 import type { Finca } from '../types/finca'
 
 const SEMANAS_ATRAS = 13
@@ -14,8 +15,11 @@ const SEMANAS_ADELANTE = 13
 
 /** Arma la escalera de producción de una finca: semana de embolse → semana
  * de cosecha, con lo real ya cargado (embolses de la app + semilla
- * histórica importada) y lo futuro proyectado. Ventana fija de 13 semanas
- * atrás y 13 adelante (cubre el rango de edad de cosecha, 8-13 semanas). */
+ * histórica importada + "Registro semanal" por edad) y lo futuro
+ * proyectado. Ventana fija de 13 semanas atrás y 13 adelante (cubre el
+ * rango de edad de cosecha, 8-13 semanas). También devuelve la serie
+ * completa de Bell/Ha (sin recortar a la ventana) para el gráfico
+ * comparativo por años. */
 export function useEscaleraProduccion(finca: Finca | null) {
   const nombreFinca = finca?.nombre ?? null
   const anioActual = getIsoYear(fechaLocalHoy())
@@ -37,7 +41,9 @@ export function useEscaleraProduccion(finca: Finca | null) {
 
   const loading = loadingEmbolses || loadingLotes || loadingHistorico || loadingCosecha
 
-  const filas = useMemo<FilaEscalera[]>(() => {
+  // Serie completa de Bell/Ha (todo el historial, no solo la ventana) — la
+  // usa tanto la proyección estacional como el gráfico comparativo por años.
+  const serieBellPorHa = useMemo<PuntoSerie[]>(() => {
     if (!finca) return []
     const lotesFinca = new Set(lotes.filter((l) => l.finca === finca.nombre).map((l) => l.id))
     const embolseRealPorSemana = new Map<string, number>()
@@ -46,23 +52,47 @@ export function useEscaleraProduccion(finca: Finca | null) {
       const clave = `${e.anio}_${e.semana}`
       embolseRealPorSemana.set(clave, (embolseRealPorSemana.get(clave) ?? 0) + e.cantidad)
     }
-
-    const hectareas = finca.hectareas
-    const serieBellPorHa: PuntoSerie[] = []
+    const serie: PuntoSerie[] = []
     for (const h of historico) {
-      if (h.bell_por_ha != null) serieBellPorHa.push({ anio: h.anio, semana: h.semana, valor: h.bell_por_ha })
+      if (h.bell_por_ha != null) serie.push({ anio: h.anio, semana: h.semana, valor: h.bell_por_ha })
     }
-    if (hectareas) {
+    if (finca.hectareas) {
       for (const [clave, cantidad] of embolseRealPorSemana) {
         const [anioStr, semanaStr] = clave.split('_')
-        serieBellPorHa.push({ anio: Number(anioStr), semana: Number(semanaStr), valor: cantidad / hectareas })
+        serie.push({ anio: Number(anioStr), semana: Number(semanaStr), valor: cantidad / finca.hectareas })
       }
     }
+    return serie
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finca, lotes, embolses, historico])
 
-    const distribucionEdad = calcularDistribucionEdad(cosechaEdad)
+  const embolseRealPorSemana = useMemo(() => {
+    if (!finca) return new Map<string, number>()
+    const lotesFinca = new Set(lotes.filter((l) => l.finca === finca.nombre).map((l) => l.id))
+    const mapa = new Map<string, number>()
+    for (const e of embolses) {
+      if (!lotesFinca.has(e.lote_id)) continue
+      const clave = `${e.anio}_${e.semana}`
+      mapa.set(clave, (mapa.get(clave) ?? 0) + e.cantidad)
+    }
+    return mapa
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finca, lotes, embolses])
 
-    const semanaCosechaYaOcurrida = (semana: { anio: number; semana: number }) =>
+  const racimosPorEdadMap = useMemo(() => {
+    const mapa = new Map<string, number>()
+    for (const f of cosechaEdad) mapa.set(`${f.anio}_${f.semana}_${f.edad_semanas}`, f.racimos)
+    return mapa
+  }, [cosechaEdad])
+
+  const filas = useMemo<FilaEscalera[]>(() => {
+    if (!finca) return []
+    const distribucionRespaldo = calcularDistribucionRespaldo(cosechaEdad)
+
+    const semanaYaOcurrida = (semana: { anio: number; semana: number }) =>
       semana.anio < anioActual || (semana.anio === anioActual && semana.semana <= semanaActual)
+
+    const racimosRealesDeEdad = (anio: number, semana: number, edad: EdadCosecha) => racimosPorEdadMap.get(`${anio}_${semana}_${edad}`)
 
     const resultado: FilaEscalera[] = []
     let cursor = inicio
@@ -82,18 +112,19 @@ export function useEscaleraProduccion(finca: Finca | null) {
         calcularFilaEscalera({
           anioEmbolse: cursor.anio,
           semanaEmbolse: cursor.semana,
-          hectareas,
+          hectareas: finca.hectareas,
           embolseRealDeEstaSemana,
           serieBellPorHa,
-          distribucionEdad,
-          semanaCosechaYaOcurrida,
+          distribucionRespaldo,
+          racimosRealesDeEdad,
+          semanaYaOcurrida,
         }),
       )
       cursor = sumarSemanas(cursor.anio, cursor.semana, 1)
     }
     return resultado
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finca, lotes, embolses, historico, cosechaEdad, inicio.anio, inicio.semana, fin.anio, fin.semana, anioActual, semanaActual])
+  }, [finca, cosechaEdad, racimosPorEdadMap, embolseRealPorSemana, historico, serieBellPorHa, inicio.anio, inicio.semana, fin.anio, fin.semana, anioActual, semanaActual])
 
-  return { filas, loading, anioActual, semanaActual }
+  return { filas, serieBellPorHa, loading, anioActual, semanaActual }
 }

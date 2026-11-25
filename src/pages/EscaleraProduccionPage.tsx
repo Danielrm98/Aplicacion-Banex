@@ -12,9 +12,11 @@ import { conLimite } from '../lib/promesaConLimite'
 import { agregarCosechaPorEdadACola } from '../lib/colaCosechaPorEdad'
 import { useCosechaPorEdad } from '../lib/useCosechaPorEdad'
 import { useEscaleraProduccion } from '../lib/useEscaleraProduccion'
+import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
 import SectionHeading from '../components/SectionHeading'
 import TabButton from '../components/TabButton'
+import EmbolsePorSemanaChart, { coloresPorAnio, type PuntoEmbolseSemana } from '../components/charts/EmbolsePorSemanaChart'
 import type { Finca } from '../types/finca'
 
 const SEMANAS = Array.from({ length: 53 }, (_, i) => i + 1)
@@ -109,52 +111,97 @@ export default function EscaleraProduccionPage() {
 // cosecha, con lo real ya cargado y lo futuro proyectado.
 // ============================================================
 function EscaleraTabla({ finca }: { finca: Finca }) {
-  const { filas, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
+  const { filas, serieBellPorHa, loading, anioActual, semanaActual } = useEscaleraProduccion(finca)
+
+  const datosGrafico = useMemo<{ data: PuntoEmbolseSemana[]; series: ReturnType<typeof coloresPorAnio> }>(() => {
+    const anios = [...new Set(serieBellPorHa.map((p) => p.anio))]
+      .sort((a, b) => b - a)
+      .slice(0, 3)
+    const series = coloresPorAnio(anios)
+    const porSemana = new Map<number, PuntoEmbolseSemana>()
+    for (let s = 1; s <= 52; s++) porSemana.set(s, { semana: s })
+    for (const p of serieBellPorHa) {
+      if (!anios.includes(p.anio) || p.semana > 52) continue
+      const fila = porSemana.get(p.semana)!
+      fila[String(p.anio)] = p.valor
+    }
+    return { data: [...porSemana.values()], series }
+  }, [serieBellPorHa])
 
   if (loading) return <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
 
   return (
     <div>
       <p className="mb-3 text-xs text-gray-400">
-        Semana actual: {semanaActual}/{anioActual}. La proyección de embolse usa el promedio de semanas recientes y de
-        esta misma época en años anteriores; la distribución por edad usa lo cargado en "Registro semanal".
+        Semana actual: {semanaActual}/{anioActual}. Columnas en{' '}
+        <span className="font-semibold text-green-700">verde</span> = dato real; en{' '}
+        <span className="font-semibold text-cyan-700">celeste</span> = proyección.
       </p>
-      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="w-[900px] table-fixed border-collapse text-sm">
+      <div className="overflow-x-auto">
+        <table className="min-w-[1180px] border-collapse text-xs">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
-              <th className="w-[110px] px-3 py-2 font-medium">Sem. Embolse</th>
-              <th className="w-[100px] px-2 py-2 text-center font-medium">Hectáreas</th>
-              <th className="w-[100px] px-2 py-2 text-center font-medium">Bell/Ha</th>
-              <th className="w-[120px] px-2 py-2 text-center font-medium">Embolse</th>
-              <th className="w-[110px] px-2 py-2 text-center font-medium">Sem. Cosecha</th>
-              <th className="w-[90px] px-2 py-2 text-center font-medium">Recobro</th>
-              <th className="w-[140px] px-2 py-2 text-center font-medium">Racimos cosechados</th>
+            <tr className="bg-gray-100 text-center text-gray-600">
+              <th rowSpan={2} className="sticky left-0 z-10 border border-gray-200 bg-gray-100 px-2 py-1 font-semibold">
+                Sem. Embolse
+              </th>
+              <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">Has</th>
+              <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">Bell/Ha</th>
+              <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">Embolse</th>
+              <th colSpan={6} className="border border-gray-200 bg-banex-900 px-2 py-1 font-semibold text-white">
+                % por edad (semanas desde el embolse)
+              </th>
+              <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">Recobro</th>
+              <th rowSpan={2} className="w-[90px] border border-gray-200 px-2 py-1 font-semibold">Sem. Cosecha</th>
+              <th rowSpan={2} className="border border-gray-200 px-2 py-1 font-semibold">Racimos cosechados</th>
+            </tr>
+            <tr className="bg-gray-50 text-center text-gray-500">
+              {EDADES_COSECHA.map((edad) => (
+                <th key={edad} className="border border-gray-200 px-1.5 py-1 font-medium">
+                  {edad}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {filas.map((f) => {
-              const esFutura = !f.esCosechaReal
+              const color = colorCintaDe(f.anioEmbolse, f.semanaEmbolse)
+              const estilo = ESTILO_CINTA[color]
               return (
-                <tr
-                  key={`${f.anioEmbolse}_${f.semanaEmbolse}`}
-                  className={`border-b border-gray-100 ${esFutura ? 'bg-cyan-50/60' : 'bg-green-50/40'}`}
-                >
-                  <td className="px-3 py-1.5 font-medium text-gray-900">
-                    {f.semanaEmbolse}/{f.anioEmbolse}
+                <tr key={`${f.anioEmbolse}_${f.semanaEmbolse}`} className={f.esFilaReal ? 'bg-green-50/50' : 'bg-cyan-50/50'}>
+                  <td className="sticky left-0 z-10 border border-gray-200 bg-white px-2 py-1 text-center">
+                    <span
+                      className="inline-block min-w-[52px] rounded px-1.5 py-0.5 font-semibold"
+                      style={{ backgroundColor: estilo.bg, color: estilo.texto }}
+                    >
+                      {f.semanaEmbolse}/{f.anioEmbolse}
+                    </span>
                   </td>
-                  <td className="px-2 py-1.5 text-center text-gray-500">
+                  <td className="border border-gray-200 px-2 py-1 text-center text-gray-500">
                     {f.hectareas != null ? f.hectareas.toLocaleString('es') : '—'}
                   </td>
-                  <td className="px-2 py-1.5 text-center text-gray-700">{f.bellPorHa.toFixed(1)}</td>
-                  <td className={`px-2 py-1.5 text-center font-semibold ${esFutura ? 'text-cyan-700' : 'text-green-700'}`}>
+                  <td className="border border-gray-200 px-2 py-1 text-center text-gray-700">{f.bellPorHa.toFixed(1)}</td>
+                  <td
+                    className={`border border-gray-200 px-2 py-1 text-center font-semibold ${f.esEmbolseReal ? 'text-green-700' : 'text-cyan-700'}`}
+                  >
                     {Math.round(f.embolseReal).toLocaleString('es')}
                   </td>
-                  <td className="px-2 py-1.5 text-center text-gray-700">
-                    {f.semanaCosecha}/{f.anioCosecha}
+                  {f.desglose.map((d) => (
+                    <td
+                      key={d.edad}
+                      className={`border border-gray-200 px-1.5 py-1 text-center ${d.esReal ? 'text-green-700' : 'text-cyan-700'}`}
+                    >
+                      {(d.porcentaje * 100).toFixed(0)}%
+                    </td>
+                  ))}
+                  <td className="border border-gray-200 px-2 py-1 text-center font-semibold text-gray-700">
+                    {(f.recobro * 100).toFixed(0)}%
                   </td>
-                  <td className="px-2 py-1.5 text-center text-gray-500">{(f.recobro * 100).toFixed(0)}%</td>
-                  <td className={`px-2 py-1.5 text-center font-semibold ${esFutura ? 'text-cyan-700' : 'text-green-700'}`}>
+                  <td className="border border-gray-200 px-2 py-1 text-center text-gray-700">
+                    {f.semanaCosechaPrincipal}/{f.anioCosechaPrincipal}
+                  </td>
+                  <td
+                    className={`border border-gray-200 px-2 py-1 text-center font-semibold ${f.esFilaReal ? 'text-green-700' : 'text-cyan-700'}`}
+                  >
                     {Math.round(f.racimosCosechados).toLocaleString('es')}
                   </td>
                 </tr>
@@ -165,11 +212,16 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
       </div>
       <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-500">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-3 rounded bg-green-100" /> Real (ya pasó)
+          <span className="inline-block h-3 w-3 rounded bg-green-100" /> Real (ya pasó / ya digitado)
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded bg-cyan-100" /> Estimado (proyección)
         </span>
+      </div>
+
+      <div className="mt-8">
+        <SectionHeading>Comparativo de Bell/Ha por semana (años recientes)</SectionHeading>
+        <EmbolsePorSemanaChart data={datosGrafico.data} series={datosGrafico.series} />
       </div>
     </div>
   )

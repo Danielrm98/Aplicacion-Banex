@@ -1,10 +1,17 @@
 // Fórmulas de la "escalera de producción": a partir del embolse semanal de
 // una finca, proyecta en qué semana se va a cosechar y cuántos racimos va a
-// rendir. Replica la lógica de la escalera en Excel (promedio estacional de
-// embolse + distribución real por edad de cosecha), pero calculada sobre
-// TODO el historial disponible en vez de copiar desplazamientos de fila
-// fijos — así funciona igual de bien con poco historial (recién importado)
-// que con mucho (a medida que la app acumula sus propias semanas).
+// rendir. Replica la lógica de la escalera en Excel:
+//   - El embolse futuro se proyecta con un promedio estacional (80% nivel
+//     reciente + 20% misma época en años anteriores) calculado sobre TODO
+//     el historial disponible, no desplazamientos de fila fijos — así
+//     funciona igual de bien con poco historial que con mucho.
+//   - Cada edad (8 a 13 semanas) de un cohorte de embolse cae en una
+//     semana de cosecha distinta (semana de embolse + esa edad). Si ya
+//     hay un dato real cargado en "Registro semanal" para esa semana de
+//     cosecha y esa edad, se usa tal cual (igual que las fórmulas
+//     diagonales %8.."%13" del Excel, que miran hacia adelante en la
+//     propia hoja); si no, se proyecta con el promedio histórico de la
+//     finca para esa edad.
 import { sumarSemanas, type SemanaReal } from './anioEmbolses'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
 
@@ -74,8 +81,9 @@ export function proyectarValorEstacional(
 
 /** % de racimos cosechados a cada edad (8 a 13 semanas), promediado sobre
  * todo lo cargado para la finca. Mientras no haya historial, usa la curva
- * de respaldo centrada en 11 semanas. */
-export function calcularDistribucionEdad(filas: { edad_semanas: number; racimos: number }[]): DistribucionEdad {
+ * de respaldo centrada en 11 semanas. Sirve para proyectar lo que todavía
+ * no tiene dato real cargado (semanas futuras, o pasadas sin digitar). */
+export function calcularDistribucionRespaldo(filas: { edad_semanas: number; racimos: number }[]): DistribucionEdad {
   const total = filas.reduce((suma, f) => suma + f.racimos, 0)
   if (total <= 0) return DISTRIBUCION_RESPALDO
   const porEdad = new Map<number, number>()
@@ -92,9 +100,13 @@ export function edadPromedio(distribucion: DistribucionEdad): number {
   return EDADES_COSECHA.reduce((suma, e) => suma + e * distribucion[e], 0) / total
 }
 
-/** Recobro: fracción del embolse que efectivamente se cosecha entre las semanas 8 y 13 de edad (el resto se repica o se pierde). */
-export function calcularRecobro(distribucion: DistribucionEdad): number {
-  return EDADES_COSECHA.reduce((suma, e) => suma + distribucion[e], 0)
+export interface DesgloseEdad {
+  edad: EdadCosecha
+  anioCosecha: number
+  semanaCosecha: number
+  racimos: number
+  porcentaje: number
+  esReal: boolean
 }
 
 export interface FilaEscalera {
@@ -104,17 +116,20 @@ export interface FilaEscalera {
   bellPorHa: number
   embolseReal: number
   esEmbolseReal: boolean
-  anioCosecha: number
-  semanaCosecha: number
+  anioCosechaPrincipal: number
+  semanaCosechaPrincipal: number
   racimosCosechados: number
   recobro: number
-  esCosechaReal: boolean
+  desglose: DesgloseEdad[]
+  esFilaReal: boolean
 }
 
 /**
- * Arma una fila de la escalera para una semana de embolse: si ya hay
- * embolse real para esa semana lo usa tal cual; si no, lo proyecta con
- * `proyectarValorEstacional` sobre la serie de Bell/ha histórica.
+ * Arma una fila de la escalera para una semana de embolse. El embolse usa
+ * el dato real si ya existe, o se proyecta con `proyectarValorEstacional`.
+ * Cada una de las 6 edades (8-13) cae en su propia semana de cosecha
+ * (embolse + edad): si "Registro semanal" ya tiene ese dato real, se usa;
+ * si no, se proyecta con la distribución de respaldo de la finca.
  */
 export function calcularFilaEscalera(params: {
   anioEmbolse: number
@@ -122,20 +137,46 @@ export function calcularFilaEscalera(params: {
   hectareas: number | null
   embolseRealDeEstaSemana: number | null
   serieBellPorHa: PuntoSerie[]
-  distribucionEdad: DistribucionEdad
-  semanaCosechaYaOcurrida: (semana: SemanaReal) => boolean
+  distribucionRespaldo: DistribucionEdad
+  racimosRealesDeEdad: (anio: number, semana: number, edad: EdadCosecha) => number | undefined
+  semanaYaOcurrida: (semana: SemanaReal) => boolean
 }): FilaEscalera {
-  const { anioEmbolse, semanaEmbolse, hectareas, embolseRealDeEstaSemana, serieBellPorHa, distribucionEdad, semanaCosechaYaOcurrida } = params
+  const {
+    anioEmbolse,
+    semanaEmbolse,
+    hectareas,
+    embolseRealDeEstaSemana,
+    serieBellPorHa,
+    distribucionRespaldo,
+    racimosRealesDeEdad,
+    semanaYaOcurrida,
+  } = params
 
   const esEmbolseReal = embolseRealDeEstaSemana !== null
-  const bellPorHa = esEmbolseReal && hectareas ? embolseRealDeEstaSemana! / hectareas : proyectarValorEstacional(serieBellPorHa, anioEmbolse, semanaEmbolse)
+  const bellPorHa =
+    esEmbolseReal && hectareas ? embolseRealDeEstaSemana! / hectareas : proyectarValorEstacional(serieBellPorHa, anioEmbolse, semanaEmbolse)
   const embolseReal = esEmbolseReal ? embolseRealDeEstaSemana! : bellPorHa * (hectareas ?? 0)
 
-  const recobro = calcularRecobro(distribucionEdad)
-  const racimosCosechados = embolseReal * recobro
+  const desglose: DesgloseEdad[] = EDADES_COSECHA.map((edad) => {
+    const { anio: anioCosecha, semana: semanaCosecha } = sumarSemanas(anioEmbolse, semanaEmbolse, edad)
+    const real = racimosRealesDeEdad(anioCosecha, semanaCosecha, edad)
+    const esReal = real !== undefined
+    const racimos = esReal ? (real as number) : embolseReal * distribucionRespaldo[edad]
+    return {
+      edad,
+      anioCosecha,
+      semanaCosecha,
+      racimos,
+      porcentaje: embolseReal > 0 ? racimos / embolseReal : 0,
+      esReal,
+    }
+  })
 
-  const desplazamiento = Math.round(edadPromedio(distribucionEdad))
-  const { anio: anioCosecha, semana: semanaCosecha } = sumarSemanas(anioEmbolse, semanaEmbolse, desplazamiento)
+  const racimosCosechados = desglose.reduce((suma, d) => suma + d.racimos, 0)
+  const recobro = embolseReal > 0 ? racimosCosechados / embolseReal : 0
+
+  const desplazamiento = Math.round(edadPromedio(distribucionRespaldo))
+  const { anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal } = sumarSemanas(anioEmbolse, semanaEmbolse, desplazamiento)
 
   return {
     anioEmbolse,
@@ -144,10 +185,11 @@ export function calcularFilaEscalera(params: {
     bellPorHa,
     embolseReal,
     esEmbolseReal,
-    anioCosecha,
-    semanaCosecha,
+    anioCosechaPrincipal,
+    semanaCosechaPrincipal,
     racimosCosechados,
     recobro,
-    esCosechaReal: semanaCosechaYaOcurrida({ anio: anioCosecha, semana: semanaCosecha }),
+    desglose,
+    esFilaReal: semanaYaOcurrida({ anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal }),
   }
 }
