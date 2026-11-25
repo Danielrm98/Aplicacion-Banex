@@ -5,13 +5,13 @@
 //     reciente + 20% misma época en años anteriores) calculado sobre TODO
 //     el historial disponible, no desplazamientos de fila fijos — así
 //     funciona igual de bien con poco historial que con mucho.
-//   - Cada edad (8 a 13 semanas) de un cohorte de embolse cae en una
-//     semana de cosecha distinta (semana de embolse + esa edad). Si ya
-//     hay un dato real cargado en "Registro semanal" para esa semana de
-//     cosecha y esa edad, se usa tal cual (igual que las fórmulas
-//     diagonales %8.."%13" del Excel, que miran hacia adelante en la
-//     propia hoja); si no, se proyecta con el promedio histórico de la
-//     finca para esa edad.
+//   - Cada edad (8 a 12 semanas — se descartan la 7 y la 13 por poco
+//     confiables) de un cohorte de embolse cae en una semana de cosecha
+//     distinta (semana de embolse + esa edad). Si ya hay un dato real del
+//     formulario diario de Registrar para esa semana de cosecha y esa
+//     edad, se usa tal cual (igual que las fórmulas diagonales del Excel,
+//     que miran hacia adelante en la propia hoja); si no, se proyecta con
+//     el recobro y la forma de la última cohorte completa.
 import { sumarSemanas, type SemanaReal } from './anioEmbolses'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
 
@@ -24,9 +24,9 @@ export interface PuntoSerie {
 export type DistribucionEdad = Record<EdadCosecha, number>
 
 // Curva de respaldo (suma 1) mientras una finca todavía no tiene ninguna
-// semana de "cosecha por edad" cargada — centrada en 11 semanas, que es lo
-// que se observa en el histórico del Excel para varias fincas.
-const DISTRIBUCION_RESPALDO: DistribucionEdad = { 7: 0, 8: 0, 9: 0.05, 10: 0.25, 11: 0.4, 12: 0.25, 13: 0.05 }
+// semana de "cosecha por edad" cargada — centrada en 10-11 semanas, que es
+// lo que se observa en el histórico del Excel para varias fincas.
+const DISTRIBUCION_RESPALDO: DistribucionEdad = { 8: 0.05, 9: 0.25, 10: 0.4, 11: 0.25, 12: 0.05 }
 
 function claveSemana(anio: number, semana: number): number {
   return anio * 100 + semana
@@ -79,15 +79,20 @@ export function proyectarValorEstacional(
   return reciente * pesoReciente + estacional * (1 - pesoReciente)
 }
 
-/** % de racimos cosechados a cada edad (8 a 13 semanas), promediado sobre
- * todo lo cargado para la finca. Mientras no haya historial, usa la curva
- * de respaldo centrada en 11 semanas. Sirve para proyectar lo que todavía
- * no tiene dato real cargado (semanas futuras, o pasadas sin digitar). */
+/** % de racimos cosechados a cada edad (8 a 12 semanas), promediado sobre
+ * todo lo cargado para la finca. Ignora cualquier fila de otra edad (7, 13)
+ * que pueda traer el histórico importado, tanto para la forma como para el
+ * total. Mientras no haya historial, usa la curva de respaldo centrada en
+ * 10-11 semanas. Sirve para proyectar lo que todavía no tiene dato real
+ * cargado (semanas futuras, o pasadas sin digitar). */
 export function calcularDistribucionRespaldo(filas: { edad_semanas: number; racimos: number }[]): DistribucionEdad {
-  const total = filas.reduce((suma, f) => suma + f.racimos, 0)
+  const filasValidas = filas.filter((f): f is { edad_semanas: EdadCosecha; racimos: number } =>
+    (EDADES_COSECHA as readonly number[]).includes(f.edad_semanas),
+  )
+  const total = filasValidas.reduce((suma, f) => suma + f.racimos, 0)
   if (total <= 0) return DISTRIBUCION_RESPALDO
   const porEdad = new Map<number, number>()
-  for (const f of filas) porEdad.set(f.edad_semanas, (porEdad.get(f.edad_semanas) ?? 0) + f.racimos)
+  for (const f of filasValidas) porEdad.set(f.edad_semanas, (porEdad.get(f.edad_semanas) ?? 0) + f.racimos)
   const resultado = {} as DistribucionEdad
   for (const edad of EDADES_COSECHA) resultado[edad] = (porEdad.get(edad) ?? 0) / total
   return resultado
@@ -130,7 +135,7 @@ export interface FilaEscalera {
 /**
  * Arma una fila de la escalera para una semana de embolse. El embolse usa
  * el dato real si ya existe, o se proyecta con `proyectarValorEstacional`.
- * Cada una de las 7 edades (7-13) cae en su propia semana de cosecha
+ * Cada una de las 5 edades (8-12) cae en su propia semana de cosecha
  * (embolse + edad): si ya hay un dato real (formulario diario de Registrar,
  * o la semilla histórica) se usa tal cual; si no, se proyecta con
  * `distribucionProyeccion` — el % real de racimos por edad (y por lo tanto

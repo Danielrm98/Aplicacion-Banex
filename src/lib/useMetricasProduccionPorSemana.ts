@@ -3,6 +3,7 @@ import { useProducciones } from './useProducciones'
 import { useReferencias } from './useReferencias'
 import { anioDeSemana } from './isoWeek'
 import { CAJA_20KG_KG, CANASTILLA_KG, SEMANAS_RACIMO } from '../types/produccion'
+import { EDADES_COSECHA } from '../types/escaleraProduccion'
 
 export interface MetricasSemana {
   anio: number
@@ -78,7 +79,9 @@ export function useMetricasProduccionPorSemana(finca: string | null) {
         sumaGrado: 0,
         countGrado: 0,
       }
-      acc.racimosCosechados += SEMANAS_RACIMO.reduce((suma, edad) => suma + (r[`racimos_semana_${edad}` as const] || 0), 0)
+      // Solo 8-12 (EDADES_COSECHA): igual que en el resto de la escalera, se
+      // descarta la semana 7 por poco confiable, a pedido del usuario.
+      acc.racimosCosechados += EDADES_COSECHA.reduce((suma, edad) => suma + (r[`racimos_semana_${edad}` as const] || 0), 0)
       acc.racimosRecusados += r.racimos_recusados
       acc.cajas20kg += r.items.reduce((suma, it) => suma + it.cajas_20kg, 0)
       acc.cantidadCajas += r.items.reduce((suma, it) => suma + it.cantidad_cajas, 0)

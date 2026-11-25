@@ -350,7 +350,7 @@ function ModeloCajasTab({ finca }: { finca: Finca }) {
     semanaActual,
   } = useEscaleraProduccion(finca)
 
-  const vacio: Record<EdadCosecha, string> = { 7: '', 8: '', 9: '', 10: '', 11: '', 12: '', 13: '' }
+  const vacio: Record<EdadCosecha, string> = { 8: '', 9: '', 10: '', 11: '', 12: '' }
   const [valores, setValores] = useState<Record<EdadCosecha, string>>(vacio)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)

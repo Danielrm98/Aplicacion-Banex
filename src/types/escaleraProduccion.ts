@@ -1,8 +1,11 @@
-// Unión de los dos rangos que existen en la app: el formulario diario de
-// "Registrar" captura racimos por edad de 7 a 12 semanas (SEMANAS_RACIMO,
-// ver types/produccion.ts), y el histórico importado del Excel trae 8 a
-// 13. Se usa el rango completo para no perder ninguno de los dos.
-export const EDADES_COSECHA = [7, 8, 9, 10, 11, 12, 13] as const
+// Rango de edad que usa la escalera para sus cálculos: 8 a 12 semanas. Se
+// deja fuera la semana 7 (a pedido del usuario — esa edad resulta poco
+// confiable, muy pocos racimos reales caen ahí) y la 13 (la cola del
+// histórico importado del Excel, igual de rara). El formulario diario de
+// "Registrar" sí sigue capturando 7 a 12 (SEMANAS_RACIMO, en
+// types/produccion.ts) para otras pantallas de la app; la escalera
+// simplemente no usa su columna de la semana 7.
+export const EDADES_COSECHA = [8, 9, 10, 11, 12] as const
 export type EdadCosecha = (typeof EDADES_COSECHA)[number]
 
 export interface CosechaPorEdad {

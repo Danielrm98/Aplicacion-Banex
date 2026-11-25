@@ -23,8 +23,9 @@ import type { Finca } from '../types/finca'
 const SEMANAS_ATRAS = 13
 const SEMANAS_ADELANTE = 13
 // Cuánto hacia atrás se busca la última cohorte de embolse ya completa
-// (con las 7 edades ya cosechadas) para tomar su recobro y su % por edad
-// reales — "lo que quedó la semana anterior" — como base de la proyección.
+// (con las 5 edades, 8-12, ya cosechadas) para tomar su recobro y su % por
+// edad reales — "lo que quedó la semana anterior" — como base de la
+// proyección.
 const SEMANAS_BUSQUEDA_RECOBRO = 40
 // Recobro de respaldo si todavía no hay ninguna cohorte completa (finca
 // nueva, sin historial ni formulario diario cargado aún).
@@ -37,9 +38,9 @@ const RECOBRO_RESPALDO = 0.85
  * racimos cosechados usa el Recobro real de la última cohorte de embolse
  * ya completa ("lo que quedó la semana anterior"), no un promedio de todo
  * el histórico — igual que el ratio cajas/racimo (ver useRacimosPorEdadReal).
- * Ventana fija de 13 semanas atrás y 13 adelante (cubre el rango de edad
- * de cosecha, 7-13 semanas). También devuelve la serie completa de Bell/Ha
- * para el gráfico comparativo por años. */
+ * Ventana fija de 13 semanas atrás y 13 adelante. Solo se cuentan las
+ * edades 8 a 12 (se descartan la 7 y la 13, poco confiables). También
+ * devuelve la serie completa de Bell/Ha para el gráfico comparativo. */
 export function useEscaleraProduccion(finca: Finca | null) {
   const nombreFinca = finca?.nombre ?? null
   const anioActual = getIsoYear(fechaLocalHoy())
@@ -153,8 +154,8 @@ export function useEscaleraProduccion(finca: Finca | null) {
   }
 
   // "Lo que quedó la semana anterior": se busca hacia atrás la cohorte de
-  // embolse más reciente que ya tenga las 7 edades cosechadas (no una a
-  // medias, que todavía podría subir) y se usa SU % real de racimos por
+  // embolse más reciente que ya tenga las 5 edades (8-12) cosechadas (no
+  // una a medias, que todavía podría subir) y se usa SU % real de racimos por
   // edad (reescalado para incluir también el repique real de esa cohorte,
   // igual que el Recobro de la página Recobro) como base para proyectar
   // las cohortes futuras — tanto el nivel (recobro) como la forma (qué
