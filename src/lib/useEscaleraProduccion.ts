@@ -63,6 +63,8 @@ export function useEscaleraProduccion(finca: Finca | null) {
     mapa: racimosEdadReal,
     ratioCajas20kgPorRacimo,
     ratioCajasFisicasPorRacimo,
+    ratioCortaPorRacimo,
+    ratioPremiumPorRacimo,
     loading: loadingProduccion,
   } = useRacimosPorEdadReal(nombreFinca)
   const { filas: modeloManual, loading: loadingModelo, refetch: refetchModelo } = useModeloEdad(nombreFinca)
@@ -268,6 +270,8 @@ export function useEscaleraProduccion(finca: Finca | null) {
     serieBellPorHa,
     ratioCajas20kgPorRacimo,
     ratioCajasFisicasPorRacimo,
+    ratioCortaPorRacimo,
+    ratioPremiumPorRacimo,
     metricasPorSemana,
     recobroProyectado,
     distribucionProyeccion,

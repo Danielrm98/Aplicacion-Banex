@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
 import { useProducciones } from './useProducciones'
+import { useReferencias } from './useReferencias'
 import { semanaEmbolseDeEdad } from './cintaEmbolse'
 import { anioDeSemana } from './isoWeek'
 import { SEMANAS_RACIMO } from '../types/produccion'
 
-// Ventana "reciente" para el ratio cajas/racimo: ~12 semanas.
+// Ventana "reciente" para los ratios cajas/racimo: ~12 semanas.
 const DIAS_VENTANA_RATIO = 84
 
 /**
@@ -17,7 +18,8 @@ const DIAS_VENTANA_RATIO = 84
  * los días — no hace falta una pantalla aparte para este dato.
  */
 export function useRacimosPorEdadReal(finca: string | null) {
-  const { registros, loading } = useProducciones({ finca: finca ?? undefined })
+  const { registros, loading: loadingProducciones } = useProducciones({ finca: finca ?? undefined })
+  const { referencias, loading: loadingReferencias } = useReferencias()
 
   const mapa = useMemo(() => {
     const m = new Map<string, number>()
@@ -35,10 +37,15 @@ export function useRacimosPorEdadReal(finca: string | null) {
     return m
   }, [registros])
 
+  // Marca -> Corta/Larga, del catálogo de referencias — "Larga" es la
+  // misma categoría que el Excel llama "Premium" (fruta larga/exportable).
+  const especificacionPorMarca = useMemo(() => new Map(referencias.map((r) => [r.marca, r.especificacion])), [referencias])
+
   // Ratios de las últimas semanas (no de todo el histórico, para que la
   // proyección refleje el rendimiento actual de la finca): cajas 20kg
-  // (equivalente normalizado) y cajas físicas, por racimo cosechado. Mismo
-  // criterio que "Ratio Total" en el Excel.
+  // (equivalente normalizado), cajas físicas, y el split Corta/Premium
+  // (Larga), todo por racimo cosechado. Mismo criterio que "Ratio Total",
+  // "Ratio Corta" y "Ratio Premium" en el Excel.
   const ratios = useMemo(() => {
     const cortaFecha = new Date()
     cortaFecha.setDate(cortaFecha.getDate() - DIAS_VENTANA_RATIO)
@@ -46,18 +53,34 @@ export function useRacimosPorEdadReal(finca: string | null) {
 
     let totalCajas20kg = 0
     let totalCajasFisicas = 0
+    let totalCajas20kgCorta = 0
+    let totalCajas20kgPremium = 0
     let totalRacimos = 0
     for (const r of registros) {
       if (!r.semana || r.fecha < corte) continue
       totalCajas20kg += r.items.reduce((suma, it) => suma + it.cajas_20kg, 0)
       totalCajasFisicas += r.items.reduce((suma, it) => suma + it.cantidad_cajas, 0)
+      for (const it of r.items) {
+        const especificacion = especificacionPorMarca.get(it.referencia)
+        if (especificacion === 'Corta') totalCajas20kgCorta += it.cajas_20kg
+        else if (especificacion === 'Larga') totalCajas20kgPremium += it.cajas_20kg
+      }
       totalRacimos += SEMANAS_RACIMO.reduce((suma, edad) => suma + (r[`racimos_semana_${edad}` as const] || 0), 0)
     }
     return {
       ratioCajas20kgPorRacimo: totalRacimos > 0 ? totalCajas20kg / totalRacimos : 0,
       ratioCajasFisicasPorRacimo: totalRacimos > 0 ? totalCajasFisicas / totalRacimos : 0,
+      ratioCortaPorRacimo: totalRacimos > 0 ? totalCajas20kgCorta / totalRacimos : 0,
+      ratioPremiumPorRacimo: totalRacimos > 0 ? totalCajas20kgPremium / totalRacimos : 0,
     }
-  }, [registros])
+  }, [registros, especificacionPorMarca])
 
-  return { mapa, ratioCajas20kgPorRacimo: ratios.ratioCajas20kgPorRacimo, ratioCajasFisicasPorRacimo: ratios.ratioCajasFisicasPorRacimo, loading }
+  return {
+    mapa,
+    ratioCajas20kgPorRacimo: ratios.ratioCajas20kgPorRacimo,
+    ratioCajasFisicasPorRacimo: ratios.ratioCajasFisicasPorRacimo,
+    ratioCortaPorRacimo: ratios.ratioCortaPorRacimo,
+    ratioPremiumPorRacimo: ratios.ratioPremiumPorRacimo,
+    loading: loadingProducciones || loadingReferencias,
+  }
 }

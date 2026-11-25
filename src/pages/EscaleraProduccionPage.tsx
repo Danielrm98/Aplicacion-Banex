@@ -106,6 +106,8 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
     serieBellPorHa,
     ratioCajas20kgPorRacimo,
     ratioCajasFisicasPorRacimo,
+    ratioCortaPorRacimo,
+    ratioPremiumPorRacimo,
     metricasPorSemana,
     recobroProyectado,
     loading,
@@ -132,9 +134,9 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
   const celdaEstimada = 'border border-gray-200 px-1.5 py-1 text-center bg-cyan-100 text-cyan-800'
   const celdaNeutra = 'border border-gray-200 px-2 py-1 text-center text-gray-700'
   // Columnas del Excel para las que todavía no hay una fuente de datos
-  // clara en la app (split Corta/Premium, Motivo de Repique, Precipitación,
-  // etc.) — se dejan ya en la tabla, marcadas, para irlas cuadrando una por
-  // una en vez de inventar un cálculo a ciegas.
+  // clara en la app (Motivo de Repique, Precipitación) — se dejan ya en la
+  // tabla, marcadas, para irlas cuadrando una por una en vez de inventar un
+  // cálculo a ciegas.
   const celdaPendiente = 'border border-gray-200 px-2 py-1 text-center text-gray-300 italic'
   const TITULO_PENDIENTE = 'Pendiente: todavía no hay de dónde sacar este dato en la app.'
 
@@ -181,8 +183,8 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
               <th colSpan={4} className="border border-gray-200 bg-banex-700 px-2 py-1 font-semibold text-white">
                 Racimos / Cajas
               </th>
-              <th colSpan={6} className="border border-gray-200 bg-gray-400 px-2 py-1 font-semibold text-white" title={TITULO_PENDIENTE}>
-                Corta / Premium (pendiente)
+              <th colSpan={6} className="border border-gray-200 bg-purple-800 px-2 py-1 font-semibold text-white">
+                Corta / Premium
               </th>
               <th colSpan={7} className="border border-gray-200 bg-sky-800 px-2 py-1 font-semibold text-white">
                 Datos reales de Registrar (solo si ya se registró esa semana)
@@ -203,24 +205,12 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
               <th className="border border-gray-200 px-1.5 py-1 font-medium">Cajas 20kg (proy.)</th>
               <th className="border border-gray-200 px-1.5 py-1 font-medium">Cajas físicas (proy.)</th>
               <th className="border border-gray-200 px-1.5 py-1 font-medium">Peso de caja</th>
-              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
-                % Corta
-              </th>
-              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
-                % Premium
-              </th>
-              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
-                Ratio Corta
-              </th>
-              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
-                Ratio Premium
-              </th>
-              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
-                Cajas Corta
-              </th>
-              <th className="border border-gray-200 px-1.5 py-1 font-medium" title={TITULO_PENDIENTE}>
-                Cajas Premium
-              </th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">% Corta</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">% Premium</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Ratio Corta</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Ratio Premium</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Cajas Corta</th>
+              <th className="border border-gray-200 px-1.5 py-1 font-medium">Cajas Premium</th>
               <th className="border border-gray-200 px-1.5 py-1 font-medium">Peso racimo</th>
               <th className="border border-gray-200 px-1.5 py-1 font-medium">Prom. manos</th>
               <th className="border border-gray-200 px-1.5 py-1 font-medium">Grado prom.</th>
@@ -237,6 +227,21 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
               const cajas20kgProyectadas = f.racimosCosechados * ratioCajas20kgPorRacimo
               const cajasFisicasProyectadas = f.racimosCosechados * ratioCajasFisicasPorRacimo
               const m = metricasPorSemana.get(`${f.anioCosechaPrincipal}_${f.semanaCosechaPrincipal}`)
+
+              // Corta/Premium: real si esa semana ya se registró (y trajo
+              // alguna referencia clasificada en el catálogo); si no, se
+              // proyecta con el ratio reciente de la finca — igual criterio
+              // que Cajas 20kg/Cajas físicas.
+              const hayCortaPremiumReal = m != null && m.porcentajeCorta != null
+              const cajasCorta = hayCortaPremiumReal ? m!.cajas20kgCorta : f.racimosCosechados * ratioCortaPorRacimo
+              const cajasPremium = hayCortaPremiumReal ? m!.cajas20kgPremium : f.racimosCosechados * ratioPremiumPorRacimo
+              const totalCortaPremium = cajasCorta + cajasPremium
+              const porcentajeCorta = totalCortaPremium > 0 ? cajasCorta / totalCortaPremium : null
+              const porcentajePremium = totalCortaPremium > 0 ? cajasPremium / totalCortaPremium : null
+              const ratioCorta = f.racimosCosechados > 0 ? cajasCorta / f.racimosCosechados : null
+              const ratioPremium = f.racimosCosechados > 0 ? cajasPremium / f.racimosCosechados : null
+              const celdaCortaPremium = hayCortaPremiumReal ? celdaReal : celdaEstimada
+
               return (
                 <tr key={`${f.anioEmbolse}_${f.semanaEmbolse}`}>
                   <td className="sticky left-0 z-10 border border-gray-200 bg-white px-2 py-1 text-center">
@@ -283,12 +288,13 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
                   <td className={f.esFilaReal ? celdaReal : celdaEstimada}>{Math.round(cajasFisicasProyectadas).toLocaleString('es')}</td>
                   <td className={celdaNeutra}>{CAJA_20KG_KG}</td>
 
-                  {/* Corta/Premium — pendiente */}
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <td key={i} className={celdaPendiente} title={TITULO_PENDIENTE}>
-                      —
-                    </td>
-                  ))}
+                  {/* Corta/Premium (Larga en el catálogo de referencias) */}
+                  <td className={celdaCortaPremium}>{porcentajeCorta != null ? `${(porcentajeCorta * 100).toFixed(0)}%` : '—'}</td>
+                  <td className={celdaCortaPremium}>{porcentajePremium != null ? `${(porcentajePremium * 100).toFixed(0)}%` : '—'}</td>
+                  <td className={celdaCortaPremium}>{ratioCorta != null ? ratioCorta.toFixed(3) : '—'}</td>
+                  <td className={celdaCortaPremium}>{ratioPremium != null ? ratioPremium.toFixed(3) : '—'}</td>
+                  <td className={celdaCortaPremium}>{cajasCorta.toFixed(1)}</td>
+                  <td className={celdaCortaPremium}>{cajasPremium.toFixed(1)}</td>
 
                   {/* Datos reales de Registrar — nunca proyectados, solo si ya se registró esa semana de cosecha */}
                   <td className={celdaNeutra}>{m?.pesoNetoRacimo != null ? m.pesoNetoRacimo.toFixed(2) : '—'}</td>
@@ -313,7 +319,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded border border-dashed border-gray-300" /> Pendiente (todavía sin
-          fuente de datos en la app: split Corta/Premium, Motivo de repique, Precipitación)
+          fuente de datos en la app: Motivo de repique, Precipitación)
         </span>
       </div>
 

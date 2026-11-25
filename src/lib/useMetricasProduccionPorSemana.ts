@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useProducciones } from './useProducciones'
+import { useReferencias } from './useReferencias'
 import { anioDeSemana } from './isoWeek'
 import { CAJA_20KG_KG, CANASTILLA_KG, SEMANAS_RACIMO } from '../types/produccion'
 
@@ -17,6 +18,14 @@ export interface MetricasSemana {
   gradoPromedio: number | null
   pesoNetoRacimo: number | null
   merma: number | null
+  // Split Corta/Premium (Larga en el catálogo de referencias), en cajas
+  // 20kg — "Premium" es la misma categoría que el catálogo llama "Larga".
+  cajas20kgCorta: number
+  cajas20kgPremium: number
+  porcentajeCorta: number | null
+  porcentajePremium: number | null
+  ratioCorta: number | null
+  ratioPremium: number | null
 }
 
 /**
@@ -28,7 +37,10 @@ export interface MetricasSemana {
  * columnas no se proyectan, solo se llenan cuando ya se registró).
  */
 export function useMetricasProduccionPorSemana(finca: string | null) {
-  const { registros, loading } = useProducciones({ finca: finca ?? undefined })
+  const { registros, loading: loadingProducciones } = useProducciones({ finca: finca ?? undefined })
+  const { referencias, loading: loadingReferencias } = useReferencias()
+
+  const especificacionPorMarca = useMemo(() => new Map(referencias.map((r) => [r.marca, r.especificacion])), [referencias])
 
   const mapa = useMemo(() => {
     interface Acumulador {
@@ -36,6 +48,8 @@ export function useMetricasProduccionPorSemana(finca: string | null) {
       racimosRecusados: number
       cajas20kg: number
       cantidadCajas: number
+      cajas20kgCorta: number
+      cajas20kgPremium: number
       canastillas: number
       frutaNoVendida: number
       areaRecorrida: number
@@ -54,6 +68,8 @@ export function useMetricasProduccionPorSemana(finca: string | null) {
         racimosRecusados: 0,
         cajas20kg: 0,
         cantidadCajas: 0,
+        cajas20kgCorta: 0,
+        cajas20kgPremium: 0,
         canastillas: 0,
         frutaNoVendida: 0,
         areaRecorrida: 0,
@@ -66,6 +82,11 @@ export function useMetricasProduccionPorSemana(finca: string | null) {
       acc.racimosRecusados += r.racimos_recusados
       acc.cajas20kg += r.items.reduce((suma, it) => suma + it.cajas_20kg, 0)
       acc.cantidadCajas += r.items.reduce((suma, it) => suma + it.cantidad_cajas, 0)
+      for (const it of r.items) {
+        const especificacion = especificacionPorMarca.get(it.referencia)
+        if (especificacion === 'Corta') acc.cajas20kgCorta += it.cajas_20kg
+        else if (especificacion === 'Larga') acc.cajas20kgPremium += it.cajas_20kg
+      }
       acc.canastillas += r.canastillas
       acc.frutaNoVendida += r.fruta_no_vendida
       acc.areaRecorrida += r.area_recorrida ?? 0
@@ -89,6 +110,7 @@ export function useMetricasProduccionPorSemana(finca: string | null) {
       const kilosFrutaNoVendida = acc.frutaNoVendida * CANASTILLA_KG
       const kilosMerma = kilosCanastillas + kilosFrutaNoVendida
       const pesoTotal = kilosCajas20kg + kilosMerma
+      const totalCortaPremium = acc.cajas20kgCorta + acc.cajas20kgPremium
       resultado.set(clave, {
         anio: Number(anioStr),
         semana: Number(semanaStr),
@@ -103,10 +125,16 @@ export function useMetricasProduccionPorSemana(finca: string | null) {
         gradoPromedio: acc.countGrado > 0 ? acc.sumaGrado / acc.countGrado : null,
         pesoNetoRacimo: acc.racimosCosechados > 0 ? pesoTotal / acc.racimosCosechados : null,
         merma: pesoTotal > 0 ? (kilosMerma / pesoTotal) * 100 : null,
+        cajas20kgCorta: acc.cajas20kgCorta,
+        cajas20kgPremium: acc.cajas20kgPremium,
+        porcentajeCorta: totalCortaPremium > 0 ? acc.cajas20kgCorta / totalCortaPremium : null,
+        porcentajePremium: totalCortaPremium > 0 ? acc.cajas20kgPremium / totalCortaPremium : null,
+        ratioCorta: acc.racimosCosechados > 0 ? acc.cajas20kgCorta / acc.racimosCosechados : null,
+        ratioPremium: acc.racimosCosechados > 0 ? acc.cajas20kgPremium / acc.racimosCosechados : null,
       })
     }
     return resultado
-  }, [registros])
+  }, [registros, especificacionPorMarca])
 
-  return { mapa, loading }
+  return { mapa, loading: loadingProducciones || loadingReferencias }
 }
