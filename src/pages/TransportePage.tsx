@@ -8,13 +8,33 @@ import { posicionFinca } from '../lib/ordenFincas'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useTransporteDia, obtenerTransporteEntreFechas } from '../lib/useTransporteDia'
 import { exportTransporteUnidadesToExcel } from '../lib/exportUtils'
-import { UNIDADES_TRANSPORTE, detalleUnidad, etiquetaUnidad, transporteRegistrada, type TransporteUnidad } from '../types/transporteUnidad'
+import {
+  UNIDADES_TRANSPORTE,
+  detalleUnidad,
+  estadoTransporte,
+  etiquetaUnidad,
+  type EstadoTransporte,
+  type TransporteUnidad,
+} from '../types/transporteUnidad'
 import { TIPOS_TRANSPORTE } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
 import type { Finca } from '../types/finca'
 
 const inputClase =
   'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-60'
+
+// Rojo = sin registrar, amarillo = ya llegó (falta la salida), verde = ya
+// no queda nada pendiente (llegada y salida registradas).
+const ESTILO_ESTADO: Record<EstadoTransporte, string> = {
+  pendiente: 'border-red-200 bg-red-100 text-red-700',
+  llego: 'border-yellow-300 bg-yellow-100 text-yellow-800',
+  completo: 'border-green-200 bg-green-100 text-green-800',
+}
+const TEXTO_ESTADO: Record<EstadoTransporte, string> = {
+  pendiente: 'Pendiente de registrar llegada',
+  llego: 'Llegó, falta registrar la salida',
+  completo: 'Llegada y salida registradas',
+}
 
 function leerPlanGuardado(fecha: string): boolean {
   try {
@@ -74,9 +94,10 @@ export default function TransportePage() {
     <div>
       <h1 className="mb-1 text-xl font-bold text-banex-900 sm:text-2xl">Transporte</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Plan diario de unidades (camiones/contenedores) asignadas a cada finca, y registro de su llegada. En{' '}
+        Plan diario de unidades (camiones/contenedores) asignadas a cada finca, y registro de su llegada y salida. En{' '}
         <span className="font-semibold text-red-700">rojo</span> mientras no se registra la llegada; en{' '}
-        <span className="font-semibold text-green-700">verde</span> ya registrada.
+        <span className="font-semibold text-yellow-700">amarillo</span> cuando ya llegó pero falta la salida; en{' '}
+        <span className="font-semibold text-green-700">verde</span> cuando ya no queda nada pendiente.
       </p>
 
       <div className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
@@ -200,8 +221,9 @@ function ExportarTransporteExcel() {
 
 // ============================================================
 // Panel del administrador: una fila por finca, con las unidades ya
-// planificadas ese día como chips (rojo = pendiente, verde = ya registrada)
-// y un selector para agregar/quitar unidades de la flota fija (1-4).
+// planificadas ese día como chips (rojo = pendiente, amarillo = llegó y
+// falta la salida, verde = llegada y salida registradas) y un selector para
+// agregar/quitar unidades de la flota fija (1-4).
 // ============================================================
 function PlanTransporteAdmin({
   fincas,
@@ -292,19 +314,22 @@ function PlanTransporteAdmin({
               <span className="w-40 shrink-0 text-sm font-medium text-gray-700">{f.nombre}</span>
               <div className="flex flex-1 flex-wrap items-center gap-2">
                 {filasFinca.map((fila) => {
-                  const registrada = transporteRegistrada(fila)
+                  const estado = estadoTransporte(fila)
                   const planificado = `${detalleUnidad(filasFinca, fila)} · ${fila.tipo ?? 'sin tipo'} · ${fila.cantidad_pallets ?? '—'} pallets`
+                  const horas =
+                    estado === 'completo'
+                      ? `llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'} · salida ${fila.hora_salida?.slice(0, 5) ?? '—'}`
+                      : estado === 'llego'
+                        ? `llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
+                        : null
                   const detalle =
-                    (registrada
-                      ? `${planificado} · ${fila.placa ?? '—'} · llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
-                      : `${planificado} · Pendiente de registrar llegada`) + (fila.observaciones ? ` · Obs: ${fila.observaciones}` : '')
+                    `${planificado}${fila.placa ? ` · ${fila.placa}` : ''}${horas ? ` · ${horas}` : ''} · ${TEXTO_ESTADO[estado]}` +
+                    (fila.observaciones ? ` · Obs: ${fila.observaciones}` : '')
                   return (
                     <span
                       key={fila.id}
                       title={detalle}
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                        registrada ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-700'
-                      }`}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${ESTILO_ESTADO[estado]}`}
                     >
                       {etiquetaUnidad(fila)}
                       <button
@@ -398,8 +423,8 @@ function AgregarUnidadFinca({
 
 // ============================================================
 // Formulario de registro de llegada para UNA finca: tira de estado
-// (rojo/verde) de las unidades planificadas ese día, selector de cuál se
-// está registrando, selector de tipo (Camión/Contenedor) que revela los
+// (rojo/amarillo/verde) de las unidades planificadas ese día, selector de
+// cuál se está registrando, selector de tipo (Camión/Contenedor) que revela los
 // campos correspondientes, y Guardar.
 // ============================================================
 function RegistroTransporteFinca({
@@ -503,16 +528,16 @@ function RegistroTransporteFinca({
     <div>
       <div className="mb-4 flex flex-wrap gap-2">
         {filasFinca.map((f) => {
-          const registrada = transporteRegistrada(f)
+          const estado = estadoTransporte(f)
           const activa = f.id === filaSeleccionadaId
           return (
             <button
               key={f.id}
               onClick={() => setFilaSeleccionadaId(f.id)}
-              title={`${detalleUnidad(filasFinca, f)}${registrada ? ` · ${f.placa ?? '—'}` : ' · Pendiente de registrar'}`}
-              className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
-                registrada ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-700'
-              } ${activa ? 'ring-2 ring-banex-500 ring-offset-1' : ''}`}
+              title={`${detalleUnidad(filasFinca, f)}${f.placa ? ` · ${f.placa}` : ''} · ${TEXTO_ESTADO[estado]}`}
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${ESTILO_ESTADO[estado]} ${
+                activa ? 'ring-2 ring-banex-500 ring-offset-1' : ''
+              }`}
             >
               {etiquetaUnidad(f)}
             </button>

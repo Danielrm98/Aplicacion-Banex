@@ -23,12 +23,16 @@ export interface TransporteUnidad {
 
 export type TransporteUnidadPlanInput = Pick<TransporteUnidad, 'finca' | 'fecha' | 'numero_unidad' | 'tipo' | 'cantidad_pallets'>
 
-/** Verde (ya se registró la llegada) solo cuando se sabe el tipo y se llenó
- * la hora de llegada/entrada — mientras falte cualquiera de los dos, queda
- * en rojo (pendiente), sin importar qué tan completos estén los demás
- * campos. */
-export function transporteRegistrada(u: TransporteUnidad): boolean {
-  return u.tipo !== null && u.hora_llegada !== null
+export type EstadoTransporte = 'pendiente' | 'llego' | 'completo'
+
+/** Rojo (pendiente) mientras no se sepa el tipo o no se haya registrado la
+ * hora de llegada/entrada; amarillo (llegó) una vez se registra esa hora
+ * pero todavía falta la de salida; verde (completo) solo cuando ya no
+ * queda nada pendiente por registrar — llegada y salida, las dos. */
+export function estadoTransporte(u: TransporteUnidad): EstadoTransporte {
+  if (u.tipo === null || u.hora_llegada === null) return 'pendiente'
+  if (u.hora_salida === null) return 'llego'
+  return 'completo'
 }
 
 /** Tipo + cuántos pallets carga (p. ej. "CAMIÓN POR 10"), sin mencionar el
