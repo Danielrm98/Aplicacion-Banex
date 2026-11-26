@@ -1445,6 +1445,8 @@ create table public.transporte_unidades (
   sello_salida text,
   hora_llegada time,
   hora_salida time,
+  -- Apuntes libres de la finca al momento de la llegada/salida (novedades).
+  observaciones text,
   created_at timestamptz not null default now()
   -- Sin unique: una misma unidad SÍ puede ir más de una vez a la misma
   -- finca el mismo día (pocas veces, pero pasa — un camión hace dos

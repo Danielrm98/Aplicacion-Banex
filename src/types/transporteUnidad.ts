@@ -17,6 +17,7 @@ export interface TransporteUnidad {
   sello_salida: string | null
   hora_llegada: string | null
   hora_salida: string | null
+  observaciones: string | null
   created_at: string
 }
 

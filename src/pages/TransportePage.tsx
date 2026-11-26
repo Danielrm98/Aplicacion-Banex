@@ -167,9 +167,10 @@ function PlanTransporteAdmin({
                 {filasFinca.map((fila) => {
                   const registrada = transporteRegistrada(fila)
                   const planificado = `${detalleUnidad(filasFinca, fila)} · ${fila.tipo ?? 'sin tipo'} · ${fila.cantidad_pallets ?? '—'} pallets`
-                  const detalle = registrada
-                    ? `${planificado} · ${fila.placa ?? '—'} · llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
-                    : `${planificado} · Pendiente de registrar llegada`
+                  const detalle =
+                    (registrada
+                      ? `${planificado} · ${fila.placa ?? '—'} · llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
+                      : `${planificado} · Pendiente de registrar llegada`) + (fila.observaciones ? ` · Obs: ${fila.observaciones}` : '')
                   return (
                     <span
                       key={fila.id}
@@ -317,6 +318,7 @@ function RegistroTransporteFinca({
   const [selloSalida, setSelloSalida] = useState('')
   const [horaLlegada, setHoraLlegada] = useState('')
   const [horaSalida, setHoraSalida] = useState('')
+  const [observaciones, setObservaciones] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guardado, setGuardado] = useState(false)
@@ -329,6 +331,7 @@ function RegistroTransporteFinca({
     setSelloSalida(filaActual?.sello_salida ?? '')
     setHoraLlegada(filaActual?.hora_llegada?.slice(0, 5) ?? '')
     setHoraSalida(filaActual?.hora_salida?.slice(0, 5) ?? '')
+    setObservaciones(filaActual?.observaciones ?? '')
     setGuardado(false)
     setError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -338,8 +341,8 @@ function RegistroTransporteFinca({
     if (!filaActual) return
     setGuardando(true)
     setError(null)
-    const payload =
-      tipo === 'Camión'
+    const payload = {
+      ...(tipo === 'Camión'
         ? { tipo, placa: placa || null, hora_llegada: horaLlegada || null, hora_salida: horaSalida || null, numero_contenedor: null, sello_entrada: null, sello_salida: null }
         : tipo === 'Contenedor'
           ? {
@@ -351,7 +354,9 @@ function RegistroTransporteFinca({
               hora_llegada: horaLlegada || null,
               hora_salida: horaSalida || null,
             }
-          : { tipo: null }
+          : { tipo: null }),
+      observaciones: observaciones || null,
+    }
     const { error } = await supabase.from('transporte_unidades').update(payload).eq('id', filaActual.id)
     if (error) {
       setError(error.message)
@@ -454,6 +459,18 @@ function RegistroTransporteFinca({
             </label>
           </>
         )}
+
+        <label className="text-sm sm:col-span-2">
+          <span className="mb-1 block text-gray-600">Observaciones</span>
+          <textarea
+            value={observaciones}
+            disabled={!escritura}
+            onChange={(e) => setObservaciones(e.target.value)}
+            rows={2}
+            placeholder="Novedades al llegar o salir la unidad (ej. retraso, fruta golpeada, falta de sello...)"
+            className={`${inputClase} resize-y`}
+          />
+        </label>
       </div>
 
       {escritura && (
