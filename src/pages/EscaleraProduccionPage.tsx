@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../lib/AuthContext'
 import { usePerfil } from '../lib/usePerfil'
@@ -6,8 +6,11 @@ import { useFincas } from '../lib/useFincas'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import { sumarSemanas } from '../lib/anioEmbolses'
+import { getIsoWeek, getIsoYear } from '../lib/isoWeek'
+import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useEscaleraProduccion } from '../lib/useEscaleraProduccion'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
+import { leerLibroExcel, procesarLibroEscalera, guardarImportacionEscalera, type ResultadoImportacion } from '../lib/importarEscaleraExcel'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
 import { CAJA_20KG_KG } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
@@ -29,7 +32,7 @@ export default function EscaleraProduccionPage() {
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   const [fincaSeleccionada, setFincaSeleccionada] = useState('')
-  const [vista, setVista] = useState<'escalera' | 'modelo'>('escalera')
+  const [vista, setVista] = useState<'escalera' | 'modelo' | 'importar'>('escalera')
 
   useEffect(() => {
     if (fincaUnicaOperador) {
@@ -76,20 +79,26 @@ export default function EscaleraProduccionPage() {
         </label>
       </div>
 
-      {!finca ? (
+      <div className="mb-4 flex gap-1 border-b border-gray-200">
+        <TabButton active={vista === 'escalera'} onClick={() => setVista('escalera')}>
+          Escalera
+        </TabButton>
+        <TabButton active={vista === 'modelo'} onClick={() => setVista('modelo')}>
+          Modelo de cajas
+        </TabButton>
+        <TabButton active={vista === 'importar'} onClick={() => setVista('importar')}>
+          Importar Excel
+        </TabButton>
+      </div>
+
+      {vista === 'importar' ? (
+        <ImportarExcelTab fincasConocidas={fincasOrdenadas.map((f) => f.nombre)} />
+      ) : !finca ? (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
+      ) : vista === 'escalera' ? (
+        <EscaleraTabla key={finca.nombre} finca={finca} />
       ) : (
-        <>
-          <div className="mb-4 flex gap-1 border-b border-gray-200">
-            <TabButton active={vista === 'escalera'} onClick={() => setVista('escalera')}>
-              Escalera
-            </TabButton>
-            <TabButton active={vista === 'modelo'} onClick={() => setVista('modelo')}>
-              Modelo de cajas
-            </TabButton>
-          </div>
-          {vista === 'escalera' ? <EscaleraTabla key={finca.nombre} finca={finca} /> : <ModeloCajasTab key={finca.nombre} finca={finca} />}
-        </>
+        <ModeloCajasTab key={finca.nombre} finca={finca} />
       )}
     </div>
   )
@@ -525,6 +534,212 @@ function ModeloCajasTab({ finca }: { finca: Finca }) {
           </tfoot>
         </table>
       </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Pestaña "Importar Excel": arrastra (o elige) el archivo .xlsx de la
+// escalera y actualiza escalera_embolse_historico/cosecha_por_edad para
+// todas las fincas que reconozca en el libro. No es por finca (procesa
+// todas las hojas de una vez), así que no depende del selector de arriba.
+// ============================================================
+function ImportarExcelTab({ fincasConocidas }: { fincasConocidas: string[] }) {
+  const { session } = useAuth()
+  const [arrastrando, setArrastrando] = useState(false)
+  const [procesando, setProcesando] = useState(false)
+  const [resultado, setResultado] = useState<ResultadoImportacion | null>(null)
+  const [nombreArchivo, setNombreArchivo] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [progreso, setProgreso] = useState<string[]>([])
+  const [guardadoOk, setGuardadoOk] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  async function procesarArchivo(file: File) {
+    setError(null)
+    setResultado(null)
+    setGuardadoOk(false)
+    setProgreso([])
+    setNombreArchivo(file.name)
+
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      setError(
+        'Ese archivo no es .xlsx (puede ser .xlsb, el formato binario de Excel). Ábrelo en Excel y usa Archivo → Guardar como → "Libro de Excel (*.xlsx)", y sube ese archivo.',
+      )
+      return
+    }
+
+    setProcesando(true)
+    try {
+      const workbook = await leerLibroExcel(file)
+      const hoy = fechaLocalHoy()
+      const cutoffAnio = getIsoYear(hoy)
+      const cutoffSemana = getIsoWeek(hoy)
+      const procesado = procesarLibroEscalera(workbook, new Set(fincasConocidas), cutoffAnio, cutoffSemana)
+      setResultado(procesado)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo leer el archivo. ¿Seguro que es la escalera en .xlsx?')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  async function confirmarImportacion() {
+    const userId = session?.user.id
+    if (!resultado || !userId) return
+    setError(null)
+    setGuardando(true)
+    try {
+      await guardarImportacionEscalera(supabase, resultado, userId, (mensaje) => setProgreso((prev) => [...prev, mensaje]))
+      // Para que "Escalera" y "Modelo de cajas" traigan lo recién
+      // importado la próxima vez que se abran, en vez de servir lo que ya
+      // tenían guardado en este dispositivo.
+      for (const f of resultado.porFinca) {
+        try {
+          localStorage.removeItem(`approban_cache_embolse_historico_${f.finca}`)
+          localStorage.removeItem(`approban_cache_cosecha_por_edad_${f.finca}`)
+        } catch {
+          // localStorage no disponible: sin caché que limpiar, sin consecuencia.
+        }
+      }
+      setGuardadoOk(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo guardar la importación.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  function limpiar() {
+    setResultado(null)
+    setNombreArchivo(null)
+    setError(null)
+    setProgreso([])
+    setGuardadoOk(false)
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  return (
+    <div>
+      <p className="mb-4 text-sm text-gray-500">
+        Arrastra aquí el Excel de la escalera (formato <strong>.xlsx</strong>, no .xlsb) para actualizar el histórico de
+        embolse y de racimos por edad de todas las fincas que reconozca. Solo toma lo que ya pasó (hasta la semana
+        actual) — lo que esté más adelante en tu Excel son sus propias fórmulas de proyección, no datos reales; la app
+        calcula su propia proyección aparte. Puedes subir el mismo archivo las veces que quieras: siempre actualiza, no
+        duplica nada.
+      </p>
+
+      {!resultado && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault()
+            setArrastrando(true)
+          }}
+          onDragLeave={() => setArrastrando(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setArrastrando(false)
+            const file = e.dataTransfer.files?.[0]
+            if (file) procesarArchivo(file)
+          }}
+          onClick={() => inputRef.current?.click()}
+          className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 text-center transition-colors ${
+            arrastrando ? 'border-banex-500 bg-banex-50' : 'border-gray-300 bg-white hover:border-banex-300 hover:bg-banex-50/40'
+          }`}
+        >
+          <span className="mb-2 text-3xl">📥</span>
+          <p className="text-sm font-medium text-gray-700">
+            {procesando ? 'Leyendo archivo...' : 'Arrastra el archivo .xlsx aquí, o haz clic para elegirlo'}
+          </p>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".xlsx"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) procesarArchivo(file)
+            }}
+          />
+        </div>
+      )}
+
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+      {resultado && !guardadoOk && (
+        <div className="mt-4 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+          <SectionHeading>Vista previa — {nombreArchivo}</SectionHeading>
+          <p className="mb-3 text-sm text-gray-600">
+            {resultado.totalEmbolse.toLocaleString('es')} semanas de embolse y {resultado.totalCosecha.toLocaleString('es')}{' '}
+            filas de cosecha por edad, en {resultado.porFinca.length} finca(s). Revisa que los números cuadren antes de
+            confirmar.
+          </p>
+          <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50 text-left text-gray-500">
+                  <th className="px-3 py-2 font-medium">Finca</th>
+                  <th className="px-2 py-2 text-right font-medium">Semanas de embolse</th>
+                  <th className="px-2 py-2 text-right font-medium">Filas cosecha por edad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultado.porFinca.map((f) => (
+                  <tr key={f.hoja} className="border-b border-gray-100">
+                    <td className="px-3 py-1.5 font-medium text-gray-900">{f.finca}</td>
+                    <td className="px-2 py-1.5 text-right text-gray-700">{f.filasEmbolse.length.toLocaleString('es')}</td>
+                    <td className="px-2 py-1.5 text-right text-gray-700">{f.filasCosecha.length.toLocaleString('es')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {resultado.hojasOmitidas.length > 0 && (
+            <p className="mt-3 text-xs text-amber-700">
+              Hojas que no se importaron (no coinciden con ninguna finca del catálogo, o son resúmenes): {resultado.hojasOmitidas.join(', ')}
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              onClick={confirmarImportacion}
+              disabled={guardando}
+              className="rounded-lg bg-banex-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+            >
+              {guardando ? 'Guardando...' : 'Confirmar e importar'}
+            </button>
+            <button
+              onClick={limpiar}
+              disabled={guardando}
+              className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+          {progreso.length > 0 && (
+            <ul className="mt-3 space-y-0.5 text-xs text-gray-500">
+              {progreso.map((linea, i) => (
+                <li key={i}>{linea}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {guardadoOk && (
+        <div className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4">
+          <p className="text-sm font-medium text-green-800">
+            ✅ Importación guardada. Ve a la pestaña "Escalera" o "Modelo de cajas" para verla actualizada.
+          </p>
+          <button
+            onClick={limpiar}
+            className="mt-3 rounded-lg border border-green-300 bg-white px-4 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-100"
+          >
+            Importar otro archivo
+          </button>
+        </div>
+      )}
     </div>
   )
 }

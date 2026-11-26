@@ -1378,6 +1378,17 @@ create policy "Ver historico de embolse según rol"
   on public.escalera_embolse_historico for select
   using (public.es_admin(auth.uid()) or finca = any (public.fincas_de(auth.uid())));
 
+-- El administrador también puede insertar/corregir estas filas desde el
+-- panel de "Importar Excel" dentro de la app, con su propia sesión.
+create policy "Solo el admin crea historico de embolse"
+  on public.escalera_embolse_historico for insert
+  with check (public.es_admin(auth.uid()));
+
+create policy "Solo el admin corrige historico de embolse"
+  on public.escalera_embolse_historico for update
+  using (public.es_admin(auth.uid()))
+  with check (public.es_admin(auth.uid()));
+
 -- Permite al administrador "modelar" a mano el % de racimos por edad (y
 -- por lo tanto el recobro) que usa la escalera para proyectar, en vez de
 -- depender siempre del cálculo automático (última cohorte de embolse ya
