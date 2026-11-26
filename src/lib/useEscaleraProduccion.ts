@@ -166,12 +166,29 @@ export function useEscaleraProduccion(finca: Finca | null) {
     return mapa
   }, [cosechaEdadHistorica])
 
-  const racimosRealesDeEdad = useMemo(() => {
+  const racimosRealesDeEdadCrudo = useMemo(() => {
     return (anio: number, semana: number, edad: EdadCosecha) => {
       const clave = `${anio}_${semana}_${edad}`
       return racimosEdadReal.get(clave) ?? racimosEdadHistorico.get(clave)
     }
   }, [racimosEdadReal, racimosEdadHistorico])
+
+  // Una edad solo cuenta como dato REAL si su semana de reporte
+  // (semanaEmbolseDeEdad: embolse + edad - 1) ya pasó COMPLETA — no la
+  // semana actual, que todavía se está llenando día a día en "Registrar".
+  // Sin esto, una cohorte cuya última edad cae justo en la semana en curso
+  // se tomaba como "real" con lo que llevaba digitado hasta ese momento
+  // (un número parcial, de solo los días ya registrados), arrastrando el
+  // recobro hacia abajo con un dato que ni siquiera había terminado de
+  // cargarse.
+  const racimosRealesDeEdad = useMemo(() => {
+    return (anio: number, semana: number, edad: EdadCosecha) => {
+      const { anio: anioReporte, semana: semanaReporte } = sumarSemanas(anio, semana, edad - 1)
+      const yaPasoCompleta = anioReporte < anioActual || (anioReporte === anioActual && semanaReporte < semanaActual)
+      if (!yaPasoCompleta) return undefined
+      return racimosRealesDeEdadCrudo(anio, semana, edad)
+    }
+  }, [racimosRealesDeEdadCrudo, anioActual, semanaActual])
 
   const embolsadoDe = (anio: number, semana: number): number | null => {
     const real = embolseRealPorSemana.get(`${anio}_${semana}`)
