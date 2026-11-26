@@ -27,12 +27,33 @@ const SEMANAS_ADELANTE = 13
 // reales como base de la proyección.
 const SEMANAS_BUSQUEDA_RECOBRO = 40
 // Cuántas de esas cohortes completas, las más recientes, se promedian —
-// una sola semana puede ser atípica (una lluvia, un corte flojo); 3
+// una sola semana puede ser atípica (una lluvia, un corte flojo); 2
 // suaviza eso sin diluirse en un promedio de todo el histórico.
-const COHORTES_PARA_PROMEDIO = 3
+const COHORTES_PARA_PROMEDIO = 2
+// Piso del recobro proyectado: la proyección de la semana siguiente se usa
+// para sacar los pedidos a las fincas (se hacen una semana antes), así que
+// no puede salir por debajo de esto aunque el promedio reciente esté más
+// bajo — es mejor pedir de más que quedarse corto. Esto NO afecta a lo que
+// ya es real (una semana ya cosechada muestra su recobro real, sea el que
+// sea, nunca se le aplica este piso).
+const PISO_RECOBRO_PROYECTADO = 0.95
 // Recobro de respaldo si todavía no hay ninguna cohorte completa (finca
-// nueva, sin historial ni formulario diario cargado aún).
+// nueva, sin historial ni formulario diario cargado aún) — por debajo del
+// piso de todas formas, así que en la práctica el piso es el que manda.
 const RECOBRO_RESPALDO = 0.85
+
+/** Si la distribución suma menos que `piso`, la reescala completa (sin
+ * cambiar la forma entre edades) para que sume exactamente el piso. Se usa
+ * solo en el cálculo automático; un modelo manual del administrador nunca
+ * se toca, aunque esté por debajo del piso a propósito. */
+function aplicarPisoRecobro(distribucion: DistribucionEdad, piso: number): DistribucionEdad {
+  const suma = EDADES_COSECHA.reduce((s, edad) => s + distribucion[edad], 0)
+  if (suma <= 0 || suma >= piso) return distribucion
+  const factor = piso / suma
+  const resultado = {} as DistribucionEdad
+  for (const edad of EDADES_COSECHA) resultado[edad] = distribucion[edad] * factor
+  return resultado
+}
 
 /** Arma la escalera de producción de una finca: semana de embolse → semana
  * de cosecha, con lo real ya cargado (embolses de la app + semilla
@@ -162,10 +183,12 @@ export function useEscaleraProduccion(finca: Finca | null) {
   // promedian sus % directamente: se suman sus racimos por edad y su
   // embolsado, y se divide, para que una semana con más volumen pese más)
   // para dar el % real de racimos por edad que se usa como base de la
-  // proyección — tanto el nivel (recobro) como la forma (qué edades pesan
-  // más) quedan parecidos al desempeño reciente, pero sin que una sola
-  // semana atípica (una lluvia, un corte flojo) descalibre toda la
-  // proyección hacia adelante.
+  // proyección — con un piso (PISO_RECOBRO_PROYECTADO): esta proyección
+  // sirve para sacar los pedidos a las fincas una semana antes, así que no
+  // puede salir más baja que eso. Tanto el nivel (recobro) como la forma
+  // (qué edades pesan más) quedan parecidos al desempeño reciente, pero sin
+  // que una sola semana atípica (una lluvia, un corte flojo) descalibre
+  // toda la proyección hacia adelante.
   const modeloEsManual = modeloManual.length > 0
 
   const distribucionProyeccion = useMemo<DistribucionEdad>(() => {
@@ -214,7 +237,7 @@ export function useEscaleraProduccion(finca: Finca | null) {
       EDADES_COSECHA.forEach((edad, i) => {
         resultado[edad] = (totalPorEdad[i] / totalEmbolsado) * factorRepique
       })
-      return resultado
+      return aplicarPisoRecobro(resultado, PISO_RECOBRO_PROYECTADO)
     }
 
     // Respaldo: forma del histórico importado (si lo hay) escalada al
@@ -222,7 +245,7 @@ export function useEscaleraProduccion(finca: Finca | null) {
     const forma = calcularDistribucionRespaldo(cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })))
     const resultado = {} as DistribucionEdad
     for (const edad of EDADES_COSECHA) resultado[edad] = forma[edad] * RECOBRO_RESPALDO
-    return resultado
+    return aplicarPisoRecobro(resultado, PISO_RECOBRO_PROYECTADO)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     modeloManual,
