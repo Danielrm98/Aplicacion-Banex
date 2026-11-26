@@ -266,6 +266,16 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
     return { data: [...porSemana.values()], series }
   }, [serieBellPorHa])
 
+  // f.racimosCosechados es el total de ESA cohorte de embolse (sus 5
+  // edades, 8-12), pero esas 5 edades caen en 5 semanas de cosecha REALES
+  // distintas — no todas en la "Sem. Cosecha" (principal) que se muestra
+  // en esta fila. Para que "Racimos cosechados"/"Cajas 20kg" reflejen de
+  // verdad lo que se cosecha en esa semana calendario (sumando el aporte de
+  // TODAS las cohortes de embolse que caen ahí, no solo esta), se reagrupa
+  // por semana de cosecha real — mismo cálculo que usan "Modelo de cajas" y
+  // "Comparativo", para que los tres coincidan.
+  const porCosechaReal = useMemo(() => racimosPorSemanaCosecha(filas), [filas])
+
   if (loading) return <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
 
   const celdaReal = 'border border-gray-200 px-1.5 py-1 text-center bg-green-100 text-green-800'
@@ -288,7 +298,9 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
         <span className="font-semibold text-gray-600">{(recobroObjetivo * 100).toFixed(1)}%</span>, y el ratio cajas
         20kg/racimo de las últimas ~12 semanas: <span className="font-semibold text-gray-600">{ratioCajas20kgPorRacimo.toFixed(3)}</span>.
         Columnas en <span className="font-semibold text-green-700">verde</span> = dato real; en{' '}
-        <span className="font-semibold text-cyan-700">celeste</span> = proyección.
+        <span className="font-semibold text-cyan-700">celeste</span> = proyección. "Racimos cosechados"/"Cajas 20kg" de
+        cada fila son el total real de SU semana de cosecha (sumando lo que aporta cada cohorte de embolse que cae ahí,
+        no solo esta fila) — por eso coinciden con "Modelo de cajas" y "Comparativo".
       </p>
       <div className="overflow-x-auto">
         <table className="min-w-[2400px] border-collapse text-xs">
@@ -365,8 +377,9 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
             {filas.map((f) => {
               const color = colorCintaDe(f.anioEmbolse, f.semanaEmbolse)
               const estilo = ESTILO_CINTA[color]
-              const cajas20kgProyectadas = f.racimosCosechados * ratioCajas20kgPorRacimo
-              const cajasFisicasProyectadas = f.racimosCosechados * ratioCajasFisicasPorRacimo
+              const racimosCosechadosSemana = porCosechaReal.get(`${f.anioCosechaPrincipal}_${f.semanaCosechaPrincipal}`) ?? 0
+              const cajas20kgProyectadas = racimosCosechadosSemana * ratioCajas20kgPorRacimo
+              const cajasFisicasProyectadas = racimosCosechadosSemana * ratioCajasFisicasPorRacimo
               const m = metricasPorSemana.get(`${f.anioCosechaPrincipal}_${f.semanaCosechaPrincipal}`)
 
               // Corta/Premium: real si esa semana ya se registró (y trajo
@@ -374,13 +387,13 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
               // proyecta con el ratio reciente de la finca — igual criterio
               // que Cajas 20kg/Cajas físicas.
               const hayCortaPremiumReal = m != null && m.porcentajeCorta != null
-              const cajasCorta = hayCortaPremiumReal ? m!.cajas20kgCorta : f.racimosCosechados * ratioCortaPorRacimo
-              const cajasPremium = hayCortaPremiumReal ? m!.cajas20kgPremium : f.racimosCosechados * ratioPremiumPorRacimo
+              const cajasCorta = hayCortaPremiumReal ? m!.cajas20kgCorta : racimosCosechadosSemana * ratioCortaPorRacimo
+              const cajasPremium = hayCortaPremiumReal ? m!.cajas20kgPremium : racimosCosechadosSemana * ratioPremiumPorRacimo
               const totalCortaPremium = cajasCorta + cajasPremium
               const porcentajeCorta = totalCortaPremium > 0 ? cajasCorta / totalCortaPremium : null
               const porcentajePremium = totalCortaPremium > 0 ? cajasPremium / totalCortaPremium : null
-              const ratioCorta = f.racimosCosechados > 0 ? cajasCorta / f.racimosCosechados : null
-              const ratioPremium = f.racimosCosechados > 0 ? cajasPremium / f.racimosCosechados : null
+              const ratioCorta = racimosCosechadosSemana > 0 ? cajasCorta / racimosCosechadosSemana : null
+              const ratioPremium = racimosCosechadosSemana > 0 ? cajasPremium / racimosCosechadosSemana : null
               const celdaCortaPremium = hayCortaPremiumReal ? celdaReal : celdaEstimada
 
               return (
@@ -423,7 +436,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
 
                   {/* Racimos / Cajas */}
                   <td className={`${f.esFilaReal ? celdaReal : celdaEstimada} font-semibold`}>
-                    {Math.round(f.racimosCosechados).toLocaleString('es')}
+                    {Math.round(racimosCosechadosSemana).toLocaleString('es')}
                   </td>
                   <td className={`${f.esFilaReal ? celdaReal : celdaEstimada} font-semibold`}>{cajas20kgProyectadas.toFixed(1)}</td>
                   <td className={f.esFilaReal ? celdaReal : celdaEstimada}>{Math.round(cajasFisicasProyectadas).toLocaleString('es')}</td>
