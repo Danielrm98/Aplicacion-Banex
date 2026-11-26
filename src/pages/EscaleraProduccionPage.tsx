@@ -19,13 +19,22 @@ import TabButton from '../components/TabButton'
 import EmbolsePorSemanaChart, { coloresPorAnio, type PuntoEmbolseSemana } from '../components/charts/EmbolsePorSemanaChart'
 import type { Finca } from '../types/finca'
 
+// GOLONDRINA NUEVA, GOLONDRINA VIEJA y LAS DELICIAS ya no se trabajan (se
+// unificaron en sus fincas de destino desde la semana 42/2026, ver
+// FINCAS_UNIFICADAS en ProductionForm.tsx) — no tiene sentido proyectar
+// embolse/cosecha futura para ellas, así que se excluyen del selector y del
+// comparativo de esta página (pero no de las demás: lo ya registrado antes
+// del corte se sigue pudiendo consultar en el resto de la app).
+const FINCAS_SIN_PROYECCION = new Set(['LAS DELICIAS', 'GOLONDRINA NUEVA', 'GOLONDRINA VIEJA'])
+
 export default function EscaleraProduccionPage() {
   const { perfil, fincas: fincasAsignadas } = usePerfil()
   const esOperador = perfil?.rol === 'operador'
   const esAdminLectura = perfil?.rol === 'admin_lectura'
   const { fincas: todasLasFincas } = useFincas()
-  const fincasDisponibles =
+  const fincasDisponibles = (
     esOperador || esAdminLectura ? todasLasFincas.filter((f) => fincasAsignadas.includes(f.nombre)) : todasLasFincas
+  ).filter((f) => !FINCAS_SIN_PROYECCION.has(f.nombre))
   const fincasOrdenadas = useMemo(
     () => [...fincasDisponibles].sort((a, b) => posicionFinca(a.nombre) - posicionFinca(b.nombre)),
     [fincasDisponibles],
