@@ -36,6 +36,54 @@ const TEXTO_ESTADO: Record<EstadoTransporte, string> = {
   completo: 'Llegada y salida registradas',
 }
 
+const HORAS_24 = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0'))
+const MINUTOS_60 = Array.from({ length: 60 }, (_, m) => String(m).padStart(2, '0'))
+
+/** Reemplaza el `<input type="time">` nativo (cuyo formato 12h/24h depende
+ * del teléfono de cada operario, no de la app) por dos selects de horas
+ * (00-23) y minutos: sin AM/PM que elegir, no hay forma de confundir
+ * "12 AM" con "12 PM" — se escribe tal cual se lee en un reloj de 24 horas.
+ * Mismo formato de valor ("HH:MM") que ya esperaba el input de tiempo. */
+function Hora24({ value, onChange, disabled }: { value: string; onChange: (valor: string) => void; disabled?: boolean }) {
+  const [hora, minuto] = value ? value.split(':') : ['', '']
+  const selectClase =
+    'rounded-lg border border-gray-200 bg-gray-50 px-2 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-60'
+
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={hora}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value && minuto ? `${e.target.value}:${minuto}` : e.target.value ? `${e.target.value}:00` : '')}
+        className={selectClase}
+        aria-label="Hora"
+      >
+        <option value="">HH</option>
+        {HORAS_24.map((h) => (
+          <option key={h} value={h}>
+            {h}
+          </option>
+        ))}
+      </select>
+      <span className="text-gray-400">:</span>
+      <select
+        value={minuto}
+        disabled={disabled}
+        onChange={(e) => onChange(hora ? `${hora}:${e.target.value}` : e.target.value ? `00:${e.target.value}` : '')}
+        className={selectClase}
+        aria-label="Minuto"
+      >
+        <option value="">MM</option>
+        {MINUTOS_60.map((m) => (
+          <option key={m} value={m}>
+            {m}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 function leerPlanGuardado(fecha: string): boolean {
   try {
     return localStorage.getItem(`approban_transporte_plan_guardado_${fecha}`) === '1'
@@ -574,11 +622,11 @@ function RegistroTransporteFinca({
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-gray-600">Hora de llegada</span>
-              <input type="time" value={horaLlegada} disabled={!escritura} onChange={(e) => setHoraLlegada(e.target.value)} className={inputClase} />
+              <Hora24 value={horaLlegada} disabled={!escritura} onChange={setHoraLlegada} />
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-gray-600">Hora de salida</span>
-              <input type="time" value={horaSalida} disabled={!escritura} onChange={(e) => setHoraSalida(e.target.value)} className={inputClase} />
+              <Hora24 value={horaSalida} disabled={!escritura} onChange={setHoraSalida} />
             </label>
           </>
         )}
@@ -599,7 +647,7 @@ function RegistroTransporteFinca({
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-gray-600">Hora de entrada</span>
-              <input type="time" value={horaLlegada} disabled={!escritura} onChange={(e) => setHoraLlegada(e.target.value)} className={inputClase} />
+              <Hora24 value={horaLlegada} disabled={!escritura} onChange={setHoraLlegada} />
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-gray-600">Sello de salida</span>
@@ -607,7 +655,7 @@ function RegistroTransporteFinca({
             </label>
             <label className="text-sm">
               <span className="mb-1 block text-gray-600">Hora de salida</span>
-              <input type="time" value={horaSalida} disabled={!escritura} onChange={(e) => setHoraSalida(e.target.value)} className={inputClase} />
+              <Hora24 value={horaSalida} disabled={!escritura} onChange={setHoraSalida} />
             </label>
           </>
         )}
