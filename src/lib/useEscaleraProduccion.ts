@@ -30,13 +30,16 @@ const SEMANAS_BUSQUEDA_RECOBRO = 40
 // una sola semana puede ser atípica (una lluvia, un corte flojo); 2
 // suaviza eso sin diluirse en un promedio de todo el histórico.
 const COHORTES_PARA_PROMEDIO = 2
-// Piso del recobro proyectado: la proyección de la semana siguiente se usa
-// para sacar los pedidos a las fincas (se hacen una semana antes), así que
-// no puede salir por debajo de esto aunque el promedio reciente esté más
-// bajo — es mejor pedir de más que quedarse corto. Esto NO afecta a lo que
-// ya es real (una semana ya cosechada muestra su recobro real, sea el que
-// sea, nunca se le aplica este piso).
-const PISO_RECOBRO_PROYECTADO = 0.95
+// Piso del recobro proyectado: un racimo embolsado SIEMPRE se tiene que
+// reportar cosechado dentro de las 12 semanas (lo que no se reporta en ese
+// plazo es por una novedad interna puntual de la finca, no la norma), así
+// que el margen normal de recobro es 97-98% — la proyección de la semana
+// siguiente (la que se usa para sacar los pedidos a las fincas, una semana
+// antes) no puede salir por debajo de eso aunque el promedio reciente esté
+// más bajo — es mejor pedir de más que quedarse corto. Esto NO afecta a lo
+// que ya es real (una semana ya cosechada muestra su recobro real, sea el
+// que sea, nunca se le aplica este piso).
+const PISO_RECOBRO_PROYECTADO = 0.97
 // Recobro de respaldo si todavía no hay ninguna cohorte completa (finca
 // nueva, sin historial ni formulario diario cargado aún) — por debajo del
 // piso de todas formas, así que en la práctica el piso es el que manda.
