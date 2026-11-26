@@ -9,6 +9,7 @@ import { sumarSemanas } from '../lib/anioEmbolses'
 import { getIsoWeek, getIsoYear } from '../lib/isoWeek'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useEscaleraProduccion } from '../lib/useEscaleraProduccion'
+import { racimosPorSemanaCosecha } from '../lib/calculoEscaleraProduccion'
 import { colorCintaDe, ESTILO_CINTA } from '../lib/cintaEmbolse'
 import { leerLibroExcel, procesarLibroEscalera, guardarImportacionEscalera, type ResultadoImportacion } from '../lib/importarEscaleraExcel'
 import { EDADES_COSECHA, type EdadCosecha } from '../types/escaleraProduccion'
@@ -32,7 +33,7 @@ export default function EscaleraProduccionPage() {
   const fincaUnicaOperador = esOperador && fincasAsignadas.length === 1 ? fincasAsignadas[0] : null
 
   const [fincaSeleccionada, setFincaSeleccionada] = useState('')
-  const [vista, setVista] = useState<'escalera' | 'modelo' | 'importar'>('escalera')
+  const [vista, setVista] = useState<'escalera' | 'modelo' | 'comparativo' | 'importar'>('escalera')
 
   useEffect(() => {
     if (fincaUnicaOperador) {
@@ -86,6 +87,9 @@ export default function EscaleraProduccionPage() {
         <TabButton active={vista === 'modelo'} onClick={() => setVista('modelo')}>
           Modelo de cajas
         </TabButton>
+        <TabButton active={vista === 'comparativo'} onClick={() => setVista('comparativo')}>
+          Comparativo
+        </TabButton>
         <TabButton active={vista === 'importar'} onClick={() => setVista('importar')}>
           Importar Excel
         </TabButton>
@@ -93,6 +97,8 @@ export default function EscaleraProduccionPage() {
 
       {vista === 'importar' ? (
         <ImportarExcelTab fincasConocidas={fincasOrdenadas.map((f) => f.nombre)} />
+      ) : vista === 'comparativo' ? (
+        <ComparativoTab fincas={fincasOrdenadas} />
       ) : !finca ? (
         <p className="py-8 text-center text-sm text-gray-500">Selecciona una finca.</p>
       ) : vista === 'escalera' ? (
@@ -101,6 +107,129 @@ export default function EscaleraProduccionPage() {
         <ModeloCajasTab key={finca.nombre} finca={finca} />
       )}
     </div>
+  )
+}
+
+// ============================================================
+// Pestaña "Comparativo": cajas 20kg proyectadas por semana de COSECHA
+// (próximas 13 semanas), una fila por finca, con el mismo cálculo que la
+// pestaña "Escalera" (recobro objetivo + forma reciente, o el modelo manual
+// si la finca lo tiene) — para comparar y consolidar pedidos entre fincas,
+// no finca por finca. Cada fila dispara su propio `useEscaleraProduccion`
+// (mismo patrón de hook por finca que usan "Escalera" y "Modelo de cajas"),
+// y reporta sus valores al padre para la fila de totales.
+// ============================================================
+function ComparativoTab({ fincas }: { fincas: Finca[] }) {
+  const anioActual = getIsoYear(fechaLocalHoy())
+  const semanaActual = getIsoWeek(fechaLocalHoy())
+
+  const semanas = useMemo(() => {
+    const resultado: { anio: number; semana: number }[] = []
+    let cursor = sumarSemanas(anioActual, semanaActual, 1)
+    for (let i = 0; i < 13; i++) {
+      resultado.push(cursor)
+      cursor = sumarSemanas(cursor.anio, cursor.semana, 1)
+    }
+    return resultado
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anioActual, semanaActual])
+
+  const [porFinca, setPorFinca] = useState<Record<string, number[]>>({})
+
+  const reportar = useMemo(
+    () => (nombreFinca: string, valores: number[]) => {
+      setPorFinca((prev) => {
+        const anterior = prev[nombreFinca]
+        if (anterior && anterior.length === valores.length && anterior.every((v, i) => v === valores[i])) return prev
+        return { ...prev, [nombreFinca]: valores }
+      })
+    },
+    [],
+  )
+
+  const totalesPorSemana = semanas.map((_, i) => fincas.reduce((suma, f) => suma + (porFinca[f.nombre]?.[i] ?? 0), 0))
+  const totalGeneral = totalesPorSemana.reduce((suma, v) => suma + v, 0)
+
+  return (
+    <div>
+      <p className="mb-3 text-xs text-gray-400">
+        Cajas 20kg proyectadas por semana de cosecha, próximas 13 semanas, con el mismo cálculo que "Escalera" (recobro
+        objetivo ~97.5% y la forma de las últimas 2 cohortes de embolse completas, o el modelo manual de la finca si lo
+        tiene) — para comparar y sumar entre todas las fincas a la hora de sacar los pedidos.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="min-w-[1500px] border-collapse text-xs">
+          <thead>
+            <tr className="bg-gray-100 text-center text-gray-600">
+              <th className="sticky left-0 z-10 border border-gray-200 bg-gray-100 px-2 py-1.5 text-left font-semibold">Finca</th>
+              {semanas.map((s) => (
+                <th key={`${s.anio}_${s.semana}`} className="border border-gray-200 px-2 py-1.5 font-medium">
+                  {s.semana}/{s.anio}
+                </th>
+              ))}
+              <th className="border border-gray-200 px-2 py-1.5 font-semibold">Total 13 sem.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fincas.map((f) => (
+              <FilaComparativoFinca key={f.nombre} finca={f} semanas={semanas} onDatos={reportar} />
+            ))}
+            <tr className="bg-gray-50 font-semibold text-gray-700">
+              <td className="sticky left-0 z-10 border border-gray-200 bg-gray-50 px-2 py-1.5">Total</td>
+              {totalesPorSemana.map((t, i) => (
+                <td key={i} className="border border-gray-200 px-2 py-1.5 text-center">
+                  {t.toFixed(0)}
+                </td>
+              ))}
+              <td className="border border-gray-200 px-2 py-1.5 text-center">{totalGeneral.toFixed(0)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function FilaComparativoFinca({
+  finca,
+  semanas,
+  onDatos,
+}: {
+  finca: Finca
+  semanas: { anio: number; semana: number }[]
+  onDatos: (finca: string, valores: number[]) => void
+}) {
+  const { filas, ratioCajas20kgPorRacimo, loading } = useEscaleraProduccion(finca)
+
+  const porCosecha = useMemo(() => racimosPorSemanaCosecha(filas), [filas])
+  const valores = useMemo(
+    () => semanas.map((s) => (porCosecha.get(`${s.anio}_${s.semana}`) ?? 0) * ratioCajas20kgPorRacimo),
+    [porCosecha, semanas, ratioCajas20kgPorRacimo],
+  )
+
+  useEffect(() => {
+    if (!loading) onDatos(finca.nombre, valores)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, valores])
+
+  return (
+    <tr>
+      <td className="sticky left-0 z-10 border border-gray-200 bg-white px-2 py-1.5 font-medium text-gray-700">{finca.nombre}</td>
+      {loading
+        ? semanas.map((_, i) => (
+            <td key={i} className="border border-gray-200 px-2 py-1.5 text-center text-gray-300">
+              …
+            </td>
+          ))
+        : valores.map((v, i) => (
+            <td key={i} className="border border-gray-200 px-2 py-1.5 text-center text-gray-700">
+              {v.toFixed(0)}
+            </td>
+          ))}
+      <td className="border border-gray-200 px-2 py-1.5 text-center font-semibold text-gray-800">
+        {loading ? '…' : valores.reduce((s, v) => s + v, 0).toFixed(0)}
+      </td>
+    </tr>
   )
 }
 

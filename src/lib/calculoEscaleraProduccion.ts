@@ -270,3 +270,20 @@ export function calcularFilaEscalera(params: {
     esFilaReal: semanaYaOcurrida({ anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal }),
   }
 }
+
+/** Reagrupa los racimos de una escalera (indexada por semana de EMBOLSE) por
+ * su semana de COSECHA real — cada fila aporta a varias semanas de cosecha
+ * distintas, una por cada edad de su desglose. Sirve para proyectar cuántos
+ * racimos/cajas va a rendir una finca en una semana de cosecha dada, sin
+ * importar de qué cohorte(s) de embolse vienen (p. ej. para comparar varias
+ * fincas semana a semana). */
+export function racimosPorSemanaCosecha(filas: FilaEscalera[]): Map<string, number> {
+  const mapa = new Map<string, number>()
+  for (const f of filas) {
+    for (const d of f.desglose) {
+      const clave = `${d.anioCosecha}_${d.semanaCosecha}`
+      mapa.set(clave, (mapa.get(clave) ?? 0) + d.racimos)
+    }
+  }
+  return mapa
+}
