@@ -563,10 +563,10 @@ export async function exportRepiqueToExcel(
 }
 
 const columnasBaseTransporteUnidades = [
-  { header: 'Año', key: 'anio', width: 8 },
-  { header: 'Semana', key: 'semana', width: 10 },
-  { header: 'Día', key: 'dia', width: 12 },
-  { header: 'Finca', key: 'finca', width: 20 },
+  { header: 'Año', key: 'anio', width: 10 },
+  { header: 'Semana', key: 'semana', width: 12 },
+  { header: 'Día', key: 'dia', width: 14 },
+  { header: 'Finca', key: 'finca', width: 22 },
 ]
 
 /** Una fila por finca/fecha, con cada unidad planificada ese día en su
@@ -599,15 +599,19 @@ export async function exportTransporteUnidadesToExcel(filas: TransporteUnidad[],
 
   const columnasTransporteUnidades: { header: string; key: string; width?: number }[] = [...columnasBaseTransporteUnidades]
   for (let i = 1; i <= maxUnidades; i++) {
-    columnasTransporteUnidades.push({ header: `Hora de llegada unidad ${i}`, key: `llegada${i}`, width: 16 })
-    columnasTransporteUnidades.push({ header: `Hora de salida unidad ${i}`, key: `salida${i}`, width: 16 })
+    columnasTransporteUnidades.push({ header: `Hora de llegada unidad ${i}`, key: `llegada${i}`, width: 24 })
+    columnasTransporteUnidades.push({ header: `Hora de salida unidad ${i}`, key: `salida${i}`, width: 24 })
   }
-  columnasTransporteUnidades.push({ header: 'Observación', key: 'observacion', width: 40 })
+  columnasTransporteUnidades.push({ header: 'Observación', key: 'observacion', width: 45 })
 
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Transporte')
   sheet.columns = columnasTransporteUnidades.map((c) => ({ header: c.header, key: c.key, width: c.width }))
+  // Más alta y centrada para que el encabezado se lea completo y cómodo, no
+  // pegado al borde ni partido en dos líneas por un ancho justo.
+  sheet.getRow(1).height = 30
   sheet.getRow(1).font = { bold: true }
+  sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
   fijarEncabezadoYFiltro(sheet, columnasTransporteUnidades)
 
   for (const g of grupos) {
