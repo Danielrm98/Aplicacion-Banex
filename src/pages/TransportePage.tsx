@@ -203,6 +203,16 @@ function PlanTransporteAdmin({
 }) {
   const [agregando, setAgregando] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Al guardar el plan se deja de mostrar la lista completa de fincas (útil
+  // para armar el plan) y se pasa a mostrar solo las que de verdad tienen
+  // transporte programado hoy — no es una fila aparte en la base de datos,
+  // cada unidad ya se guarda sola al agregarla; esto es solo una vista de
+  // repaso. Vuelve a mostrarse completa si cambia la fecha.
+  const [planGuardado, setPlanGuardado] = useState(false)
+
+  useEffect(() => {
+    setPlanGuardado(false)
+  }, [fecha])
 
   async function agregarUnidad(finca: string, numero: number, tipo: string, cantidadPallets: number | null) {
     setAgregando(finca)
@@ -224,11 +234,33 @@ function PlanTransporteAdmin({
 
   if (loading) return <p className="py-4 text-center text-sm text-gray-500">Cargando...</p>
 
+  const fincasConPlan = fincas.filter((f) => filas.some((x) => x.finca === f.nombre))
+  const fincasAMostrar = planGuardado ? fincasConPlan : fincas
+
   return (
     <div>
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-gray-400">
+          {planGuardado
+            ? `Mostrando solo las ${fincasConPlan.length} finca(s) con transporte programado hoy.`
+            : 'Mostrando todas las fincas para armar el plan.'}
+        </p>
+        <button
+          onClick={() => setPlanGuardado((v) => !v)}
+          className="rounded-lg bg-banex-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700"
+        >
+          {planGuardado ? 'Editar plan (ver todas las fincas)' : 'Guardar plan'}
+        </button>
+      </div>
+
+      {planGuardado && fincasConPlan.length === 0 && (
+        <p className="py-4 text-center text-sm text-gray-500">Todavía no hay transporte programado para hoy.</p>
+      )}
+
       <div className="divide-y divide-gray-100">
-        {fincas.map((f) => {
+        {fincasAMostrar.map((f) => {
           const filasFinca = filas.filter((x) => x.finca === f.nombre)
           return (
             <div key={f.nombre} className="flex flex-wrap items-center gap-2 py-2.5">
