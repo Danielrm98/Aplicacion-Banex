@@ -20,7 +20,11 @@ export function useTransporteDia(fecha: string) {
 
   const refetch = useCallback(async () => {
     const { data, error } = await conCacheLocal<TransporteUnidad[]>(claveCache(fecha), () =>
-      supabase.from('transporte_unidades').select('*').eq('fecha', fecha).order('finca').order('numero_unidad'),
+      // order('created_at') al final para que, si una unidad se repite en la
+      // misma finca/fecha (varios recorridos), siempre queden en el orden en
+      // que se planificaron — así "viaje 1"/"viaje 2" (ver etiquetaUnidad) es
+      // estable entre una carga y otra.
+      supabase.from('transporte_unidades').select('*').eq('fecha', fecha).order('finca').order('numero_unidad').order('created_at'),
     )
 
     if (error) {

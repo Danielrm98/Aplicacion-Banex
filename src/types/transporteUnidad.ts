@@ -28,3 +28,14 @@ export type TransporteUnidadPlanInput = Pick<TransporteUnidad, 'finca' | 'fecha'
 export function transporteRegistrada(u: TransporteUnidad): boolean {
   return u.tipo !== null && u.hora_llegada !== null
 }
+
+/** Una unidad puede repetirse en la misma finca/fecha (varios recorridos en
+ * el día) — si se repite, numera el viaje para distinguirlas; si no, deja
+ * solo "Unidad N". `filasFinca` debe venir en el mismo orden en que se
+ * planificaron (por `created_at`, que es el orden que ya trae el hook). */
+export function etiquetaUnidad(filasFinca: TransporteUnidad[], fila: TransporteUnidad): string {
+  const mismaUnidad = filasFinca.filter((f) => f.numero_unidad === fila.numero_unidad)
+  if (mismaUnidad.length <= 1) return `Unidad ${fila.numero_unidad}`
+  const indice = mismaUnidad.findIndex((f) => f.id === fila.id)
+  return `Unidad ${fila.numero_unidad} (viaje ${indice + 1})`
+}

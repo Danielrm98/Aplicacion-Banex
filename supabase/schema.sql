@@ -1442,11 +1442,10 @@ create table public.transporte_unidades (
   sello_salida text,
   hora_llegada time,
   hora_salida time,
-  created_at timestamptz not null default now(),
-  -- Evita planificar la misma unidad dos veces en la misma finca el mismo
-  -- día; no bloquea que esa unidad también vaya a OTRA finca ese día (una
-  -- unidad puede hacer varios recorridos).
-  unique (finca, fecha, numero_unidad)
+  created_at timestamptz not null default now()
+  -- Sin unique: una misma unidad SÍ puede ir más de una vez a la misma
+  -- finca el mismo día (pocas veces, pero pasa — un camión hace dos
+  -- recorridos), y también puede ir a otras fincas ese mismo día.
 );
 
 create index transporte_unidades_finca_fecha_idx on public.transporte_unidades (finca, fecha desc);

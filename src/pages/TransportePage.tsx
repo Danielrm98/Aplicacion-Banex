@@ -7,7 +7,7 @@ import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useTransporteDia } from '../lib/useTransporteDia'
-import { UNIDADES_TRANSPORTE, transporteRegistrada, type TransporteUnidad } from '../types/transporteUnidad'
+import { UNIDADES_TRANSPORTE, etiquetaUnidad, transporteRegistrada, type TransporteUnidad } from '../types/transporteUnidad'
 import { TIPOS_TRANSPORTE } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
 import type { Finca } from '../types/finca'
@@ -157,8 +157,7 @@ function PlanTransporteAdmin({
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       <div className="divide-y divide-gray-100">
         {fincas.map((f) => {
-          const filasFinca = filas.filter((x) => x.finca === f.nombre).sort((a, b) => a.numero_unidad - b.numero_unidad)
-          const disponibles = UNIDADES_TRANSPORTE.filter((n) => !filasFinca.some((x) => x.numero_unidad === n))
+          const filasFinca = filas.filter((x) => x.finca === f.nombre)
           return (
             <div key={f.nombre} className="flex flex-wrap items-center gap-2 py-2.5">
               <span className="w-40 shrink-0 text-sm font-medium text-gray-700">{f.nombre}</span>
@@ -176,7 +175,7 @@ function PlanTransporteAdmin({
                         registrada ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-700'
                       }`}
                     >
-                      Unidad {fila.numero_unidad}
+                      {etiquetaUnidad(filasFinca, fila)}
                       <button
                         onClick={() => quitarUnidad(fila)}
                         className="rounded-full px-1 text-[10px] leading-none opacity-60 hover:opacity-100"
@@ -187,24 +186,24 @@ function PlanTransporteAdmin({
                     </span>
                   )
                 })}
-                {disponibles.length > 0 && (
-                  <select
-                    value=""
-                    disabled={agregando === f.nombre}
-                    onChange={(e) => {
-                      const numero = Number(e.target.value)
-                      if (numero) agregarUnidad(f.nombre, numero)
-                    }}
-                    className="rounded-full border border-dashed border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-500 focus:border-banex-500 focus:outline-none"
-                  >
-                    <option value="">+ Agregar unidad</option>
-                    {disponibles.map((n) => (
-                      <option key={n} value={n}>
-                        Unidad {n}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                {/* Sin filtrar: una unidad SÍ puede agregarse más de una vez a
+                    la misma finca el mismo día (varios recorridos). */}
+                <select
+                  value=""
+                  disabled={agregando === f.nombre}
+                  onChange={(e) => {
+                    const numero = Number(e.target.value)
+                    if (numero) agregarUnidad(f.nombre, numero)
+                  }}
+                  className="rounded-full border border-dashed border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-500 focus:border-banex-500 focus:outline-none"
+                >
+                  <option value="">+ Agregar unidad</option>
+                  {UNIDADES_TRANSPORTE.map((n) => (
+                    <option key={n} value={n}>
+                      Unidad {n}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           )
@@ -233,25 +232,28 @@ function RegistroTransporteFinca({
   refetch: () => Promise<void>
   escritura: boolean
 }) {
-  const filasFinca = useMemo(
-    () => filas.filter((f) => f.finca === finca.nombre).sort((a, b) => a.numero_unidad - b.numero_unidad),
-    [filas, finca.nombre],
-  )
+  // Filtrado por finca, en el mismo orden en que el hook las trae
+  // (finca, numero_unidad, created_at) — necesario para que etiquetaUnidad
+  // numere los "viajes" repetidos de forma estable.
+  const filasFinca = useMemo(() => filas.filter((f) => f.finca === finca.nombre), [filas, finca.nombre])
 
-  const [unidadSeleccionada, setUnidadSeleccionada] = useState<number | null>(filasFinca[0]?.numero_unidad ?? null)
+  // Se selecciona por `id` de fila, no por número de unidad: una misma
+  // unidad puede tener varias filas ese día (varios recorridos) y cada una
+  // se registra por separado.
+  const [filaSeleccionadaId, setFilaSeleccionadaId] = useState<string | null>(filasFinca[0]?.id ?? null)
 
   useEffect(() => {
     if (filasFinca.length === 0) {
-      setUnidadSeleccionada(null)
+      setFilaSeleccionadaId(null)
       return
     }
-    if (unidadSeleccionada === null || !filasFinca.some((f) => f.numero_unidad === unidadSeleccionada)) {
-      setUnidadSeleccionada(filasFinca[0].numero_unidad)
+    if (filaSeleccionadaId === null || !filasFinca.some((f) => f.id === filaSeleccionadaId)) {
+      setFilaSeleccionadaId(filasFinca[0].id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filasFinca])
 
-  const filaActual = filasFinca.find((f) => f.numero_unidad === unidadSeleccionada) ?? null
+  const filaActual = filasFinca.find((f) => f.id === filaSeleccionadaId) ?? null
 
   const [tipo, setTipo] = useState('')
   const [placa, setPlaca] = useState('')
@@ -315,17 +317,17 @@ function RegistroTransporteFinca({
       <div className="mb-4 flex flex-wrap gap-2">
         {filasFinca.map((f) => {
           const registrada = transporteRegistrada(f)
-          const activa = f.numero_unidad === unidadSeleccionada
+          const activa = f.id === filaSeleccionadaId
           return (
             <button
               key={f.id}
-              onClick={() => setUnidadSeleccionada(f.numero_unidad)}
+              onClick={() => setFilaSeleccionadaId(f.id)}
               title={registrada ? `${f.tipo} · ${f.placa ?? '—'}` : 'Pendiente de registrar'}
               className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                 registrada ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-700'
               } ${activa ? 'ring-2 ring-banex-500 ring-offset-1' : ''}`}
             >
-              Unidad {f.numero_unidad}
+              {etiquetaUnidad(filasFinca, f)}
             </button>
           )
         })}
