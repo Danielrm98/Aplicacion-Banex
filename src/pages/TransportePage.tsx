@@ -134,10 +134,12 @@ function PlanTransporteAdmin({
   const [agregando, setAgregando] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function agregarUnidad(finca: string, numero: number) {
+  async function agregarUnidad(finca: string, numero: number, tipo: string, cantidadPallets: number | null) {
     setAgregando(finca)
     setError(null)
-    const { error } = await supabase.from('transporte_unidades').insert({ finca, fecha, numero_unidad: numero, user_id: userId })
+    const { error } = await supabase
+      .from('transporte_unidades')
+      .insert({ finca, fecha, numero_unidad: numero, tipo, cantidad_pallets: cantidadPallets, user_id: userId })
     if (error) setError(error.message)
     else await refetch()
     setAgregando(null)
@@ -164,9 +166,10 @@ function PlanTransporteAdmin({
               <div className="flex flex-1 flex-wrap items-center gap-2">
                 {filasFinca.map((fila) => {
                   const registrada = transporteRegistrada(fila)
+                  const planificado = `${fila.tipo ?? 'sin tipo'} · ${fila.cantidad_pallets ?? '—'} pallets`
                   const detalle = registrada
-                    ? `${fila.tipo} · ${fila.placa ?? '—'} · llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
-                    : 'Pendiente de registrar'
+                    ? `${planificado} · ${fila.placa ?? '—'} · llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
+                    : `${planificado} · Pendiente de registrar llegada`
                   return (
                     <span
                       key={fila.id}
@@ -186,30 +189,82 @@ function PlanTransporteAdmin({
                     </span>
                   )
                 })}
-                {/* Sin filtrar: una unidad SÍ puede agregarse más de una vez a
-                    la misma finca el mismo día (varios recorridos). */}
-                <select
-                  value=""
-                  disabled={agregando === f.nombre}
-                  onChange={(e) => {
-                    const numero = Number(e.target.value)
-                    if (numero) agregarUnidad(f.nombre, numero)
-                  }}
-                  className="rounded-full border border-dashed border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-500 focus:border-banex-500 focus:outline-none"
-                >
-                  <option value="">+ Agregar unidad</option>
-                  {UNIDADES_TRANSPORTE.map((n) => (
-                    <option key={n} value={n}>
-                      Unidad {n}
-                    </option>
-                  ))}
-                </select>
+                <AgregarUnidadFinca finca={f.nombre} disabled={agregando === f.nombre} onAgregar={agregarUnidad} />
               </div>
             </div>
           )
         })}
       </div>
     </div>
+  )
+}
+
+// ============================================================
+// Mini-formulario para agregar una unidad al plan de una finca: el
+// administrador ya decide de una vez el número de unidad, si es Camión o
+// Contenedor, y cuántos pallets carga (para planear con anticipación
+// cuánta fruta preparar) — el operario solo confirma/ajusta el resto al
+// llegar la unidad.
+// ============================================================
+function AgregarUnidadFinca({
+  finca,
+  disabled,
+  onAgregar,
+}: {
+  finca: string
+  disabled: boolean
+  onAgregar: (finca: string, numero: number, tipo: string, cantidadPallets: number | null) => Promise<void>
+}) {
+  const [numero, setNumero] = useState('')
+  const [tipo, setTipo] = useState('')
+  const [pallets, setPallets] = useState('')
+
+  async function agregar() {
+    if (!numero || !tipo) return
+    await onAgregar(finca, Number(numero), tipo, pallets ? Number(pallets) : null)
+    setNumero('')
+    setTipo('')
+    setPallets('')
+  }
+
+  const selectClase =
+    'rounded-full border border-dashed border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 focus:border-banex-500 focus:outline-none disabled:opacity-50'
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <select value={numero} disabled={disabled} onChange={(e) => setNumero(e.target.value)} className={selectClase}>
+        <option value="">+ Unidad</option>
+        {UNIDADES_TRANSPORTE.map((n) => (
+          <option key={n} value={n}>
+            Unidad {n}
+          </option>
+        ))}
+      </select>
+      <select value={tipo} disabled={disabled} onChange={(e) => setTipo(e.target.value)} className={selectClase}>
+        <option value="">Tipo</option>
+        {TIPOS_TRANSPORTE.map((t) => (
+          <option key={t} value={t}>
+            {t === 'Camión' ? 'CAMIÓN' : 'CONTENEDOR'}
+          </option>
+        ))}
+      </select>
+      <input
+        type="number"
+        min={0}
+        placeholder="Pallets"
+        value={pallets}
+        disabled={disabled}
+        onChange={(e) => setPallets(e.target.value)}
+        className="w-20 rounded-full border border-dashed border-gray-300 bg-white px-2 py-1 text-xs text-gray-600 focus:border-banex-500 focus:outline-none disabled:opacity-50"
+      />
+      <button
+        onClick={agregar}
+        disabled={disabled || !numero || !tipo}
+        className="rounded-full bg-banex-600 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-40"
+      >
+        Agregar
+      </button>
+    </span>
   )
 }
 
@@ -334,6 +389,12 @@ function RegistroTransporteFinca({
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+
+      {filaActual?.cantidad_pallets != null && (
+        <p className="mb-3 text-sm text-gray-500">
+          Pallets planificados por el administrador: <span className="font-semibold text-gray-700">{filaActual.cantidad_pallets}</span>
+        </p>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">

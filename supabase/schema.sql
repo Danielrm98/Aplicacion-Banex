@@ -1436,6 +1436,9 @@ create table public.transporte_unidades (
   fecha date not null,
   numero_unidad integer not null check (numero_unidad >= 1),
   tipo text check (tipo in ('Contenedor', 'Camión')),
+  -- El administrador ya la decide al asignar la unidad (cuántos pallets va
+  -- a cargar), para planear con anticipación cuánta fruta preparar.
+  cantidad_pallets integer check (cantidad_pallets is null or cantidad_pallets >= 0),
   placa text,
   numero_contenedor text,
   sello_entrada text,

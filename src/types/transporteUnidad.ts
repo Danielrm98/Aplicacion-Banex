@@ -10,6 +10,7 @@ export interface TransporteUnidad {
   fecha: string
   numero_unidad: number
   tipo: (typeof TIPOS_TRANSPORTE)[number] | null
+  cantidad_pallets: number | null
   placa: string | null
   numero_contenedor: string | null
   sello_entrada: string | null
@@ -19,7 +20,7 @@ export interface TransporteUnidad {
   created_at: string
 }
 
-export type TransporteUnidadPlanInput = Pick<TransporteUnidad, 'finca' | 'fecha' | 'numero_unidad'>
+export type TransporteUnidadPlanInput = Pick<TransporteUnidad, 'finca' | 'fecha' | 'numero_unidad' | 'tipo' | 'cantidad_pallets'>
 
 /** Verde (ya se registró la llegada) solo cuando se sabe el tipo y se llenó
  * la hora de llegada/entrada — mientras falte cualquiera de los dos, queda
