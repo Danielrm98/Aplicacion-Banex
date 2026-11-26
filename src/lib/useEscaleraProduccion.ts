@@ -22,11 +22,14 @@ import type { Finca } from '../types/finca'
 
 const SEMANAS_ATRAS = 13
 const SEMANAS_ADELANTE = 13
-// Cuánto hacia atrás se busca la última cohorte de embolse ya completa
-// (con las 5 edades, 8-12, ya cosechadas) para tomar su recobro y su % por
-// edad reales — "lo que quedó la semana anterior" — como base de la
-// proyección.
+// Cuánto hacia atrás se busca cohortes de embolse ya completas (con las 5
+// edades, 8-12, ya cosechadas) para promediar su recobro y su % por edad
+// reales como base de la proyección.
 const SEMANAS_BUSQUEDA_RECOBRO = 40
+// Cuántas de esas cohortes completas, las más recientes, se promedian —
+// una sola semana puede ser atípica (una lluvia, un corte flojo); 3
+// suaviza eso sin diluirse en un promedio de todo el histórico.
+const COHORTES_PARA_PROMEDIO = 3
 // Recobro de respaldo si todavía no hay ninguna cohorte completa (finca
 // nueva, sin historial ni formulario diario cargado aún).
 const RECOBRO_RESPALDO = 0.85
@@ -153,14 +156,16 @@ export function useEscaleraProduccion(finca: Finca | null) {
     return h?.emb_real ?? null
   }
 
-  // "Lo que quedó la semana anterior": se busca hacia atrás la cohorte de
-  // embolse más reciente que ya tenga las 5 edades (8-12) cosechadas (no
-  // una a medias, que todavía podría subir) y se usa SU % real de racimos por
-  // edad (reescalado para incluir también el repique real de esa cohorte,
-  // igual que el Recobro de la página Recobro) como base para proyectar
-  // las cohortes futuras — tanto el nivel (recobro) como la forma (qué
-  // edades pesan más) quedan "parecidos a la semana anterior", no
-  // diluidos en un promedio de todo el histórico.
+  // Se busca hacia atrás hasta encontrar las últimas `COHORTES_PARA_PROMEDIO`
+  // cohortes de embolse ya completas (las 5 edades, 8-12, ya cosechadas —
+  // no una a medias, que todavía podría subir) y se agrupan (no se
+  // promedian sus % directamente: se suman sus racimos por edad y su
+  // embolsado, y se divide, para que una semana con más volumen pese más)
+  // para dar el % real de racimos por edad que se usa como base de la
+  // proyección — tanto el nivel (recobro) como la forma (qué edades pesan
+  // más) quedan parecidos al desempeño reciente, pero sin que una sola
+  // semana atípica (una lluvia, un corte flojo) descalibre toda la
+  // proyección hacia adelante.
   const modeloEsManual = modeloManual.length > 0
 
   const distribucionProyeccion = useMemo<DistribucionEdad>(() => {
@@ -179,27 +184,39 @@ export function useEscaleraProduccion(finca: Finca | null) {
     // cintaEmbolse.ts), así que empezar más atrás se saltaba cohortes más
     // recientes que ya estaban completas y terminaba usando una vieja.
     let cursor = { anio: anioActual, semana: semanaActual }
-    for (let i = 0; i < SEMANAS_BUSQUEDA_RECOBRO; i++) {
+    const cohortes: { embolsado: number; racimosPorEdad: number[]; repicado: number }[] = []
+    for (let i = 0; i < SEMANAS_BUSQUEDA_RECOBRO && cohortes.length < COHORTES_PARA_PROMEDIO; i++) {
       const embolsado = embolsadoDe(cursor.anio, cursor.semana)
       if (embolsado && embolsado > 0) {
         const racimosPorEdadCohorte = EDADES_COSECHA.map((edad) => racimosRealesDeEdad(cursor.anio, cursor.semana, edad))
         const todasReales = racimosPorEdadCohorte.every((v) => v !== undefined)
         if (todasReales) {
-          const cosechado = racimosPorEdadCohorte.reduce((suma, v) => suma + (v ?? 0), 0)
-          const repicado = repicadoPorSemanaEmbolse.get(`${cursor.anio}_${cursor.semana}`) ?? 0
-          // Factor para que la distribución, al sumarla, dé el recobro
-          // completo (cosechado + repicado) y no solo lo cosechado —
-          // conserva la forma real por edad, solo ajusta el nivel.
-          const factorRepique = cosechado > 0 ? (cosechado + repicado) / cosechado : 1
-          const resultado = {} as DistribucionEdad
-          EDADES_COSECHA.forEach((edad, i2) => {
-            resultado[edad] = ((racimosPorEdadCohorte[i2] ?? 0) / embolsado) * factorRepique
+          cohortes.push({
+            embolsado,
+            racimosPorEdad: racimosPorEdadCohorte.map((v) => v ?? 0),
+            repicado: repicadoPorSemanaEmbolse.get(`${cursor.anio}_${cursor.semana}`) ?? 0,
           })
-          return resultado
         }
       }
       cursor = sumarSemanas(cursor.anio, cursor.semana, -1)
     }
+
+    if (cohortes.length > 0) {
+      const totalEmbolsado = cohortes.reduce((suma, c) => suma + c.embolsado, 0)
+      const totalRepicado = cohortes.reduce((suma, c) => suma + c.repicado, 0)
+      const totalPorEdad = EDADES_COSECHA.map((_, i) => cohortes.reduce((suma, c) => suma + c.racimosPorEdad[i], 0))
+      const totalCosechado = totalPorEdad.reduce((suma, v) => suma + v, 0)
+      // Factor para que la distribución, al sumarla, dé el recobro completo
+      // (cosechado + repicado) y no solo lo cosechado — conserva la forma
+      // real por edad, solo ajusta el nivel.
+      const factorRepique = totalCosechado > 0 ? (totalCosechado + totalRepicado) / totalCosechado : 1
+      const resultado = {} as DistribucionEdad
+      EDADES_COSECHA.forEach((edad, i) => {
+        resultado[edad] = (totalPorEdad[i] / totalEmbolsado) * factorRepique
+      })
+      return resultado
+    }
+
     // Respaldo: forma del histórico importado (si lo hay) escalada al
     // recobro típico de respaldo; si tampoco hay histórico, la curva fija.
     const forma = calcularDistribucionRespaldo(cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })))
