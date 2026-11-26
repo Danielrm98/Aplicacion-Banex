@@ -6,7 +6,8 @@ import { useFincas } from '../lib/useFincas'
 import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import { fechaLocalHoy } from '../lib/fechaLocal'
-import { useTransporteDia } from '../lib/useTransporteDia'
+import { useTransporteDia, obtenerTransporteEntreFechas } from '../lib/useTransporteDia'
+import { exportTransporteUnidadesToExcel } from '../lib/exportUtils'
 import { UNIDADES_TRANSPORTE, detalleUnidad, etiquetaUnidad, transporteRegistrada, type TransporteUnidad } from '../types/transporteUnidad'
 import { TIPOS_TRANSPORTE } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
@@ -80,6 +81,13 @@ export default function TransportePage() {
         </div>
       )}
 
+      {esAdmin && (
+        <div className="mb-8 rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+          <SectionHeading>Exportar</SectionHeading>
+          <ExportarTransporteExcel />
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
         <SectionHeading>Registrar llegada</SectionHeading>
         {!fincaUnicaOperador && (
@@ -107,6 +115,68 @@ export default function TransportePage() {
           <RegistroTransporteFinca key={`${finca.nombre}_${fecha}`} finca={finca} fecha={fecha} filas={filas} refetch={refetch} escritura={escritura} />
         )}
       </div>
+    </div>
+  )
+}
+
+// ============================================================
+// Exporta a Excel todo lo registrado en un rango de fechas: una fila por
+// finca/día (Año, Semana, Día, Finca, llegada/salida de cada unidad ese
+// día, Observación) — mismo esquema que ya usa el libro de "Reportes" para
+// el transporte capturado en Registrar, aplicado a este menú.
+// ============================================================
+function ExportarTransporteExcel() {
+  const hoy = fechaLocalHoy()
+  const [desde, setDesde] = useState(`${hoy.slice(0, 7)}-01`)
+  const [hasta, setHasta] = useState(hoy)
+  const [exportando, setExportando] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function exportar() {
+    setExportando(true)
+    setError(null)
+    try {
+      const filas = await obtenerTransporteEntreFechas(desde, hasta)
+      if (filas.length === 0) {
+        setError('No hay nada registrado en ese rango de fechas.')
+        return
+      }
+      await exportTransporteUnidadesToExcel(filas, `transporte_${desde}_a_${hasta}.xlsx`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo exportar.')
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <label className="text-sm">
+        <span className="mb-1 block text-gray-600">Desde</span>
+        <input
+          type="date"
+          value={desde}
+          onChange={(e) => setDesde(e.target.value)}
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+        />
+      </label>
+      <label className="text-sm">
+        <span className="mb-1 block text-gray-600">Hasta</span>
+        <input
+          type="date"
+          value={hasta}
+          onChange={(e) => setHasta(e.target.value)}
+          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-900 focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20"
+        />
+      </label>
+      <button
+        onClick={exportar}
+        disabled={exportando}
+        className="rounded-lg bg-banex-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700 disabled:opacity-50"
+      >
+        {exportando ? 'Exportando...' : 'Exportar Excel'}
+      </button>
+      {error && <span className="text-sm text-red-600">{error}</span>}
     </div>
   )
 }

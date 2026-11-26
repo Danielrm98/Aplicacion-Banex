@@ -5,9 +5,10 @@ import { resumenPorDiaFinca, type FilaCompleta, type FilaProduccion, type Resume
 import type { Produccion } from '../types/produccion'
 import type { Finca } from '../types/finca'
 import type { VentaCanastilla } from '../types/ventaCanastilla'
+import type { TransporteUnidad } from '../types/transporteUnidad'
 import { diaSemana } from './diaSemana'
 import { posicionFinca } from './ordenFincas'
-import { anioDeSemana } from './isoWeek'
+import { anioDeSemana, getIsoWeek, getIsoYear } from './isoWeek'
 import { ESTILO_CINTA, type ColorCinta } from './cintaEmbolse'
 
 function nombreCinta(color: ColorCinta): string {
@@ -556,6 +557,76 @@ export async function exportRepiqueToExcel(
 
   sheet.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: encabezados.length } }
   sheet.views = [{ state: 'frozen', xSplit: 1, ySplit: 3 }]
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)
+}
+
+const columnasBaseTransporteUnidades = [
+  { header: 'Año', key: 'anio', width: 8 },
+  { header: 'Semana', key: 'semana', width: 10 },
+  { header: 'Día', key: 'dia', width: 12 },
+  { header: 'Finca', key: 'finca', width: 20 },
+]
+
+/** Una fila por finca/fecha, con cada unidad planificada ese día en su
+ * propia pareja de columnas (llegada/salida), en el orden en que llegaron
+ * (no por número de unidad: si una unidad repitió viaje ese día, cada viaje
+ * cae en su propia columna igual que una unidad distinta) — mismo esquema
+ * que ya usa `agregarHojaTransporte` para el transporte capturado en el
+ * formulario diario de Registrar, aplicado ahora al menú "Transporte". */
+export async function exportTransporteUnidadesToExcel(filas: TransporteUnidad[], filename = 'transporte.xlsx') {
+  const porFincaFecha = new Map<string, TransporteUnidad[]>()
+  for (const f of filas) {
+    const clave = `${f.finca}::${f.fecha}`
+    const lista = porFincaFecha.get(clave) ?? []
+    lista.push(f)
+    porFincaFecha.set(clave, lista)
+  }
+
+  const grupos = [...porFincaFecha.entries()]
+    .map(([clave, lista]) => {
+      const [finca, fecha] = clave.split('::')
+      return {
+        finca,
+        fecha,
+        lista: [...lista].sort((a, b) => (a.hora_llegada ?? '99:99:99').localeCompare(b.hora_llegada ?? '99:99:99')),
+      }
+    })
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || posicionFinca(a.finca) - posicionFinca(b.finca))
+
+  const maxUnidades = grupos.reduce((max, g) => Math.max(max, g.lista.length), 0)
+
+  const columnasTransporteUnidades: { header: string; key: string; width?: number }[] = [...columnasBaseTransporteUnidades]
+  for (let i = 1; i <= maxUnidades; i++) {
+    columnasTransporteUnidades.push({ header: `Hora de llegada unidad ${i}`, key: `llegada${i}`, width: 16 })
+    columnasTransporteUnidades.push({ header: `Hora de salida unidad ${i}`, key: `salida${i}`, width: 16 })
+  }
+  columnasTransporteUnidades.push({ header: 'Observación', key: 'observacion', width: 40 })
+
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Transporte')
+  sheet.columns = columnasTransporteUnidades.map((c) => ({ header: c.header, key: c.key, width: c.width }))
+  sheet.getRow(1).font = { bold: true }
+  fijarEncabezadoYFiltro(sheet, columnasTransporteUnidades)
+
+  for (const g of grupos) {
+    const fila: Record<string, string | number> = {
+      anio: getIsoYear(g.fecha),
+      semana: getIsoWeek(g.fecha),
+      dia: diaSinTilde(diaSemana(g.fecha)).toUpperCase(),
+      finca: g.finca,
+    }
+    g.lista.forEach((u, i) => {
+      fila[`llegada${i + 1}`] = horaCorta(u.hora_llegada)
+      fila[`salida${i + 1}`] = horaCorta(u.hora_salida)
+    })
+    fila.observacion = g.lista
+      .map((u) => u.observaciones)
+      .filter((o): o is string => !!o)
+      .join(' / ')
+    sheet.addRow(fila)
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   downloadBlob(new Blob([buffer], { type: 'application/octet-stream' }), filename)

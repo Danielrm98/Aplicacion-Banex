@@ -51,3 +51,21 @@ export function useTransporteDia(fecha: string) {
 
   return { filas, loading, error, refetch }
 }
+
+/** Trae de una sola vez todo lo registrado entre dos fechas (sin caché local
+ * ni paginación por página de 1000: un rango como "este mes" para una
+ * flota de 4 unidades y ~15 fincas no se acerca a ese límite) — solo para
+ * el botón "Exportar Excel", no para pintar la pantalla. */
+export async function obtenerTransporteEntreFechas(desde: string, hasta: string): Promise<TransporteUnidad[]> {
+  const { data, error } = await supabase
+    .from('transporte_unidades')
+    .select('*')
+    .gte('fecha', desde)
+    .lte('fecha', hasta)
+    .order('finca')
+    .order('fecha')
+    .order('numero_unidad')
+    .order('created_at')
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
