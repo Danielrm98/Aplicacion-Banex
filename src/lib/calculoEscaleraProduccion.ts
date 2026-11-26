@@ -135,15 +135,28 @@ export interface FilaEscalera {
 /**
  * Arma una fila de la escalera para una semana de embolse. El embolse usa
  * el dato real si ya existe, o se proyecta con `proyectarValorEstacional`.
- * Cada una de las 5 edades (8-12) cae en su propia semana de cosecha
- * (embolse + edad): si ya hay un dato real (formulario diario de Registrar,
- * o la semilla histórica) se usa tal cual; si no, se proyecta con
- * `distribucionProyeccion` — el % real de racimos por edad (y por lo tanto
- * el recobro) de la última cohorte de embolse ya completa, "lo que quedó
- * la semana anterior" (no un promedio de todo el histórico, para que la
- * proyección responda al desempeño actual). El Recobro final de cada fila
- * es siempre (racimos cosechados + repicado real) ÷ embolsado — misma
- * fórmula que ya usa la página Recobro.
+ *
+ * Las edades (8-12) NO se proyectan cada una por separado: un racimo
+ * embolsado siempre se reporta cosechado dentro de las 12 semanas (lo que
+ * no se reporta es una novedad interna puntual, no la norma), así que el
+ * recobro de una fila siempre tiende a `recobroObjetivo` (97-98%, igual
+ * que en el Excel, que calcula el % de la última edad como lo que falta
+ * para llegar a un recobro fijo, no como un valor independiente). Por eso
+ * aquí: lo que YA es real (formulario diario de Registrar, o la semilla
+ * histórica) se deja tal cual, nunca se toca; lo que falta se reparte
+ * entre las edades todavía sin dato, según la FORMA de `distribucionProyeccion`
+ * (de dónde pesan más las edades recientes — su escala absoluta no
+ * importa, solo la proporción relativa entre las edades pendientes), de
+ * modo que el total de la fila (reales + repartido) cierre en
+ * `recobroObjetivo`. Si una fila ya está completamente real, su recobro es
+ * el que sea — nunca se fuerza al objetivo.
+ *
+ * Excepción: si `distribucionProyeccion` viene de un modelo MANUAL (el
+ * administrador la modeló a mano, pestaña "Modelo de cajas"), se respeta
+ * literalmente edad por edad (racimos = embolsado × %), sin reajustarla al
+ * objetivo — ahí el administrador quiere control total de cada %, igual
+ * que en la vista previa de esa pestaña, no que la app reescale lo que
+ * escribió.
  */
 export function calcularFilaEscalera(params: {
   anioEmbolse: number
@@ -152,6 +165,8 @@ export function calcularFilaEscalera(params: {
   embolseRealDeEstaSemana: number | null
   serieBellPorHa: PuntoSerie[]
   distribucionProyeccion: DistribucionEdad
+  distribucionEsManual: boolean
+  recobroObjetivo: number
   racimosRealesDeEdad: (anio: number, semana: number, edad: EdadCosecha) => number | undefined
   repicadoReal: (anio: number, semana: number) => number | undefined
   semanaYaOcurrida: (semana: SemanaReal) => boolean
@@ -163,6 +178,8 @@ export function calcularFilaEscalera(params: {
     embolseRealDeEstaSemana,
     serieBellPorHa,
     distribucionProyeccion,
+    distribucionEsManual,
+    recobroObjetivo,
     racimosRealesDeEdad,
     repicadoReal,
     semanaYaOcurrida,
@@ -173,26 +190,44 @@ export function calcularFilaEscalera(params: {
     esEmbolseReal && hectareas ? embolseRealDeEstaSemana! / hectareas : proyectarValorEstacional(serieBellPorHa, anioEmbolse, semanaEmbolse)
   const embolseReal = esEmbolseReal ? embolseRealDeEstaSemana! : bellPorHa * (hectareas ?? 0)
 
-  const desglose: DesgloseEdad[] = EDADES_COSECHA.map((edad) => {
+  // 1. Qué edades ya son reales, y el repique real (si ya se sabe).
+  const parcial = EDADES_COSECHA.map((edad) => ({
+    edad,
+    real: racimosRealesDeEdad(anioEmbolse, semanaEmbolse, edad),
+  }))
+  const repicadoRealValor = repicadoReal(anioEmbolse, semanaEmbolse)
+  const repicado = repicadoRealValor ?? 0
+
+  // 2. Cuánto del objetivo ya está cubierto por datos reales, y cuánto
+  // queda por repartir entre las edades todavía sin reportar.
+  const porcentajeRealConocido =
+    embolseReal > 0
+      ? parcial.reduce((suma, p) => suma + (p.real !== undefined ? p.real / embolseReal : 0), 0) +
+        (repicadoRealValor !== undefined ? repicadoRealValor / embolseReal : 0)
+      : 0
+  const edadesPendientes = parcial.filter((p) => p.real === undefined).map((p) => p.edad)
+  const presupuestoPendiente = Math.max(0, recobroObjetivo - porcentajeRealConocido)
+  const pesoPendientes = edadesPendientes.reduce((suma, edad) => suma + distribucionProyeccion[edad], 0)
+
+  const desglose: DesgloseEdad[] = parcial.map(({ edad, real }) => {
     // Semana de cosecha que se MUESTRA para esta edad (solo referencia —
-    // la búsqueda del dato real de abajo no depende de este cálculo). Se
+    // la búsqueda del dato real de arriba no depende de este cálculo). Se
     // usa "embolse + edad" tal cual, igual que Año Cos/Sem Cos en el Excel
-    // (Año Emb + edad promedio, sin restar nada): semanaEmbolseDeEdad en
-    // cintaEmbolse.ts resta 1 porque resuelve algo distinto (a qué semana
-    // de EMBOLSE pertenece un racimo repicado ESTA semana, con la cinta ya
-    // corrida); no aplica aquí, donde se va hacia adelante desde el
-    // embolse, no hacia atrás desde el reporte.
+    // (Año Emb + edad promedio, sin restar nada).
     const { anio: anioCosecha, semana: semanaCosecha } = sumarSemanas(anioEmbolse, semanaEmbolse, edad)
-    // OJO: la búsqueda del dato real es por semana de EMBOLSE (no de
-    // cosecha) — así quedan indexados tanto el dato en vivo como el
-    // histórico en useEscaleraProduccion.
-    const real = racimosRealesDeEdad(anioEmbolse, semanaEmbolse, edad)
     const esReal = real !== undefined
-    // distribucionProyeccion ya es el % real de embolsado (no normalizado a
-    // sumar 1): embolseReal × esa fracción da directamente el racimo
-    // proyectado para esa edad, con el mismo nivel y forma de la última
-    // semana real completa.
-    const racimos = esReal ? (real as number) : embolseReal * distribucionProyeccion[edad]
+    let racimos: number
+    if (esReal) {
+      racimos = real as number
+    } else if (distribucionEsManual) {
+      racimos = embolseReal * distribucionProyeccion[edad]
+    } else if (pesoPendientes > 0) {
+      racimos = embolseReal * presupuestoPendiente * (distribucionProyeccion[edad] / pesoPendientes)
+    } else {
+      // Ninguna de las edades pendientes tiene peso en la forma reciente
+      // (caso raro): se reparte el presupuesto en partes iguales entre ellas.
+      racimos = edadesPendientes.length > 0 ? (embolseReal * presupuestoPendiente) / edadesPendientes.length : 0
+    }
     return {
       edad,
       anioCosecha,
@@ -204,7 +239,6 @@ export function calcularFilaEscalera(params: {
   })
 
   const racimosCosechados = desglose.reduce((suma, d) => suma + d.racimos, 0)
-  const repicado = repicadoReal(anioEmbolse, semanaEmbolse) ?? 0
   const recobro = embolseReal > 0 ? (racimosCosechados + repicado) / embolseReal : 0
   const porcentajeRepique = embolseReal > 0 ? repicado / embolseReal : 0
 

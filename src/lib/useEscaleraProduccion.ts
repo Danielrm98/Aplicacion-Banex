@@ -30,33 +30,16 @@ const SEMANAS_BUSQUEDA_RECOBRO = 40
 // una sola semana puede ser atípica (una lluvia, un corte flojo); 2
 // suaviza eso sin diluirse en un promedio de todo el histórico.
 const COHORTES_PARA_PROMEDIO = 2
-// Piso del recobro proyectado: un racimo embolsado SIEMPRE se tiene que
-// reportar cosechado dentro de las 12 semanas (lo que no se reporta en ese
-// plazo es por una novedad interna puntual de la finca, no la norma), así
-// que el margen normal de recobro es 97-98% — la proyección de la semana
-// siguiente (la que se usa para sacar los pedidos a las fincas, una semana
-// antes) no puede salir por debajo de eso aunque el promedio reciente esté
-// más bajo — es mejor pedir de más que quedarse corto. Esto NO afecta a lo
-// que ya es real (una semana ya cosechada muestra su recobro real, sea el
-// que sea, nunca se le aplica este piso).
-const PISO_RECOBRO_PROYECTADO = 0.97
-// Recobro de respaldo si todavía no hay ninguna cohorte completa (finca
-// nueva, sin historial ni formulario diario cargado aún) — por debajo del
-// piso de todas formas, así que en la práctica el piso es el que manda.
-const RECOBRO_RESPALDO = 0.85
-
-/** Si la distribución suma menos que `piso`, la reescala completa (sin
- * cambiar la forma entre edades) para que sume exactamente el piso. Se usa
- * solo en el cálculo automático; un modelo manual del administrador nunca
- * se toca, aunque esté por debajo del piso a propósito. */
-function aplicarPisoRecobro(distribucion: DistribucionEdad, piso: number): DistribucionEdad {
-  const suma = EDADES_COSECHA.reduce((s, edad) => s + distribucion[edad], 0)
-  if (suma <= 0 || suma >= piso) return distribucion
-  const factor = piso / suma
-  const resultado = {} as DistribucionEdad
-  for (const edad of EDADES_COSECHA) resultado[edad] = distribucion[edad] * factor
-  return resultado
-}
+// Objetivo de recobro al que SIEMPRE cierra una fila que todavía tiene
+// edades sin reportar: un racimo embolsado SIEMPRE se tiene que reportar
+// cosechado dentro de las 12 semanas (lo que no se reporta en ese plazo es
+// por una novedad interna puntual de la finca, no la norma), así que el
+// margen normal de recobro es 97-98%. Igual que en el Excel: no se proyecta
+// cada edad por separado, se fija este total y lo que falta por cosechar
+// se reparte entre las edades aún sin dato para completarlo. Esto NO afecta
+// a lo que ya es real (una edad ya cosechada muestra su dato real, sea el
+// que sea, nunca se ajusta).
+const RECOBRO_OBJETIVO = 0.975
 
 /** Arma la escalera de producción de una finca: semana de embolse → semana
  * de cosecha, con lo real ya cargado (embolses de la app + semilla
@@ -202,18 +185,18 @@ export function useEscaleraProduccion(finca: Finca | null) {
   // no una a medias, que todavía podría subir) y se agrupan (no se
   // promedian sus % directamente: se suman sus racimos por edad y su
   // embolsado, y se divide, para que una semana con más volumen pese más)
-  // para dar el % real de racimos por edad que se usa como base de la
-  // proyección — con un piso (PISO_RECOBRO_PROYECTADO): esta proyección
-  // sirve para sacar los pedidos a las fincas una semana antes, así que no
-  // puede salir más baja que eso. Tanto el nivel (recobro) como la forma
-  // (qué edades pesan más) quedan parecidos al desempeño reciente, pero sin
-  // que una sola semana atípica (una lluvia, un corte flojo) descalibre
-  // toda la proyección hacia adelante.
+  // para dar la FORMA (qué edades pesan más entre sí) que se usa para
+  // repartir, en cada fila, lo que todavía falta por cosechar hasta llegar
+  // a RECOBRO_OBJETIVO (ver calcularFilaEscalera) — el nivel final de cada
+  // fila no lo pone esta forma, lo pone el objetivo fijo, igual que en el
+  // Excel. Por eso esta distribución no necesita sumar nada en particular:
+  // solo importa la proporción relativa entre edades.
   const modeloEsManual = modeloManual.length > 0
 
   const distribucionProyeccion = useMemo<DistribucionEdad>(() => {
     // Si el administrador ya modeló a mano el % por edad de esta finca, se
-    // usa tal cual — tiene prioridad sobre el cálculo automático.
+    // usa tal cual (como forma relativa) — tiene prioridad sobre el cálculo
+    // automático.
     if (modeloManual.length > 0) {
       const resultado = {} as DistribucionEdad
       for (const edad of EDADES_COSECHA) resultado[edad] = 0
@@ -227,18 +210,14 @@ export function useEscaleraProduccion(finca: Finca | null) {
     // cintaEmbolse.ts), así que empezar más atrás se saltaba cohortes más
     // recientes que ya estaban completas y terminaba usando una vieja.
     let cursor = { anio: anioActual, semana: semanaActual }
-    const cohortes: { embolsado: number; racimosPorEdad: number[]; repicado: number }[] = []
+    const cohortes: { embolsado: number; racimosPorEdad: number[] }[] = []
     for (let i = 0; i < SEMANAS_BUSQUEDA_RECOBRO && cohortes.length < COHORTES_PARA_PROMEDIO; i++) {
       const embolsado = embolsadoDe(cursor.anio, cursor.semana)
       if (embolsado && embolsado > 0) {
         const racimosPorEdadCohorte = EDADES_COSECHA.map((edad) => racimosRealesDeEdad(cursor.anio, cursor.semana, edad))
         const todasReales = racimosPorEdadCohorte.every((v) => v !== undefined)
         if (todasReales) {
-          cohortes.push({
-            embolsado,
-            racimosPorEdad: racimosPorEdadCohorte.map((v) => v ?? 0),
-            repicado: repicadoPorSemanaEmbolse.get(`${cursor.anio}_${cursor.semana}`) ?? 0,
-          })
+          cohortes.push({ embolsado, racimosPorEdad: racimosPorEdadCohorte.map((v) => v ?? 0) })
         }
       }
       cursor = sumarSemanas(cursor.anio, cursor.semana, -1)
@@ -246,42 +225,19 @@ export function useEscaleraProduccion(finca: Finca | null) {
 
     if (cohortes.length > 0) {
       const totalEmbolsado = cohortes.reduce((suma, c) => suma + c.embolsado, 0)
-      const totalRepicado = cohortes.reduce((suma, c) => suma + c.repicado, 0)
       const totalPorEdad = EDADES_COSECHA.map((_, i) => cohortes.reduce((suma, c) => suma + c.racimosPorEdad[i], 0))
-      const totalCosechado = totalPorEdad.reduce((suma, v) => suma + v, 0)
-      // Factor para que la distribución, al sumarla, dé el recobro completo
-      // (cosechado + repicado) y no solo lo cosechado — conserva la forma
-      // real por edad, solo ajusta el nivel.
-      const factorRepique = totalCosechado > 0 ? (totalCosechado + totalRepicado) / totalCosechado : 1
       const resultado = {} as DistribucionEdad
       EDADES_COSECHA.forEach((edad, i) => {
-        resultado[edad] = (totalPorEdad[i] / totalEmbolsado) * factorRepique
+        resultado[edad] = totalPorEdad[i] / totalEmbolsado
       })
-      return aplicarPisoRecobro(resultado, PISO_RECOBRO_PROYECTADO)
+      return resultado
     }
 
-    // Respaldo: forma del histórico importado (si lo hay) escalada al
-    // recobro típico de respaldo; si tampoco hay histórico, la curva fija.
-    const forma = calcularDistribucionRespaldo(cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })))
-    const resultado = {} as DistribucionEdad
-    for (const edad of EDADES_COSECHA) resultado[edad] = forma[edad] * RECOBRO_RESPALDO
-    return aplicarPisoRecobro(resultado, PISO_RECOBRO_PROYECTADO)
+    // Respaldo: forma del histórico importado (si lo hay); si tampoco hay
+    // histórico, la curva fija.
+    return calcularDistribucionRespaldo(cosechaEdadHistorica.map((f) => ({ edad_semanas: f.edad_semanas, racimos: f.racimos })))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    modeloManual,
-    anioActual,
-    semanaActual,
-    embolseRealPorSemana,
-    historico,
-    racimosRealesDeEdad,
-    repicadoPorSemanaEmbolse,
-    cosechaEdadHistorica,
-  ])
-
-  const recobroProyectado = useMemo(
-    () => EDADES_COSECHA.reduce((suma, edad) => suma + distribucionProyeccion[edad], 0),
-    [distribucionProyeccion],
-  )
+  }, [modeloManual, anioActual, semanaActual, embolseRealPorSemana, historico, racimosRealesDeEdad, cosechaEdadHistorica])
 
   const filas = useMemo<FilaEscalera[]>(() => {
     if (!finca) return []
@@ -306,6 +262,8 @@ export function useEscaleraProduccion(finca: Finca | null) {
           embolseRealDeEstaSemana: embolsadoDe(cursor.anio, cursor.semana),
           serieBellPorHa,
           distribucionProyeccion,
+          distribucionEsManual: modeloEsManual,
+          recobroObjetivo: RECOBRO_OBJETIVO,
           racimosRealesDeEdad,
           repicadoReal,
           semanaYaOcurrida,
@@ -318,6 +276,7 @@ export function useEscaleraProduccion(finca: Finca | null) {
   }, [
     finca,
     distribucionProyeccion,
+    modeloEsManual,
     racimosRealesDeEdad,
     repicadoPorSemanaEmbolse,
     embolseRealPorSemana,
@@ -339,7 +298,7 @@ export function useEscaleraProduccion(finca: Finca | null) {
     ratioCortaPorRacimo,
     ratioPremiumPorRacimo,
     metricasPorSemana,
-    recobroProyectado,
+    recobroObjetivo: RECOBRO_OBJETIVO,
     distribucionProyeccion,
     modeloEsManual,
     refetchModelo,

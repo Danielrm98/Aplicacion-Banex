@@ -118,7 +118,7 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
     ratioCortaPorRacimo,
     ratioPremiumPorRacimo,
     metricasPorSemana,
-    recobroProyectado,
+    recobroObjetivo,
     loading,
     anioActual,
     semanaActual,
@@ -152,10 +152,11 @@ function EscaleraTabla({ finca }: { finca: Finca }) {
   return (
     <div>
       <p className="mb-3 text-xs text-gray-400">
-        Semana actual: {semanaActual}/{anioActual}. Proyección con el recobro real de las últimas 2 cohortes de embolse
-        ya completas (Racimos cosechados + Repicados ÷ Embolsado, igual que en "Recobro"), con un piso de 97% (un racimo
-        siempre se reporta dentro de las 12 semanas):{' '}
-        <span className="font-semibold text-gray-600">{(recobroProyectado * 100).toFixed(0)}%</span>, y el ratio cajas
+        Semana actual: {semanaActual}/{anioActual}. Lo ya real (formulario diario de Registrar, o la semilla histórica)
+        nunca se toca; lo que falta por cosechar se reparte entre las edades aún sin dato, con la forma de las últimas 2
+        cohortes de embolse ya completas, para que cada fila cierre en el recobro objetivo (un racimo siempre se reporta
+        dentro de las 12 semanas):{' '}
+        <span className="font-semibold text-gray-600">{(recobroObjetivo * 100).toFixed(1)}%</span>, y el ratio cajas
         20kg/racimo de las últimas ~12 semanas: <span className="font-semibold text-gray-600">{ratioCajas20kgPorRacimo.toFixed(3)}</span>.
         Columnas en <span className="font-semibold text-green-700">verde</span> = dato real; en{' '}
         <span className="font-semibold text-cyan-700">celeste</span> = proyección.
