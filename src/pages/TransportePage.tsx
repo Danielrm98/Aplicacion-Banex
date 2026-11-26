@@ -16,6 +16,23 @@ import type { Finca } from '../types/finca'
 const inputClase =
   'w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 transition-colors focus:border-banex-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-banex-500/20 disabled:cursor-not-allowed disabled:opacity-60'
 
+function leerPlanGuardado(fecha: string): boolean {
+  try {
+    return localStorage.getItem(`approban_transporte_plan_guardado_${fecha}`) === '1'
+  } catch {
+    return false
+  }
+}
+
+function guardarPlanGuardado(fecha: string, guardado: boolean) {
+  try {
+    if (guardado) localStorage.setItem(`approban_transporte_plan_guardado_${fecha}`, '1')
+    else localStorage.removeItem(`approban_transporte_plan_guardado_${fecha}`)
+  } catch {
+    // localStorage no disponible: simplemente no se recuerda entre visitas
+  }
+}
+
 export default function TransportePage() {
   const { session } = useAuth()
   const { perfil, fincas: fincasAsignadas } = usePerfil()
@@ -207,12 +224,20 @@ function PlanTransporteAdmin({
   // para armar el plan) y se pasa a mostrar solo las que de verdad tienen
   // transporte programado hoy — no es una fila aparte en la base de datos,
   // cada unidad ya se guarda sola al agregarla; esto es solo una vista de
-  // repaso. Vuelve a mostrarse completa si cambia la fecha.
-  const [planGuardado, setPlanGuardado] = useState(false)
+  // repaso. Se recuerda por fecha (localStorage), para que al volver a un
+  // día que ya se había "guardado" siga mostrando solo esas fincas en vez
+  // de reaparecer la lista completa.
+  const [planGuardado, setPlanGuardado] = useState(() => leerPlanGuardado(fecha))
 
   useEffect(() => {
-    setPlanGuardado(false)
+    setPlanGuardado(leerPlanGuardado(fecha))
   }, [fecha])
+
+  function alternarPlanGuardado() {
+    const nuevo = !planGuardado
+    setPlanGuardado(nuevo)
+    guardarPlanGuardado(fecha, nuevo)
+  }
 
   async function agregarUnidad(finca: string, numero: number, tipo: string, cantidadPallets: number | null) {
     setAgregando(finca)
@@ -248,7 +273,7 @@ function PlanTransporteAdmin({
             : 'Mostrando todas las fincas para armar el plan.'}
         </p>
         <button
-          onClick={() => setPlanGuardado((v) => !v)}
+          onClick={alternarPlanGuardado}
           className="rounded-lg bg-banex-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-banex-700"
         >
           {planGuardado ? 'Editar plan (ver todas las fincas)' : 'Guardar plan'}
