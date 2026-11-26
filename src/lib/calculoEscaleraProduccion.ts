@@ -174,7 +174,14 @@ export function calcularFilaEscalera(params: {
   const embolseReal = esEmbolseReal ? embolseRealDeEstaSemana! : bellPorHa * (hectareas ?? 0)
 
   const desglose: DesgloseEdad[] = EDADES_COSECHA.map((edad) => {
-    const { anio: anioCosecha, semana: semanaCosecha } = sumarSemanas(anioEmbolse, semanaEmbolse, edad)
+    // "edad - 1" y no "edad": así reporta la semana de cosecha
+    // semanaEmbolseDeEdad en cintaEmbolse.ts (ya establecida en el resto de
+    // la app) — un racimo de edad N se reporta/cosecha N-1 semanas después
+    // del embolse, no N. Usar "edad" a secas corría esta columna una
+    // semana tarde (y, peor, hacía que el buscador de "última cohorte
+    // completa" en useEscaleraProduccion.ts pensara que hacían falta 12
+    // semanas para completarse en vez de 11).
+    const { anio: anioCosecha, semana: semanaCosecha } = sumarSemanas(anioEmbolse, semanaEmbolse, edad - 1)
     // OJO: la búsqueda del dato real es por semana de EMBOLSE (no de
     // cosecha) — así quedan indexados tanto el dato en vivo como el
     // histórico en useEscaleraProduccion.
@@ -207,7 +214,7 @@ export function calcularFilaEscalera(params: {
   // estable), esta sí varía cohorte a cohorte.
   const edadPromReal = racimosCosechados > 0 ? desglose.reduce((suma, d) => suma + d.edad * d.racimos, 0) / racimosCosechados : 0
 
-  const desplazamiento = Math.round(edadPromedio(distribucionProyeccion))
+  const desplazamiento = Math.round(edadPromedio(distribucionProyeccion)) - 1
   const { anio: anioCosechaPrincipal, semana: semanaCosechaPrincipal } = sumarSemanas(anioEmbolse, semanaEmbolse, desplazamiento)
 
   return {

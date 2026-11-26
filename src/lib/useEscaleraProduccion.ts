@@ -173,7 +173,12 @@ export function useEscaleraProduccion(finca: Finca | null) {
       return resultado
     }
 
-    let cursor = sumarSemanas(anioActual, semanaActual, -EDADES_COSECHA[EDADES_COSECHA.length - 1])
+    // Empieza en HOY (no en hoy menos el máximo de semanas de edad): una
+    // cohorte embolsada hace solo 10-11 semanas ya puede estar completa
+    // (la edad se reporta a las edad-1 semanas, ver semanaEmbolseDeEdad en
+    // cintaEmbolse.ts), así que empezar más atrás se saltaba cohortes más
+    // recientes que ya estaban completas y terminaba usando una vieja.
+    let cursor = { anio: anioActual, semana: semanaActual }
     for (let i = 0; i < SEMANAS_BUSQUEDA_RECOBRO; i++) {
       const embolsado = embolsadoDe(cursor.anio, cursor.semana)
       if (embolsado && embolsado > 0) {
