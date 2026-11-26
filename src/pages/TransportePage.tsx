@@ -7,7 +7,7 @@ import { obtenerFincaActual, guardarFincaActual } from '../lib/fincaActual'
 import { posicionFinca } from '../lib/ordenFincas'
 import { fechaLocalHoy } from '../lib/fechaLocal'
 import { useTransporteDia } from '../lib/useTransporteDia'
-import { UNIDADES_TRANSPORTE, etiquetaUnidad, transporteRegistrada, type TransporteUnidad } from '../types/transporteUnidad'
+import { UNIDADES_TRANSPORTE, detalleUnidad, etiquetaUnidad, transporteRegistrada, type TransporteUnidad } from '../types/transporteUnidad'
 import { TIPOS_TRANSPORTE } from '../types/produccion'
 import SectionHeading from '../components/SectionHeading'
 import type { Finca } from '../types/finca'
@@ -166,7 +166,7 @@ function PlanTransporteAdmin({
               <div className="flex flex-1 flex-wrap items-center gap-2">
                 {filasFinca.map((fila) => {
                   const registrada = transporteRegistrada(fila)
-                  const planificado = `${fila.tipo ?? 'sin tipo'} · ${fila.cantidad_pallets ?? '—'} pallets`
+                  const planificado = `${detalleUnidad(filasFinca, fila)} · ${fila.tipo ?? 'sin tipo'} · ${fila.cantidad_pallets ?? '—'} pallets`
                   const detalle = registrada
                     ? `${planificado} · ${fila.placa ?? '—'} · llegada ${fila.hora_llegada?.slice(0, 5) ?? '—'}`
                     : `${planificado} · Pendiente de registrar llegada`
@@ -178,7 +178,7 @@ function PlanTransporteAdmin({
                         registrada ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-700'
                       }`}
                     >
-                      {etiquetaUnidad(filasFinca, fila)}
+                      {etiquetaUnidad(fila)}
                       <button
                         onClick={() => quitarUnidad(fila)}
                         className="rounded-full px-1 text-[10px] leading-none opacity-60 hover:opacity-100"
@@ -377,12 +377,12 @@ function RegistroTransporteFinca({
             <button
               key={f.id}
               onClick={() => setFilaSeleccionadaId(f.id)}
-              title={registrada ? `${f.tipo} · ${f.placa ?? '—'}` : 'Pendiente de registrar'}
+              title={`${detalleUnidad(filasFinca, f)}${registrada ? ` · ${f.placa ?? '—'}` : ' · Pendiente de registrar'}`}
               className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                 registrada ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-700'
               } ${activa ? 'ring-2 ring-banex-500 ring-offset-1' : ''}`}
             >
-              {etiquetaUnidad(filasFinca, f)}
+              {etiquetaUnidad(f)}
             </button>
           )
         })}

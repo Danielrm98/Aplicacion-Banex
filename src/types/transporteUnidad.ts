@@ -30,18 +30,24 @@ export function transporteRegistrada(u: TransporteUnidad): boolean {
   return u.tipo !== null && u.hora_llegada !== null
 }
 
-/** Lleva el tipo por delante (CAMIÓN/CONTENEDOR) para que, de un vistazo
- * entre los chips/botones rojos y verdes, se sepa cuál es el que falta por
- * registrar sin tener que pasar el mouse. Una unidad puede repetirse en la
- * misma finca/fecha (varios recorridos en el día) — si se repite, numera el
- * viaje para distinguirlas. `filasFinca` debe venir en el mismo orden en
- * que se planificaron (por `created_at`, que es el orden que ya trae el
- * hook). */
-export function etiquetaUnidad(filasFinca: TransporteUnidad[], fila: TransporteUnidad): string {
+/** Tipo + cuántos pallets carga (p. ej. "CAMIÓN POR 10"), sin mencionar el
+ * número de unidad — de un vistazo entre los chips/botones rojos y verdes
+ * se sabe cuál es el que falta por registrar y cuánta fruta va a llevar,
+ * sin tener que pasar el mouse. El número de unidad (y, si esa misma unidad
+ * se repite ese día, el número de viaje) queda solo en el `title` de cada
+ * chip/botón, para quien sí lo necesite ver. */
+export function etiquetaUnidad(fila: TransporteUnidad): string {
   const tipoTexto = fila.tipo === 'Camión' ? 'CAMIÓN' : fila.tipo === 'Contenedor' ? 'CONTENEDOR' : 'SIN TIPO'
-  const base = `${tipoTexto} · Unidad ${fila.numero_unidad}`
+  return fila.cantidad_pallets != null ? `${tipoTexto} POR ${fila.cantidad_pallets}` : tipoTexto
+}
+
+/** Para el `title` de cada chip/botón: número de unidad y, si esa unidad se
+ * repite ese día en la misma finca (varios recorridos), de cuál viaje se
+ * trata. `filasFinca` debe venir en el mismo orden en que se planificaron
+ * (por `created_at`, que es el orden que ya trae el hook). */
+export function detalleUnidad(filasFinca: TransporteUnidad[], fila: TransporteUnidad): string {
   const mismaUnidad = filasFinca.filter((f) => f.numero_unidad === fila.numero_unidad)
-  if (mismaUnidad.length <= 1) return base
+  if (mismaUnidad.length <= 1) return `Unidad ${fila.numero_unidad}`
   const indice = mismaUnidad.findIndex((f) => f.id === fila.id)
-  return `${base} (viaje ${indice + 1})`
+  return `Unidad ${fila.numero_unidad} (viaje ${indice + 1})`
 }
