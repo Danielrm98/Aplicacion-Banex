@@ -12,6 +12,7 @@ const navItems = [
   { to: '/registro-lluvia', label: 'Registro de lluvia', icon: '🌧️' },
   { to: '/plan', label: 'Plan', icon: '🎯' },
   { to: '/plan-general', label: 'Plan general', icon: '📊' },
+  { to: '/transporte', label: 'Transporte', icon: '🚚' },
   { to: '/venta-canastillas', label: 'Venta canastillas', icon: '📦' },
   { to: '/registro-embolse', label: 'Registro de embolse', icon: '🧾' },
   { to: '/embolses', label: 'Embolses', icon: '🎗️' },

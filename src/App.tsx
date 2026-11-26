@@ -13,6 +13,7 @@ import CatalogPage from './pages/CatalogPage'
 import EspecificacionesPage from './pages/EspecificacionesPage'
 import PlanPage from './pages/PlanPage'
 import PlanGeneralPage from './pages/PlanGeneralPage'
+import TransportePage from './pages/TransportePage'
 import VentaCanastillasPage from './pages/VentaCanastillasPage'
 import EmbolsesPage from './pages/EmbolsesPage'
 import RegistroEmbolsePage from './pages/RegistroEmbolsePage'
@@ -88,6 +89,7 @@ function AppRoutes() {
         <Route path="/especificaciones" element={<EspecificacionesPage />} />
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/plan-general" element={<PlanGeneralPage />} />
+        <Route path="/transporte" element={<TransportePage />} />
         <Route path="/venta-canastillas" element={<VentaCanastillasPage />} />
         <Route path="/embolses" element={<EmbolsesPage />} />
         <Route
