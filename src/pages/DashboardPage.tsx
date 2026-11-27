@@ -6,7 +6,7 @@ import PorFincaSemanaChart from '../components/charts/PorFincaSemanaChart'
 import SingleLineChart from '../components/charts/SingleLineChart'
 import ChartCard from '../components/charts/ChartCard'
 import { chartColors } from '../components/charts/chartTheme'
-import ReportesDataTable from '../components/ReportesDataTable'
+import { TablaCajas, TablaRacimos } from '../components/ReportesDataTable'
 import TabButton from '../components/TabButton'
 import { useProducciones, type Filtros } from '../lib/useProducciones'
 import { usePerfil } from '../lib/usePerfil'
@@ -28,7 +28,7 @@ import {
 export default function DashboardPage() {
   const { perfil } = usePerfil()
   const esAdmin = perfil?.rol === 'admin'
-  const [vista, setVista] = useState<'resumen' | 'tabla'>('resumen')
+  const [vista, setVista] = useState<'resumen' | 'cajas' | 'racimos'>('resumen')
   const [filtros, setFiltros] = useState<Filtros>({})
   const { registros, loading, error } = useProducciones(filtros)
 
@@ -68,8 +68,13 @@ export default function DashboardPage() {
           Resumen
         </TabButton>
         {esAdmin && (
-          <TabButton active={vista === 'tabla'} onClick={() => setVista('tabla')}>
+          <TabButton active={vista === 'cajas'} onClick={() => setVista('cajas')}>
             Tabla de datos
+          </TabButton>
+        )}
+        {esAdmin && (
+          <TabButton active={vista === 'racimos'} onClick={() => setVista('racimos')}>
+            Racimos
           </TabButton>
         )}
       </div>
@@ -80,8 +85,10 @@ export default function DashboardPage() {
         <p className="py-8 text-center text-sm text-gray-500">Cargando...</p>
       ) : error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
-      ) : vista === 'tabla' && esAdmin ? (
-        <ReportesDataTable filasCajas={filasCompletas} filasRacimos={resumenesDia} />
+      ) : vista === 'cajas' && esAdmin ? (
+        <TablaCajas filas={filasCompletas} />
+      ) : vista === 'racimos' && esAdmin ? (
+        <TablaRacimos filas={resumenesDia} />
       ) : (
         <>
           <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,31 +1,17 @@
 import type { FilaCompleta, ResumenDiaFinca } from '../lib/aggregations'
-import SectionHeading from './SectionHeading'
 
 /**
  * Dos tablas separadas, igual que en el Excel exportado ("Reportes" y
  * "Resumen por día y finca"): la de Cajas tiene una fila por referencia/marca
  * (se repite si la finca procesó varias marcas ese día), y la de Racimos
  * tiene una sola fila por día/finca — así el ratio, la merma, las
- * canastillas, etc. no aparecen repetidas una vez por cada marca.
+ * canastillas, etc. no aparecen repetidas una vez por cada marca. Cada una
+ * vive en su propia pestaña (ver DashboardPage.tsx), no una debajo de la
+ * otra.
  */
-export default function ReportesDataTable({ filasCajas, filasRacimos }: { filasCajas: FilaCompleta[]; filasRacimos: ResumenDiaFinca[] }) {
+export function TablaCajas({ filas }: { filas: FilaCompleta[] }) {
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-        <SectionHeading>Cajas (una fila por referencia)</SectionHeading>
-        <TablaCajas filas={filasCajas} />
-      </div>
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-        <SectionHeading>Racimos (una fila por día y finca)</SectionHeading>
-        <TablaRacimos filas={filasRacimos} />
-      </div>
-    </div>
-  )
-}
-
-function TablaCajas({ filas }: { filas: FilaCompleta[] }) {
-  return (
-    <div>
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
       {filas.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay datos para los filtros seleccionados.</p>
@@ -65,9 +51,9 @@ function TablaCajas({ filas }: { filas: FilaCompleta[] }) {
   )
 }
 
-function TablaRacimos({ filas }: { filas: ResumenDiaFinca[] }) {
+export function TablaRacimos({ filas }: { filas: ResumenDiaFinca[] }) {
   return (
-    <div>
+    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
       <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
       {filas.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay datos para los filtros seleccionados.</p>
