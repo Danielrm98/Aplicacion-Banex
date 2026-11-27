@@ -22,6 +22,7 @@ import {
   ratioMermaPorFinca,
   ratioMermaPorSemana,
   filaCompleta,
+  resumenPorDiaFinca,
 } from '../lib/aggregations'
 
 export default function DashboardPage() {
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const serieCajasFincaSemana = useMemo(() => cajasPorFincaYSemana(filasTendencia), [filasTendencia])
 
   const filasCompletas = useMemo(() => filaCompleta(registros), [registros])
+  const resumenesDia = useMemo(() => resumenPorDiaFinca(registros), [registros])
 
   return (
     <div>
@@ -79,7 +81,7 @@ export default function DashboardPage() {
       ) : error ? (
         <p className="py-8 text-center text-sm text-red-600">{error}</p>
       ) : vista === 'tabla' && esAdmin ? (
-        <ReportesDataTable filas={filasCompletas} />
+        <ReportesDataTable filasCajas={filasCompletas} filasRacimos={resumenesDia} />
       ) : (
         <>
           <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

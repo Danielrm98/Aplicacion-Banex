@@ -1,15 +1,37 @@
-import type { FilaCompleta } from '../lib/aggregations'
+import type { FilaCompleta, ResumenDiaFinca } from '../lib/aggregations'
+import SectionHeading from './SectionHeading'
 
-export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) {
+/**
+ * Dos tablas separadas, igual que en el Excel exportado ("Reportes" y
+ * "Resumen por día y finca"): la de Cajas tiene una fila por referencia/marca
+ * (se repite si la finca procesó varias marcas ese día), y la de Racimos
+ * tiene una sola fila por día/finca — así el ratio, la merma, las
+ * canastillas, etc. no aparecen repetidas una vez por cada marca.
+ */
+export default function ReportesDataTable({ filasCajas, filasRacimos }: { filasCajas: FilaCompleta[]; filasRacimos: ResumenDiaFinca[] }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
-      <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
+    <div className="space-y-6">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <SectionHeading>Cajas (una fila por referencia)</SectionHeading>
+        <TablaCajas filas={filasCajas} />
+      </div>
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4">
+        <SectionHeading>Racimos (una fila por día y finca)</SectionHeading>
+        <TablaRacimos filas={filasRacimos} />
+      </div>
+    </div>
+  )
+}
 
+function TablaCajas({ filas }: { filas: FilaCompleta[] }) {
+  return (
+    <div>
+      <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
       {filas.length === 0 ? (
         <p className="py-8 text-center text-sm text-gray-500">No hay datos para los filtros seleccionados.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1800px] border-collapse text-sm">
+          <table className="w-full min-w-[900px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
                 <th className="py-1.5 pr-3 font-medium">Fecha</th>
@@ -20,9 +42,50 @@ export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) 
                 <th className="py-1.5 pr-3 font-medium">Cajas</th>
                 <th className="py-1.5 pr-3 font-medium">Peso (kg)</th>
                 <th className="py-1.5 pr-3 font-medium">Cajas 20kg</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((f, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.fecha}</td>
+                  <td className="py-1.5 pr-3">{f.semana}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.finca}</td>
+                  <td className="py-1.5 pr-3">{f.horaFinalizacion || '—'}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap font-medium text-gray-900">{f.referencia || '—'}</td>
+                  <td className="py-1.5 pr-3">{f.cantidadCajas}</td>
+                  <td className="py-1.5 pr-3">{f.pesoNetoKg || '—'}</td>
+                  <td className="py-1.5 pr-3">{f.cajas20kg.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TablaRacimos({ filas }: { filas: ResumenDiaFinca[] }) {
+  return (
+    <div>
+      <p className="mb-3 text-sm text-gray-500">{filas.length} fila(s)</p>
+      {filas.length === 0 ? (
+        <p className="py-8 text-center text-sm text-gray-500">No hay datos para los filtros seleccionados.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[2000px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-gray-500">
+                <th className="py-1.5 pr-3 font-medium">Fecha</th>
+                <th className="py-1.5 pr-3 font-medium">Día</th>
+                <th className="py-1.5 pr-3 font-medium">Semana</th>
+                <th className="py-1.5 pr-3 font-medium">Finca</th>
+                <th className="py-1.5 pr-3 font-medium">Hora fin.</th>
                 <th className="py-1.5 pr-3 font-medium">Racimos cos.</th>
                 <th className="py-1.5 pr-3 font-medium">Racimos rec.</th>
                 <th className="py-1.5 pr-3 font-medium">Racimos proc.</th>
+                <th className="py-1.5 pr-3 font-medium">Calibración prom.</th>
+                <th className="py-1.5 pr-3 font-medium">Prom. manos</th>
                 <th className="py-1.5 pr-3 font-medium">Canastillas</th>
                 <th className="py-1.5 pr-3 font-medium">Kilos canast.</th>
                 <th className="py-1.5 pr-3 font-medium">Fruta no vendida</th>
@@ -38,16 +101,15 @@ export default function ReportesDataTable({ filas }: { filas: FilaCompleta[] }) 
               {filas.map((f, i) => (
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-1.5 pr-3 whitespace-nowrap">{f.fecha}</td>
+                  <td className="py-1.5 pr-3 whitespace-nowrap">{f.dia}</td>
                   <td className="py-1.5 pr-3">{f.semana}</td>
                   <td className="py-1.5 pr-3 whitespace-nowrap">{f.finca}</td>
                   <td className="py-1.5 pr-3">{f.horaFinalizacion || '—'}</td>
-                  <td className="py-1.5 pr-3 whitespace-nowrap font-medium text-gray-900">{f.referencia || '—'}</td>
-                  <td className="py-1.5 pr-3">{f.cantidadCajas}</td>
-                  <td className="py-1.5 pr-3">{f.pesoNetoKg || '—'}</td>
-                  <td className="py-1.5 pr-3">{f.cajas20kg.toFixed(2)}</td>
                   <td className="py-1.5 pr-3">{f.racimosCosechados}</td>
                   <td className="py-1.5 pr-3">{f.racimosRecusados}</td>
                   <td className="py-1.5 pr-3">{f.racimosProcesados}</td>
+                  <td className="py-1.5 pr-3">{f.gradoPromedio !== null ? f.gradoPromedio.toFixed(1) : '—'}</td>
+                  <td className="py-1.5 pr-3">{f.promedioManos !== null ? f.promedioManos.toFixed(1) : '—'}</td>
                   <td className="py-1.5 pr-3">{f.canastillas}</td>
                   <td className="py-1.5 pr-3">{f.kilosCanastillas.toFixed(2)}</td>
                   <td className="py-1.5 pr-3">{f.frutaNoVendida}</td>
